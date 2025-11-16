@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>SIPER PIRULA - Dashboard</title>
+</head>
+<body>
+    <h1>SIPER PIRULA</h1>
+    <p>Bienvenido al sistema de inventario y ventas de la botillería.</p>
+
+    <ul>
+        <li><a href="{% url 'inventario:scan_ean' %}">Escanear producto</a></li>
+        <li><a href="{% url 'inventario:producto_lista' %}">Ver listado de productos</a></li>
+        <li><a href="{% url 'inventario:producto_stock_critico' %}">Stock crítico</a></li>
+    </ul>
+
+</body>
+</html>

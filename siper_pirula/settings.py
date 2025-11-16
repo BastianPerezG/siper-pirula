@@ -22,18 +22,16 @@ CSRF_TRUSTED_ORIGINS = env.list(
     default=[]
 )
 
-# DB
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.mysql",
-        "NAME": env("DB_NAME"),
-        "USER": env("DB_USER"),
-        "PASSWORD": env("DB_PASSWORD"),
-        "HOST": env("DB_HOST", default="127.0.0.1"),
-        "PORT": env("DB_PORT", default="3306"),
-        "OPTIONS": {"charset": "utf8mb4"},
-    }
-}
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    # tus apps:
+    "core", "inventario", "pedidos", "ventas",
+]
 
 
 MIDDLEWARE = [
@@ -64,24 +62,31 @@ TEMPLATES = [{
 
 WSGI_APPLICATION = "siper_pirula.wsgi.application"
 
-# 4) DB: MySQL via mysqlclient (usa variables del .env)
+
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.mysql",
-        "NAME": env("DB_NAME"),
-        "USER": env("DB_USER"),
-        "PASSWORD": env("DB_PASSWORD"),
-        "HOST": env("DB_HOST", default="127.0.0.1"),
-        "PORT": env("DB_PORT", default="3306"),
-        "OPTIONS": {
-                "charset": "utf8mb4",
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
+}
+# 4) DB: MySQL via mysqlclient (usa variables del .env)
+#DATABASES = {
+    #"default": {
+        #"ENGINE": "django.db.backends.mysql",
+        #"NAME": env("DB_NAME"),
+        #"USER": env("DB_USER"),
+        #"PASSWORD": env("DB_PASSWORD"),
+        #"HOST": env("DB_HOST", default="127.0.0.1"),
+        #"PORT": env("DB_PORT", default="3306"),
+        #"OPTIONS": {
+                #"charset": "utf8mb4",
                 # en Windows a veces ayuda:
                 # "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-            },
-            "CONN_MAX_AGE": 60,   # pooling básico (60 s)
-        }
+            #},
+            #"CONN_MAX_AGE": 60,   # pooling básico (60 s)
+        #}
         
-}
+#}
 
 # 5) Static/Media (útil para despliegue)
 STATIC_URL = "static/"

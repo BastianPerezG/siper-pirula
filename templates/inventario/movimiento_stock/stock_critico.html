@@ -1,0 +1,28 @@
+<h1>Productos con stock crítico</h1>
+
+<table border="1" cellpadding="4">
+    <tr>
+        <th>Nombre</th>
+        <th>EAN</th>
+        <th>Categoría</th>
+        <th>Stock mínimo</th>
+        <th>Stock actual</th>
+        <th></th>
+    </tr>
+    {% for p in productos %}
+        <tr>
+            <td>{{ p.nombre }}</td>
+            <td>{{ p.ean }}</td>
+            <td>{{ p.categoria }}</td>
+            <td>{{ p.stock_min }}</td>
+            <td>{{ p.stock_actual }}</td>
+            <td><a href="{% url 'inventario:producto_detalle' p.pk %}">Ver</a></td>
+        </tr>
+    {% empty %}
+        <tr>
+            <td colspan="6">No hay productos bajo el stock mínimo 😊</td>
+        </tr>
+    {% endfor %}
+</table>
+
+<p><a href="{% url 'inventario:producto_lista' %}">Volver al listado de productos</a></p>

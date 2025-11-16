@@ -1,0 +1,17 @@
+<h1>{{ producto.nombre }}</h1>
+
+<p><strong>EAN:</strong> {{ producto.ean }}</p>
+<p><strong>Categoría:</strong> {{ producto.categoria }}</p>
+<p><strong>Precio:</strong> ${{ producto.precio }}</p>
+<p><strong>Costo:</strong> ${{ producto.costo }}</p>
+<p><strong>Stock mínimo:</strong> {{ producto.stock_min }}</p>
+<p><strong>Stock actual (calculado):</strong> {{ producto.stock_actual }}</p>
+<p><strong>Ubicación:</strong> {{ producto.ubicacion }}</p>
+
+<p>
+    <a href="{% url 'inventario:movimiento_crear' producto.pk %}">Registrar movimiento</a> |
+    <a href="{% url 'inventario:movimiento_lista' producto.pk %}">Ver historial</a> |
+    <a href="{% url 'inventario:producto_editar' producto.pk %}">Editar</a> |
+    <a href="{% url 'inventario:scan_ean' %}">Volver a escanear</a>
+</p>
+

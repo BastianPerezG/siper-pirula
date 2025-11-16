@@ -1,0 +1,26 @@
+<h1>Productos</h1>
+
+<table border="1" cellpadding="4">
+    <tr>
+        <th>ID</th>
+        <th>Nombre</th>
+        <th>EAN</th>
+        <th>Categoría</th>
+        <th>Precio</th>
+        <th></th>
+    </tr>
+    {% for p in productos %}
+        <tr>
+            <td>{{ p.id }}</td>
+            <td>{{ p.nombre }}</td>
+            <td>{{ p.ean }}</td>
+            <td>{{ p.categoria }}</td>
+            <td>${{ p.precio }}</td>
+            <td><a href="{% url 'inventario:producto_detalle' p.pk %}">Ver</a></td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="6">No hay productos registrados.</td></tr>
+    {% endfor %}
+</table>
+
+<p><a href="{% url 'inventario:scan_ean' %}">Ir a lector</a></p>

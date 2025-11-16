@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Escanear producto</title>
+</head>
+<body>
+    <h1>Escanear producto</h1>
+
+    <nav>
+        <a href="{% url 'core:dashboard' %}">Inicio</a> |
+        <a href="{% url 'inventario:producto_lista' %}">Listado de productos</a> |
+        <a href="{% url 'inventario:producto_stock_critico' %}">Stock crítico</a>
+    </nav>
+
+    <hr>
+
+    <form id="scan-form" method="get">
+        <input
+            type="text"
+            name="ean"
+            id="ean-input"
+            autocomplete="off"
+            autofocus
+            style="font-size: 2rem; padding: 0.5rem; width: 320px;"
+        >
+    </form>
+
+    {% if ean %}
+        <p>Último código leído: <strong>{{ ean }}</strong></p>
+    {% endif %}
+
+    <script>
+        const input = document.getElementById("ean-input");
+        const form = document.getElementById("scan-form");
+
+        window.addEventListener("load", () => input.focus());
+        window.addEventListener("click", () => input.focus());
+
+        input.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                form.submit();
+            }
+        });
+    </script>
+</body>
+</html>

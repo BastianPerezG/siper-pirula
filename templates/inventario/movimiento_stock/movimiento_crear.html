@@ -1,0 +1,14 @@
+<h1>Registrar movimiento de inventario</h1>
+
+<p><strong>Producto:</strong> {{ producto.nombre }} (EAN: {{ producto.ean }})</p>
+<p><strong>Stock actual:</strong> {{ producto.stock_actual }}</p>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Guardar movimiento</button>
+</form>
+
+<p>
+    <a href="{% url 'inventario:producto_detalle' producto.pk %}">Volver a la ficha</a>
+</p>

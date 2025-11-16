@@ -1,0 +1,30 @@
+<h1>Movimientos de inventario</h1>
+
+<p><strong>Producto:</strong> {{ producto.nombre }} (EAN: {{ producto.ean }})</p>
+<p><strong>Stock actual:</strong> {{ producto.stock_actual }}</p>
+
+<table border="1" cellpadding="4">
+    <tr>
+        <th>Fecha</th>
+        <th>Tipo</th>
+        <th>Cantidad</th>
+        <th>Comentario</th>
+    </tr>
+    {% for m in movimientos %}
+        <tr>
+            <td>{{ m.fecha }}</td>
+            <td>{{ m.get_tipo_display }}</td>
+            <td>{{ m.cantidad }}</td>
+            <td>{{ m.comentario }}</td>
+        </tr>
+    {% empty %}
+        <tr>
+            <td colspan="4">No hay movimientos registrados.</td>
+        </tr>
+    {% endfor %}
+</table>
+
+<p>
+    <a href="{% url 'inventario:movimiento_crear' producto.pk %}">Registrar nuevo movimiento</a> |
+    <a href="{% url 'inventario:producto_detalle' producto.pk %}">Volver a la ficha</a>
+</p>
