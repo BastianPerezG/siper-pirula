@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Compras</title>
+</head>
+<body>
+    <h1>Compras registradas</h1>
+
+    <p><a href="{% url 'inventario:compra_crear' %}">Registrar nueva compra</a> |
+       <a href="{% url 'core:dashboard' %}">Volver al inicio</a></p>
+
+    {% if compras %}
+        <table border="1" cellpadding="5">
+            <tr>
+                <th>ID</th>
+                <th>Fecha</th>
+                <th>Proveedor</th>
+                <th>Documento</th>
+                <th>Comentario</th>
+            </tr>
+            {% for compra in compras %}
+                <tr>
+                    <td><a href="{% url 'inventario:compra_detalle' compra.pk %}">{{ compra.id }}</a></td>
+                    <td>{{ compra.fecha }}</td>
+                    <td>{{ compra.proveedor }}</td>
+                    <td>{{ compra.doc_tipo }} {{ compra.doc_num }}</td>
+                    <td>{{ compra.comentario }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>No hay compras registradas.</p>
+    {% endif %}
+</body>
+</html>

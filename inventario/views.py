@@ -1,9 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
-from django.views.generic import DetailView, CreateView, UpdateView, ListView
+from django.views.generic import DetailView, CreateView, UpdateView, ListView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from .models import Producto, MovimientoInventario
-from .forms import ProductoCrearForm, MovimientoCrearForm
+from django.db import transaction
+from .models import Producto, MovimientoInventario, Compra
+from .forms import ProductoCrearForm, MovimientoCrearForm, CompraItemFormSet, CompraForm
 
 def scan_ean(request):
     """
@@ -123,3 +124,52 @@ class ProductoStockCriticoView(LoginRequiredMixin, ListView):
         # Productos activos con stock actual menor al mínimo
         qs = Producto.objects.filter(activo=True)
         return [p for p in qs if p.stock_actual < p.stock_min]
+    
+
+class CompraListaView(ListView):
+    model = Compra
+    template_name = "inventario/compras/compra_lista.html"
+    context_object_name = "compras"
+
+
+class CompraDetalleView(DetailView):
+    model = Compra
+    template_name = "inventario/compras/compra_detalle.html"
+    context_object_name = "compra"
+
+
+def compra_crear_view(request):
+    """
+    Pantalla para crear una compra con varios items.
+    """
+    if request.method == "POST":
+        form = CompraForm(request.POST)
+
+        if form.is_valid():
+            with transaction.atomic():
+                compra = form.save()
+                formset = CompraItemFormSet(request.POST, instance=compra)
+
+                if formset.is_valid():
+                    formset.save()
+                    # Al guardar los items se crean los movimientos de ENTRADA
+                    return redirect("inventario:compra_detalle", pk=compra.pk)
+        else:
+            # Si el form principal no es válido, necesitamos un formset vacío para re-renderizar
+            formset = CompraItemFormSet(request.POST)
+
+    else:
+        form = CompraForm()
+        formset = CompraItemFormSet()
+
+    return render(
+        request,
+        "inventario/compras/compra_crear.html",
+        {"form": form, "formset": formset},
+    )
+
+
+class CompraEliminarView(DeleteView):
+    model = Compra
+    template_name = "inventario/compras/compra_confirmar_eliminar.html"
+    success_url = reverse_lazy("inventario:compra_lista")

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Eliminar compra</title>
+</head>
+<body>
+    <h1>Eliminar compra</h1>
+
+    <p>
+        ¿Estás seguro de que quieres eliminar la compra
+        <strong>#{{ object.id }} - {{ object.proveedor }}</strong>?
+    </p>
+
+    <p>
+        Documento: {{ object.doc_tipo }} {{ object.doc_num }}<br>
+        Fecha: {{ object.fecha }}<br>
+        Comentario: {{ object.comentario|default:"(sin comentario)" }}
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit">Sí, eliminar definitivamente</button>
+        <a href="{% url 'inventario:compra_detalle' object.pk %}">No, volver</a>
+    </form>
+</body>
+</html>

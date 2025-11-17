@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Venta #{{ venta.id }}</title>
+</head>
+<body>
+    <h1>Venta #{{ venta.id }}</h1>
+
+    <p><strong>Fecha:</strong> {{ venta.fecha }}</p>
+    <p><strong>Documento:</strong> {{ venta.doc_tipo }} {{ venta.doc_num }}</p>
+    <p><strong>Medio de pago:</strong> {{ venta.medio_pago }}</p>
+    <p><strong>Comentario:</strong> {{ venta.comentario|default:"(sin comentario)" }}</p>
+
+    <h2>Ítems</h2>
+    {% if venta.items.all %}
+        <table border="1" cellpadding="5">
+            <tr>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Precio unitario</th>
+                <th>Subtotal</th>
+            </tr>
+            {% for item in venta.items.all %}
+                <tr>
+                    <td>{{ item.producto.nombre }}</td>
+                    <td>{{ item.cantidad }}</td>
+                    <td>${{ item.precio_unit }}</td>
+                    <td>${{ item.subtotal }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+        <p><strong>Total:</strong> ${{ venta.total }}</p>
+    {% else %}
+        <p>No hay ítems en esta venta.</p>
+    {% endif %}
+
+    <p>
+        <a href="{% url 'ventas:venta_lista' %}">Volver a la lista</a> |
+        <a href="{% url 'core:dashboard' %}">Volver al inicio</a>
+    </p>
+</body>
+</html>

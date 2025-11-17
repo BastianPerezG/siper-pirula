@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Nueva venta</title>
+</head>
+<body>
+    <h1>Registrar venta</h1>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <fieldset>
+            <legend>Datos de la venta</legend>
+            {{ form.as_p }}
+        </fieldset>
+
+        <fieldset>
+            <legend>Ítems</legend>
+            {{ formset.management_form }}
+            <table border="1" cellpadding="5">
+                <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Precio unitario</th>
+                    <th>Eliminar</th>
+                </tr>
+                {% for f in formset %}
+                    <tr>
+                        <td>{{ f.producto }}</td>
+                        <td>{{ f.cantidad }}</td>
+                        <td>{{ f.precio_unit }}</td>
+                        <td>
+                            {% if f.instance.pk %}
+                                {{ f.DELETE }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </table>
+        </fieldset>
+
+        <button type="submit">Guardar venta</button>
+    </form>
+
+    <p>
+        <a href="{% url 'ventas:venta_lista' %}">Volver a la lista</a> |
+        <a href="{% url 'core:dashboard' %}">Volver al inicio</a>
+    </p>
+</body>
+</html>

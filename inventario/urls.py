@@ -14,4 +14,9 @@ urlpatterns = [
     path("producto/<int:producto_pk>/movimiento/crear/",views.MovimientoCrearView.as_view(),name="movimiento_crear"),
     path("producto/<int:producto_pk>/movimientos/", views.MovimientoListaView.as_view(),name="movimiento_lista"),
     path("productos/stock-critico/", views.ProductoStockCriticoView.as_view(), name="producto_stock_critico"),
+    # COMPRAS
+    path("compras/", views.CompraListaView.as_view(), name="compra_lista"),
+    path("compras/nueva/", views.compra_crear_view, name="compra_crear"),
+    path("compras/<int:pk>/", views.CompraDetalleView.as_view(), name="compra_detalle"),
+    path("compras/<int:pk>/eliminar/", views.CompraEliminarView.as_view(), name="compra_eliminar"),
 ]
