@@ -1,11 +1,14 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import ListView, DetailView
+from django.views import View
 from django.db import transaction
 from django.urls import reverse
 
+from inventario.models import Producto, MovimientoInventario
 from .models import Venta
 from .forms import VentaForm, VentaItemFormSet
 
+import json
 
 class VentaListaView(ListView):
     model = Venta
@@ -19,30 +22,57 @@ class VentaDetalleView(DetailView):
     context_object_name = "venta"
 
 
-def venta_crear_view(request):
-    """
-    Crear una venta manual (tipo 'venta mostrador simple').
-    Más adelante esta lógica la usaremos como base para el POS con lector.
-    """
-    if request.method == "POST":
-        form = VentaForm(request.POST)
+class VentaCreateView(View):
 
-        if form.is_valid():
-            with transaction.atomic():
-                venta = form.save()
-                formset = VentaItemFormSet(request.POST, instance=venta)
+    def _build_precios_json(self):
+        """
+        Crea un dict {id_producto: precio} para usar en el JS.
+        """
+        productos = Producto.objects.filter(activo=True).values("id", "precio")
+        mapa = {str(p["id"]): p["precio"] for p in productos}
+        return json.dumps(mapa)
 
-                if formset.is_valid():
-                    formset.save()
-                    return redirect("ventas:venta_detalle", pk=venta.pk)
-        else:
-            formset = VentaItemFormSet(request.POST)
-    else:
+    def get(self, request):
         form = VentaForm()
-        formset = VentaItemFormSet()
+        # IMPORTANTE: usar un prefix fijo para el formset
+        formset = VentaItemFormSet(prefix="items")
 
-    return render(
-        request,
-        "ventas/venta_crear.html",
-        {"form": form, "formset": formset},
-    )
+        context = {
+            "form": form,
+            "formset": formset,
+            "precios_json": self._build_precios_json(),
+        }
+        return render(request, "ventas/venta_form.html", context)
+
+    def post(self, request):
+        form = VentaForm(request.POST)
+        formset = VentaItemFormSet(request.POST, prefix="items")
+
+        context = {
+            "form": form,
+            "formset": formset,
+            "precios_json": self._build_precios_json(),
+        }
+
+        if form.is_valid() and formset.is_valid():
+            venta = form.save()
+
+            items = formset.save(commit=False)
+            for item in items:
+                # Si la fila está vacía (sin producto), la saltamos
+                if not item.producto:
+                    continue
+                item.venta = venta
+                # Seguridad: fijar precio desde el producto
+                item.precio_unit = item.producto.precio
+                item.save()
+
+            # Por si algún día editáramos ventas
+            for obj in formset.deleted_objects:
+                obj.delete()
+
+            return redirect("ventas:venta_detalle", pk=venta.pk)
+
+        # Si hay errores, volvemos a mostrar el formulario
+        return render(request, "ventas/venta_form.html", context)
+

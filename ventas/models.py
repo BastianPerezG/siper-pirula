@@ -1,5 +1,6 @@
 from django.db import models
 from inventario.models import Producto, MovimientoInventario
+from django.core.exceptions import ValidationError
 # Create your models here.
 
 
@@ -81,6 +82,25 @@ class VentaItem(models.Model):
     @property
     def subtotal(self):
         return self.cantidad * self.precio_unit
+
+    def clean(self):
+        """
+        Validación de negocio: no permitir vender más cantidad
+        que el stock disponible.
+        """
+        super().clean()
+
+        if self.producto and self.cantidad:
+            # stock disponible ANTES de registrar este ítem
+            disponible = self.producto.stock_actual
+
+            # Si en algún futuro permitimos editar VentaItem,
+            # podríamos ajustar 'disponible' sumando la cantidad previa.
+
+            if self.cantidad > disponible:
+                raise ValidationError({
+                    "cantidad": f"No hay stock suficiente. Disponible: {disponible} unidades."
+                })
 
     def save(self, *args, **kwargs):
         """

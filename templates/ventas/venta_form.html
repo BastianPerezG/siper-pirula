@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registrar venta</title>
+</head>
+<body>
+    <h1>Registrar venta</h1>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {# --- Datos generales de la venta --- #}
+        <fieldset>
+            <legend>Datos de la venta</legend>
+
+            <p>
+                {{ form.doc_tipo.label_tag }}
+                {{ form.doc_tipo }}
+                {{ form.doc_tipo.errors }}
+            </p>
+            <p>
+                {{ form.doc_num.label_tag }}
+                {{ form.doc_num }}
+                {{ form.doc_num.errors }}
+            </p>
+            <p>
+                {{ form.medio_pago.label_tag }}
+                {{ form.medio_pago }}
+                {{ form.medio_pago.errors }}
+            </p>
+            <p>
+                {{ form.comentario.label_tag }}
+                {{ form.comentario }}
+                {{ form.comentario.errors }}
+            </p>
+        </fieldset>
+
+        <h2>Ítems</h2>
+
+        {{ formset.management_form }}
+        {{ formset.non_form_errors }}
+
+        <table id="items-table" border="1" cellpadding="4" cellspacing="0">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Precio unitario</th>
+                    <th>Eliminar</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in formset %}
+                    <tr class="item-row">
+                        <td>
+                            {{ f.producto }}
+                            {{ f.producto.errors }}
+                        </td>
+                        <td>
+                            {{ f.cantidad }}
+                            {{ f.cantidad.errors }}
+                        </td>
+                        <td>
+                            {{ f.precio_unit }}
+                            {{ f.precio_unit.errors }}
+                        </td>
+                        <td style="text-align: center;">
+                            {{ f.DELETE }}
+                            <button type="button" class="btn-eliminar">X</button>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <p>
+            <button type="button" id="btn-agregar">Agregar ítem</button>
+        </p>
+
+        <p>
+            <strong>Total estimado: $<span id="total-venta">0</span></strong>
+        </p>
+
+        <p>
+            <button type="submit">Guardar venta</button>
+        </p>
+    </form>
+
+    <p>
+        <a href="{% url 'ventas:venta_lista' %}">Volver a la lista</a> |
+        <a href="{% url 'core:dashboard' %}">Volver al inicio</a>
+    </p>
+
+    {# --- Fila prototipo oculta para nuevos ítems --- #}
+    <table style="display:none;">
+        <tbody>
+            <tr id="empty-form-row" class="item-row" style="display:none;">
+                <td>
+                    {{ formset.empty_form.producto }}
+                </td>
+                <td>
+                    {{ formset.empty_form.cantidad }}
+                </td>
+                <td>
+                    {{ formset.empty_form.precio_unit }}
+                </td>
+                <td style="text-align:center;">
+                    {{ formset.empty_form.DELETE }}
+                    <button type="button" class="btn-eliminar">X</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <script>
+        // Mapa {id_producto: precio} enviado desde la vista
+        const PRECIOS = JSON.parse('{{ precios_json|escapejs }}');
+
+
+        function attachRowEvents(row) {
+            const selectProducto = row.querySelector("select[name$='producto']");
+            const inputCantidad  = row.querySelector("input[name$='cantidad']");
+            const inputPrecio    = row.querySelector("input[name$='precio_unit']");
+            const chkDelete      = row.querySelector("input[type='checkbox'][name$='DELETE']");
+            const btnEliminar    = row.querySelector(".btn-eliminar");
+
+            if (selectProducto) {
+                selectProducto.addEventListener("change", function () {
+                    const prodId = this.value;
+                    if (prodId && PRECIOS[prodId] !== undefined) {
+                        inputPrecio.value = PRECIOS[prodId];
+                    } else {
+                        inputPrecio.value = "";
+                    }
+                    recalcularTotal();
+                });
+            }
+
+            if (inputCantidad) {
+                inputCantidad.addEventListener("input", recalcularTotal);
+            }
+
+            if (inputPrecio) {
+                inputPrecio.addEventListener("input", recalcularTotal);
+            }
+
+            if (btnEliminar && chkDelete) {
+                btnEliminar.addEventListener("click", function () {
+                    // Marcamos el DELETE del formset
+                    chkDelete.checked = true;
+                    // Ocultamos la fila visualmente
+                    row.style.display = "none";
+                    recalcularTotal();
+                });
+            }
+        }
+
+        function recalcularTotal() {
+            let total = 0;
+
+            document.querySelectorAll("#items-table tbody tr.item-row").forEach(row => {
+                if (row.style.display === "none") {
+                    return; // fila oculta (eliminada o prototipo)
+                }
+
+                const chkDelete = row.querySelector("input[type='checkbox'][name$='DELETE']");
+                if (chkDelete && chkDelete.checked) {
+                    return; // marcada para borrar
+                }
+
+                const cantidad = parseInt(
+                    (row.querySelector("input[name$='cantidad']") || {}).value
+                ) || 0;
+
+                const precio = parseInt(
+                    (row.querySelector("input[name$='precio_unit']") || {}).value
+                ) || 0;
+
+                total += cantidad * precio;
+            });
+
+            document.getElementById("total-venta").textContent = total;
+        }
+
+        function inicializar() {
+            // Enganchar eventos a las filas iniciales
+            document.querySelectorAll("#items-table tbody tr.item-row").forEach(attachRowEvents);
+            recalcularTotal();
+
+            const btnAgregar = document.getElementById("btn-agregar");
+            const totalFormsInput = document.getElementById("id_items-TOTAL_FORMS");
+            const emptyRowTemplate = document.getElementById("empty-form-row");
+
+            btnAgregar.addEventListener("click", function () {
+                const formIndex = parseInt(totalFormsInput.value);
+
+                // Clonamos la fila prototipo reemplazando __prefix__ por el índice
+                let newRowHtml = emptyRowTemplate.outerHTML.replace(/__prefix__/g, formIndex);
+
+                const tbody = document.querySelector("#items-table tbody");
+                const temp = document.createElement("tbody");
+                temp.innerHTML = newRowHtml;
+                const newRow = temp.querySelector("tr");
+
+                newRow.id = "";
+                newRow.style.display = "";  // visible
+                tbody.appendChild(newRow);
+
+                totalFormsInput.value = formIndex + 1;
+
+                attachRowEvents(newRow);
+                recalcularTotal();
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", inicializar);
+    </script>
+</body>
+</html>
