@@ -55,10 +55,18 @@
 
             <div class="flex items-center gap-2">
                 <label class="text-sm text-slate-600">Escanear EAN</label>
-                <input type="text" id="ean-input" class="border rounded px-2 py-1 text-sm w-56" placeholder="EAN..."
-                    autocomplete="off">
-                <button type="button" id="btn-agregar"
-                    class="px-3 py-1.5 rounded bg-slate-900 text-white text-sm hover:bg-slate-800">
+                <input
+                    type="text"
+                    id="ean-input"
+                    class="border rounded px-2 py-1 text-sm w-56"
+                    placeholder="EAN..."
+                    autocomplete="off"
+                >
+                <button
+                    type="button"
+                    id="btn-agregar"
+                    class="px-3 py-1.5 rounded bg-slate-900 text-white text-sm hover:bg-slate-800"
+                >
                     + Agregar ítem
                 </button>
             </div>
@@ -97,8 +105,14 @@
                             <span class="subtotal-cell">0</span>
                         </td>
                         <td class="px-3 py-2 text-center">
-                            {{ f.DELETE }}
-                            <button type="button" class="btn-eliminar text-red-600 hover:text-red-800 font-semibold">
+                            {# ocultamos el checkbox DELETE, dejamos sólo la X #}
+                            <span class="hidden">
+                                {{ f.DELETE }}
+                            </span>
+                            <button
+                                type="button"
+                                class="btn-eliminar text-red-600 hover:text-red-800 font-semibold"
+                            >
                                 ✕
                             </button>
                         </td>
@@ -118,18 +132,20 @@
     </section>
 
     <div class="flex flex-wrap gap-3">
-        <button type="submit"
-            class="px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
+        <button
+            type="submit"
+            class="px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
+        >
             Guardar venta
         </button>
 
         <a href="{% url 'ventas:venta_lista' %}"
-            class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+           class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
             Volver a la lista
         </a>
 
         <a href="{% url 'core:dashboard' %}"
-            class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+           class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
             Volver al inicio
         </a>
     </div>
@@ -138,121 +154,23 @@
 
 {% block extra_js %}
 <script>
-    // Mapa {id_producto: precio} enviado desde la vista
-    // Mapa enviado por la vista: {ean: {id, precio}}
-    const PRODUCTOS_EAN = JSON.parse('{{ productos_ean_json|escapejs }}');
-    const PRECIOS = JSON.parse('{{ precios_json|escapejs }}');
+(function() {
+    // JSON que viene desde la vista (con fallback a "{}" por si acaso)
+    const PRODUCTOS_EAN = JSON.parse('{{ productos_ean_json|default:"{}"|escapejs }}');
+    const PRECIOS = JSON.parse('{{ precios_json|default:"{}"|escapejs }}');
 
-    const eanInput = document.getElementById("ean-input");
-
-    function buscarFilaVacia() {
-        return Array.from(document.querySelectorAll("#items-table tbody tr.item-row"))
-            .find(row => {
-                const select = row.querySelector("select[name$='producto']");
-                const chkDelete = row.querySelector("input[type='checkbox'][name$='DELETE']");
-                return select && !select.value && (!chkDelete || !chkDelete.checked);
-            });
-    }
-
-    function seleccionarProductoEnFila(row, productoId) {
-        const select = row.querySelector("select[name$='producto']");
-        const cantidad = row.querySelector("input[name$='cantidad']");
-        const precio = row.querySelector("input[name$='precio_unit']");
-
-        if (!select) return;
-
-        select.value = productoId;
-        select.dispatchEvent(new Event("change"));
-
-        if (cantidad) cantidad.value = 1;
-        if (precio && PRECIOS[productoId]) precio.value = PRECIOS[productoId];
-    }
-
-    // Captura escáner (Enter)
-    eanInput.addEventListener("keydown", function (e) {
-        if (e.key !== "Enter") return;
-
-        e.preventDefault();
-        const ean = eanInput.value.trim();
-        eanInput.value = "";
-
-        if (!ean || !PRODUCTOS_EAN[ean]) {
-            alert("Producto no encontrado");
-            return;
-        }
-
-        const producto = PRODUCTOS_EAN[ean];
-        let fila = buscarFilaVacia();
-
-        if (!fila) {
-            document.getElementById("btn-agregar").click();
-            const filas = document.querySelectorAll("#items-table tbody tr.item-row");
-            fila = filas[filas.length - 1];
-        }
-
-        seleccionarProductoEnFila(fila, producto.id);
-        recalcularTotal();
-    });
-
-    // Autofocus del input
-    document.addEventListener("click", () => eanInput.focus());
-    window.addEventListener("load", () => eanInput.focus());
-
-    function attachRowEvents(row) {
-        const selectProducto = row.querySelector("select[name$='producto']");
-        const inputCantidad = row.querySelector("input[name$='cantidad']");
-        const inputPrecio = row.querySelector("input[name$='precio_unit']");
-        const chkDelete = row.querySelector("input[type='checkbox'][name$='DELETE']");
-        const btnEliminar = row.querySelector(".btn-eliminar");
+    function actualizarSubtotal(row) {
+        const cantidadInput = row.querySelector("input[name$='cantidad']");
+        const precioInput = row.querySelector("input[name$='precio_unit']");
         const subtotalCell = row.querySelector(".subtotal-cell");
 
-        function actualizarSubtotal() {
-            const cantidad = parseInt(inputCantidad?.value || "0") || 0;
-            const precio = parseInt(inputPrecio?.value || "0") || 0;
-            const subtotal = cantidad * precio;
-            if (subtotalCell) {
-                subtotalCell.textContent = subtotal;
-            }
-        }
+        const cantidad = parseInt(cantidadInput?.value || "0") || 0;
+        const precio = parseInt(precioInput?.value || "0") || 0;
+        const subtotal = cantidad * precio;
 
-        if (selectProducto) {
-            selectProducto.addEventListener("change", function () {
-                const prodId = this.value;
-                if (prodId && PRECIOS[prodId] !== undefined) {
-                    if (inputPrecio) inputPrecio.value = PRECIOS[prodId];
-                } else {
-                    if (inputPrecio) inputPrecio.value = "";
-                }
-                actualizarSubtotal();
-                recalcularTotal();
-            });
+        if (subtotalCell) {
+            subtotalCell.textContent = subtotal;
         }
-
-        if (inputCantidad) {
-            inputCantidad.addEventListener("input", () => {
-                actualizarSubtotal();
-                recalcularTotal();
-            });
-        }
-
-        if (inputPrecio) {
-            inputPrecio.addEventListener("input", () => {
-                actualizarSubtotal();
-                recalcularTotal();
-            });
-        }
-
-        if (btnEliminar && chkDelete) {
-            btnEliminar.addEventListener("click", function () {
-                // marcamos DELETE y ocultamos fila
-                chkDelete.checked = true;
-                row.style.display = "none";
-                recalcularTotal();
-            });
-        }
-
-        // Inicializar subtotal al cargar
-        actualizarSubtotal();
     }
 
     function recalcularTotal() {
@@ -275,47 +193,158 @@
             total += cantidad * precio;
         });
 
-        document.getElementById("total-venta").textContent = total;
+        const totalSpan = document.getElementById("total-venta");
+        if (totalSpan) totalSpan.textContent = total;
     }
 
-    function inicializar() {
+    function attachRowEvents(row) {
+        const selectProducto = row.querySelector("select[name$='producto']");
+        const inputCantidad = row.querySelector("input[name$='cantidad']");
+        const inputPrecio = row.querySelector("input[name$='precio_unit']");
+        const chkDelete = row.querySelector("input[type='checkbox'][name$='DELETE']");
+        const btnEliminar = row.querySelector(".btn-eliminar");
+
+        if (selectProducto) {
+            selectProducto.addEventListener("change", function () {
+                const prodId = this.value;
+                if (prodId && PRECIOS[prodId] !== undefined) {
+                    if (inputPrecio) inputPrecio.value = PRECIOS[prodId];
+                } else {
+                    if (inputPrecio) inputPrecio.value = "";
+                }
+                actualizarSubtotal(row);
+                recalcularTotal();
+            });
+        }
+
+        if (inputCantidad) {
+            inputCantidad.addEventListener("input", function () {
+                actualizarSubtotal(row);
+                recalcularTotal();
+            });
+        }
+
+        if (inputPrecio) {
+            inputPrecio.addEventListener("input", function () {
+                actualizarSubtotal(row);
+                recalcularTotal();
+            });
+        }
+
+        if (btnEliminar && chkDelete) {
+            btnEliminar.addEventListener("click", function () {
+                chkDelete.checked = true;
+                row.style.display = "none";
+                recalcularTotal();
+            });
+        }
+
+        // inicializar
+        actualizarSubtotal(row);
+    }
+
+    function buscarFilaVacia() {
+        return Array.from(document.querySelectorAll("#items-table tbody tr.item-row"))
+            .find(row => {
+                const select = row.querySelector("select[name$='producto']");
+                const chkDelete = row.querySelector("input[type='checkbox'][name$='DELETE']");
+                return select && !select.value && (!chkDelete || !chkDelete.checked);
+            });
+    }
+
+    function agregarFila() {
+        const totalFormsInput = document.getElementById("id_items-TOTAL_FORMS");
+        const emptyRowTemplate = document.getElementById("empty-form-row");
+        if (!totalFormsInput || !emptyRowTemplate) return null;
+
+        const formIndex = parseInt(totalFormsInput.value);
+        let newRowHtml = emptyRowTemplate.outerHTML.replace(/__prefix__/g, formIndex);
+
+        const tbody = document.querySelector("#items-table tbody");
+        const temp = document.createElement("tbody");
+        temp.innerHTML = newRowHtml;
+        const newRow = temp.querySelector("tr");
+
+        newRow.id = "";
+        newRow.style.display = "";
+        newRow.classList.add("border-b", "border-slate-100", "item-row");
+
+        tbody.appendChild(newRow);
+
+        totalFormsInput.value = formIndex + 1;
+
+        attachRowEvents(newRow);
+        recalcularTotal();
+        return newRow;
+    }
+
+    function seleccionarProductoEnFila(row, productoId) {
+        const select = row.querySelector("select[name$='producto']");
+        const cantidad = row.querySelector("input[name$='cantidad']");
+        const precio = row.querySelector("input[name$='precio_unit']");
+
+        if (!select) return;
+
+        select.value = productoId;
+        select.dispatchEvent(new Event("change"));
+
+        if (cantidad && (!cantidad.value || cantidad.value === "0")) {
+            cantidad.value = 1;
+        }
+        if (precio && PRECIOS[productoId] !== undefined) {
+            precio.value = PRECIOS[productoId];
+        }
+
+        actualizarSubtotal(row);
+        recalcularTotal();
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
         // Enganchar eventos a filas existentes
-        document
-            .querySelectorAll("#items-table tbody tr.item-row")
-            .forEach(attachRowEvents);
+        document.querySelectorAll("#items-table tbody tr.item-row").forEach(attachRowEvents);
         recalcularTotal();
 
         const btnAgregar = document.getElementById("btn-agregar");
-        const totalFormsInput = document.getElementById("id_items-TOTAL_FORMS");
-        const emptyRowTemplate = document.getElementById("empty-form-row");
+        if (btnAgregar) {
+            btnAgregar.addEventListener("click", function (e) {
+                e.preventDefault();
+                agregarFila();
+            });
+        }
 
-        if (!btnAgregar || !totalFormsInput || !emptyRowTemplate) return;
+        const eanInput = document.getElementById("ean-input");
+        if (eanInput) {
+            // Sólo foco inicial, no robamos el foco al hacer click en otros lados
+            eanInput.focus();
 
-        btnAgregar.addEventListener("click", function () {
-            const formIndex = parseInt(totalFormsInput.value);
+            eanInput.addEventListener("keydown", function (e) {
+                if (e.key !== "Enter") return;
 
-            // Clonamos la fila prototipo reemplazando __prefix__ por el índice
-            let newRowHtml = emptyRowTemplate.outerHTML.replace(/__prefix__/g, formIndex);
+                e.preventDefault();
+                const ean = eanInput.value.trim();
+                eanInput.value = "";
 
-            const tbody = document.querySelector("#items-table tbody");
-            const temp = document.createElement("tbody");
-            temp.innerHTML = newRowHtml;
-            const newRow = temp.querySelector("tr");
+                const producto = PRODUCTOS_EAN[ean];
+                if (!producto) {
+                    alert("Producto no encontrado");
+                    return;
+                }
 
-            newRow.id = "";
-            newRow.style.display = "";
-            newRow.classList.add("border-b", "border-slate-100", "item-row");
+                let fila = buscarFilaVacia();
+                if (!fila) {
+                    fila = agregarFila();
+                }
 
-            tbody.appendChild(newRow);
+                if (fila) {
+                    seleccionarProductoEnFila(fila, String(producto.id));
+                }
 
-            totalFormsInput.value = formIndex + 1;
-
-            attachRowEvents(newRow);
-            recalcularTotal();
-        });
-    }
-
-    document.addEventListener("DOMContentLoaded", inicializar);
+                // después de procesar, volvemos a enfocar el input para la siguiente pistoleada
+                eanInput.focus();
+            });
+        }
+    });
+})();
 </script>
 
 {# Fila prototipo oculta para nuevos ítems #}
@@ -335,8 +364,12 @@
                 <span class="subtotal-cell">0</span>
             </td>
             <td class="px-3 py-2 text-center">
-                {{ formset.empty_form.DELETE }}
-                <button type="button" class="btn-eliminar text-red-600 hover:text-red-800 font-semibold">
+                <span class="hidden">
+                    {{ formset.empty_form.DELETE }}
+                </span>
+                <button
+                    type="button"
+                    class="btn-eliminar text-red-600 hover:text-red-800 font-semibold">
                     ✕
                 </button>
             </td>

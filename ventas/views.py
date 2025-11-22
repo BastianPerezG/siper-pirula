@@ -11,7 +11,7 @@ from django.contrib.auth.decorators import login_required
 from .models import Venta
 from .forms import VentaForm, VentaItemFormSet
 from inventario.models import Producto
-
+from django.db import transaction   
 
 
 class VentaListaView(LoginRequiredMixin, ListView):
@@ -37,62 +37,59 @@ class VentaDetalleView(LoginRequiredMixin, DetailView):
 
 @login_required
 def venta_crear_view(request):
-    """
-    Crea una venta con form + formset.
-    Además envía a la plantilla:
-      - PRECIOS: {id_producto: precio}
-      - PRODUCTOS_EAN: {ean: id_producto}
-    para que el JS pueda:
-      * Autocompletar el precio unitario
-      * Agregar filas usando la pistola (EAN)
-    """
+    """Crear una venta con ítems (POS simple con escáner EAN)."""
     negocio = request.user.perfilusuario.negocio
 
-    # --- POST: guardar ---
+    # Productos disponibles de este negocio
+    productos = Producto.objects.filter(negocio=negocio, activo=True).order_by("nombre")
+
+    # Mapa {id_producto: precio}
+    precios = {str(p.id): int(p.precio) for p in productos}
+
+    # Mapa {ean: {id, precio}} para la pistola
+    productos_ean = {
+        p.ean: {"id": p.id, "precio": int(p.precio)}
+        for p in productos
+        if p.ean
+    }
+
     if request.method == "POST":
         form = VentaForm(request.POST)
         formset = VentaItemFormSet(request.POST)
 
         if form.is_valid() and formset.is_valid():
             with transaction.atomic():
-                # Guardamos cabecera de la venta
                 venta = form.save(commit=False)
                 venta.negocio = negocio
                 venta.save()
 
-                # Guardamos ítems
+                items_validos = 0
                 items = formset.save(commit=False)
+
                 for item in items:
-                    # Si la fila está vacía (sin producto), se ignora
-                    if not item.producto:
+                    # Saltar filas vacías o sin producto/cantidad
+                    if not item.producto or not item.cantidad or item.cantidad <= 0:
                         continue
 
                     item.venta = venta
-                    # Por seguridad fijamos el precio desde el producto
+                    # Siempre fijamos el precio desde el producto
                     item.precio_unit = item.producto.precio
                     item.save()
+                    items_validos += 1
 
-                # Borrar ítems marcados con DELETE (por si en el futuro editas)
+                # Borrar los marcados para eliminar (en caso de futura edición)
                 for obj in formset.deleted_objects:
                     obj.delete()
 
-            messages.success(request, "Venta registrada correctamente.")
-            return redirect("ventas:venta_detalle", pk=venta.pk)
-
-    # --- GET: mostrar formulario vacío ---
+                # Si no quedó ningún item válido, deshacemos y devolvemos error
+                if items_validos == 0:
+                    transaction.set_rollback(True)
+                    form.add_error(None, "La venta debe tener al menos un producto.")
+                else:
+                    return redirect("ventas:venta_detalle", pk=venta.pk)
     else:
         form = VentaForm()
         formset = VentaItemFormSet()
-
-    # --- Datos para el JS (precios + EAN) ---
-    productos = (
-        Producto.objects
-        .filter(negocio=negocio, activo=True)
-        .order_by("nombre")
-    )
-
-    precios = {str(p.id): int(p.precio) for p in productos}
-    productos_ean = {str(p.ean): str(p.id) for p in productos if p.ean}
 
     context = {
         "form": form,
