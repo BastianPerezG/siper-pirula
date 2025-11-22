@@ -1,14 +1,45 @@
-<h1>Registrar movimiento de inventario</h1>
+{% extends "../../core/base.html" %}
 
-<p><strong>Producto:</strong> {{ producto.nombre }} (EAN: {{ producto.ean }})</p>
-<p><strong>Stock actual:</strong> {{ producto.stock_actual }}</p>
+{% block title %}Registrar movimiento - SIPER Pirula{% endblock %}
 
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Guardar movimiento</button>
-</form>
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
 
-<p>
-    <a href="{% url 'inventario:producto_detalle' producto.pk %}">Volver a la ficha</a>
-</p>
+    <div>
+        <h1 class="text-2xl font-bold text-slate-800">
+            Registrar movimiento de inventario
+        </h1>
+    </div>
+
+    <!-- Info del producto -->
+    <div class="bg-white rounded-lg shadow-sm p-4 text-sm text-slate-700">
+        <p><span class="font-semibold">Producto:</span> {{ producto.nombre }}</p>
+        <p><span class="font-semibold">EAN:</span> {{ producto.ean }}</p>
+        <p><span class="font-semibold">Stock actual:</span>
+            <span class="text-emerald-600 font-semibold">{{ producto.stock_actual }}</span>
+        </p>
+    </div>
+
+    <!-- Formulario -->
+    <form method="post" class="bg-white rounded-lg shadow-sm p-6 space-y-4">
+        {% csrf_token %}
+
+        <div class="space-y-3 text-sm">
+            {{ form.as_p }}
+        </div>
+
+        <div class="flex flex-wrap gap-3 pt-4">
+            <button type="submit"
+                    class="px-4 py-2 bg-emerald-600 text-white rounded text-sm font-medium hover:bg-emerald-700">
+                Guardar movimiento
+            </button>
+
+            <a href="{% url 'inventario:producto_detalle' producto.pk %}"
+               class="px-4 py-2 border border-slate-300 rounded text-sm hover:bg-slate-50">
+                Volver a la ficha
+            </a>
+        </div>
+    </form>
+
+</div>
+{% endblock %}

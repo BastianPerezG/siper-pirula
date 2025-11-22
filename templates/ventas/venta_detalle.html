@@ -1,43 +1,86 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Venta #{{ venta.id }}</title>
-</head>
-<body>
-    <h1>Venta #{{ venta.id }}</h1>
+{% extends "../core/base.html" %}
 
-    <p><strong>Fecha:</strong> {{ venta.fecha }}</p>
-    <p><strong>Documento:</strong> {{ venta.doc_tipo }} {{ venta.doc_num }}</p>
-    <p><strong>Medio de pago:</strong> {{ venta.medio_pago }}</p>
-    <p><strong>Comentario:</strong> {{ venta.comentario|default:"(sin comentario)" }}</p>
+{% block title %}Venta #{{ venta.id }} - SIPER Pirula{% endblock %}
 
-    <h2>Ítems</h2>
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">
+    Venta #{{ venta.id }}
+</h1>
+
+<section class="bg-white rounded-lg shadow-sm p-6 mb-6 text-sm">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+            <p class="text-slate-500 font-semibold">Fecha</p>
+            <p>{{ venta.fecha }}</p>
+        </div>
+        <div>
+            <p class="text-slate-500 font-semibold">Documento</p>
+            <p>{{ venta.doc_tipo }} {{ venta.doc_num }}</p>
+        </div>
+        <div>
+            <p class="text-slate-500 font-semibold">Medio de pago</p>
+            <p>{{ venta.medio_pago }}</p>
+        </div>
+        <div class="md:col-span-2">
+            <p class="text-slate-500 font-semibold">Comentario</p>
+            <p>{{ venta.comentario|default:"(sin comentario)" }}</p>
+        </div>
+    </div>
+</section>
+
+<section class="bg-white rounded-lg shadow-sm p-6">
+    <h2 class="text-lg font-semibold mb-4">Ítems</h2>
+
     {% if venta.items.all %}
-        <table border="1" cellpadding="5">
-            <tr>
-                <th>Producto</th>
-                <th>Cantidad</th>
-                <th>Precio unitario</th>
-                <th>Subtotal</th>
-            </tr>
-            {% for item in venta.items.all %}
-                <tr>
-                    <td>{{ item.producto.nombre }}</td>
-                    <td>{{ item.cantidad }}</td>
-                    <td>${{ item.precio_unit }}</td>
-                    <td>${{ item.subtotal }}</td>
-                </tr>
-            {% endfor %}
-        </table>
-        <p><strong>Total:</strong> ${{ venta.total }}</p>
-    {% else %}
-        <p>No hay ítems en esta venta.</p>
-    {% endif %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm border border-slate-200">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        <th class="px-3 py-2 text-left">Producto</th>
+                        <th class="px-3 py-2 text-center w-24">Cantidad</th>
+                        <th class="px-3 py-2 text-right w-32">Precio unitario</th>
+                        <th class="px-3 py-2 text-right w-32">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in venta.items.all %}
+                        <tr class="border-b border-slate-100">
+                            <td class="px-3 py-2">
+                                {{ item.producto.nombre }}
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                {{ item.cantidad }}
+                            </td>
+                            <td class="px-3 py-2 text-right">
+                                ${{ item.precio_unit }}
+                            </td>
+                            <td class="px-3 py-2 text-right">
+                                ${{ item.subtotal }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-    <p>
-        <a href="{% url 'ventas:venta_lista' %}">Volver a la lista</a> |
-        <a href="{% url 'core:dashboard' %}">Volver al inicio</a>
-    </p>
-</body>
-</html>
+        <p class="mt-4 text-right text-base">
+            <span class="font-semibold">Total:</span>
+            <span class="font-bold">$ {{ venta.total }}</span>
+        </p>
+    {% else %}
+        <p class="text-sm text-slate-500">No hay ítems en esta venta.</p>
+    {% endif %}
+</section>
+
+<div class="mt-6 flex flex-wrap gap-3">
+    <a href="{% url 'ventas:venta_lista' %}"
+       class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+        Volver a la lista
+    </a>
+
+    <a href="{% url 'core:dashboard' %}"
+       class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+        Volver al inicio
+    </a>
+</div>
+{% endblock %}

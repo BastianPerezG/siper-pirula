@@ -4,37 +4,29 @@ from .models import Venta, VentaItem
 from inventario.models import Producto
 
 
+# Forms de Ventas
+
+
 class VentaForm(forms.ModelForm):
     class Meta:
         model = Venta
         fields = ["doc_tipo", "doc_num", "medio_pago", "comentario"]
+    # el campo negocio NO se muestra, se setea en la vista
+
 
 class VentaItemForm(forms.ModelForm):
     class Meta:
         model = VentaItem
         fields = ["producto", "cantidad", "precio_unit"]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, negocio=None, **kwargs):
         super().__init__(*args, **kwargs)
-        # Sólo productos activos
-        self.fields["producto"].queryset = Producto.objects.filter(activo=True)
-
-        # El precio lo rellenamos por JS y por backend → no obligatorio en POST
-        self.fields["precio_unit"].required = False
+        qs = Producto.objects.filter(activo=True)
+        if negocio is not None:
+            qs = qs.filter(negocio=negocio)
+        self.fields["producto"].queryset = qs
+        # Sólo lectura: se completa solo
         self.fields["precio_unit"].widget.attrs["readonly"] = True
-
-    def clean(self):
-        """
-        Si hay producto, fijamos el precio_unit desde el producto
-        (por seguridad, aunque el usuario toque el HTML).
-        """
-        cleaned = super().clean()
-        producto = cleaned.get("producto")
-
-        if producto is not None:
-            cleaned["precio_unit"] = producto.precio
-
-        return cleaned
 
 
 VentaItemFormSet = inlineformset_factory(

@@ -1,11 +1,20 @@
+# inventario/views.py
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.views.generic import DetailView, CreateView, UpdateView, ListView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.utils.safestring import mark_safe
 from .models import Producto, MovimientoInventario, Compra
 from .forms import ProductoCrearForm, MovimientoCrearForm, CompraItemFormSet, CompraForm
 
+import json
+
+# --- SCAN EAN ---
+
+@login_required
 def scan_ean(request):
     """
     Lee el EAN desde el input, busca el producto y redirige:
@@ -13,10 +22,11 @@ def scan_ean(request):
     - si no existe -> formulario de creación con EAN precargado
     """
     ean = request.GET.get("ean", "").strip()
+    negocio = request.user.perfilusuario.negocio
 
     if ean:
         try:
-            producto = Producto.objects.get(ean=ean)
+            producto = Producto.objects.get(ean=ean, negocio=negocio)
             return redirect("inventario:producto_detalle", pk=producto.pk)
         except Producto.DoesNotExist:
             url = reverse("inventario:producto_crear")
@@ -35,14 +45,22 @@ class ProductoListaView(LoginRequiredMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        # Solo productos activos por defecto
-        return Producto.objects.filter(activo=True).order_by("nombre")
+        negocio = self.request.user.perfilusuario.negocio
+        return (
+            Producto.objects
+            .filter(negocio=negocio, activo=True)
+            .order_by("nombre")
+        )
 
 
 class ProductoDetalleView(LoginRequiredMixin, DetailView):
     model = Producto
     template_name = "inventario/productos/producto_detalle.html"
     context_object_name = "producto"
+
+    def get_queryset(self):
+        negocio = self.request.user.perfilusuario.negocio
+        return Producto.objects.filter(negocio=negocio)
 
 
 class ProductoCrearView(LoginRequiredMixin, CreateView):
@@ -52,14 +70,17 @@ class ProductoCrearView(LoginRequiredMixin, CreateView):
     success_url = reverse_lazy("inventario:scan_ean")
 
     def get_initial(self):
-        """
-        Precarga el EAN que viene desde el lector (?ean=...).
-        """
         initial = super().get_initial()
         ean = self.request.GET.get("ean", "")
         if ean:
             initial["ean"] = ean
         return initial
+
+    def form_valid(self, form):
+        producto = form.save(commit=False)
+        producto.negocio = self.request.user.perfilusuario.negocio
+        producto.save()
+        return redirect(self.get_success_url())
 
 
 class ProductoActualizarView(LoginRequiredMixin, UpdateView):
@@ -68,8 +89,12 @@ class ProductoActualizarView(LoginRequiredMixin, UpdateView):
     template_name = "inventario/productos/producto_editar.html"
     success_url = reverse_lazy("inventario:scan_ean")
 
+    def get_queryset(self):
+        negocio = self.request.user.perfilusuario.negocio
+        return Producto.objects.filter(negocio=negocio)
 
-# Victas Para Movimientos de Stock
+
+# --- Movimientos de stock ---
 
 class MovimientoCrearView(LoginRequiredMixin, CreateView):
     model = MovimientoInventario
@@ -77,24 +102,26 @@ class MovimientoCrearView(LoginRequiredMixin, CreateView):
     template_name = "inventario/movimiento_stock/movimiento_crear.html"
 
     def dispatch(self, request, *args, **kwargs):
-        # Obtenemos el producto al que se le aplica el movimiento
-        self.producto = get_object_or_404(Producto, pk=kwargs["producto_pk"])
+        negocio = request.user.perfilusuario.negocio
+        self.producto = get_object_or_404(
+            Producto,
+            pk=kwargs["producto_pk"],
+            negocio=negocio,
+        )
         return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
-        # Asignamos el producto antes de guardar
         form.instance.producto = self.producto
         return super().form_valid(form)
 
     def get_success_url(self):
-        # Al terminar, volvemos a la ficha del producto
         return reverse_lazy("inventario:producto_detalle", kwargs={"pk": self.producto.pk})
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["producto"] = self.producto
         return context
-    
+
 
 class MovimientoListaView(LoginRequiredMixin, ListView):
     model = MovimientoInventario
@@ -103,7 +130,12 @@ class MovimientoListaView(LoginRequiredMixin, ListView):
     paginate_by = 25
 
     def dispatch(self, request, *args, **kwargs):
-        self.producto = get_object_or_404(Producto, pk=kwargs["producto_pk"])
+        negocio = request.user.perfilusuario.negocio
+        self.producto = get_object_or_404(
+            Producto,
+            pk=kwargs["producto_pk"],
+            negocio=negocio,
+        )
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
@@ -113,7 +145,7 @@ class MovimientoListaView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context["producto"] = self.producto
         return context
-    
+
 
 class ProductoStockCriticoView(LoginRequiredMixin, ListView):
     model = Producto
@@ -121,55 +153,81 @@ class ProductoStockCriticoView(LoginRequiredMixin, ListView):
     context_object_name = "productos"
 
     def get_queryset(self):
-        # Productos activos con stock actual menor al mínimo
-        qs = Producto.objects.filter(activo=True)
+        negocio = self.request.user.perfilusuario.negocio
+        qs = Producto.objects.filter(negocio=negocio, activo=True)
         return [p for p in qs if p.stock_actual < p.stock_min]
-    
 
-class CompraListaView(ListView):
+
+# --- Compras a proveedores ---
+
+class CompraListaView(LoginRequiredMixin, ListView):
     model = Compra
     template_name = "inventario/compras/compra_lista.html"
     context_object_name = "compras"
 
+    def get_queryset(self):
+        negocio = self.request.user.perfilusuario.negocio
+        return Compra.objects.filter(negocio=negocio).order_by("-fecha")
 
-class CompraDetalleView(DetailView):
+
+class CompraDetalleView(LoginRequiredMixin, DetailView):
     model = Compra
     template_name = "inventario/compras/compra_detalle.html"
     context_object_name = "compra"
 
+    def get_queryset(self):
+        negocio = self.request.user.perfilusuario.negocio
+        return Compra.objects.filter(negocio=negocio)
 
+
+@login_required
 def compra_crear_view(request):
-    """
-    Pantalla para crear una compra con varios items.
-    """
+    negocio = request.user.perfilusuario.negocio
+
+    # Mapa de costos y EAN -> id producto
+    productos = Producto.objects.filter(negocio=negocio, activo=True)
+    costos_map = {str(p.id): p.costo for p in productos}   # ajusta el campo si se llama distinto
+    ean_map    = {str(p.ean): str(p.id) for p in productos}
+
     if request.method == "POST":
         form = CompraForm(request.POST)
-
         if form.is_valid():
             with transaction.atomic():
-                compra = form.save()
-                formset = CompraItemFormSet(request.POST, instance=compra)
+                compra = form.save(commit=False)
+                compra.negocio = negocio
+                compra.save()
 
+                formset = CompraItemFormSet(
+                    request.POST,
+                    instance=compra,
+                    form_kwargs={"negocio": negocio},
+                )
                 if formset.is_valid():
                     formset.save()
-                    # Al guardar los items se crean los movimientos de ENTRADA
                     return redirect("inventario:compra_detalle", pk=compra.pk)
         else:
-            # Si el form principal no es válido, necesitamos un formset vacío para re-renderizar
-            formset = CompraItemFormSet(request.POST)
-
+            formset = CompraItemFormSet(
+                request.POST,
+                form_kwargs={"negocio": negocio},
+            )
     else:
         form = CompraForm()
-        formset = CompraItemFormSet()
+        formset = CompraItemFormSet(form_kwargs={"negocio": negocio})
 
-    return render(
-        request,
-        "inventario/compras/compra_crear.html",
-        {"form": form, "formset": formset},
-    )
+    context = {
+        "form": form,
+        "formset": formset,
+        "costos_json": json.dumps(costos_map),
+        "ean_map_json": json.dumps(ean_map),
+    }
+    return render(request, "inventario/compras/compra_crear.html", context)
 
 
-class CompraEliminarView(DeleteView):
+class CompraEliminarView(LoginRequiredMixin, DeleteView):
     model = Compra
     template_name = "inventario/compras/compra_confirmar_eliminar.html"
     success_url = reverse_lazy("inventario:compra_lista")
+
+    def get_queryset(self):
+        negocio = self.request.user.perfilusuario.negocio
+        return Compra.objects.filter(negocio=negocio)

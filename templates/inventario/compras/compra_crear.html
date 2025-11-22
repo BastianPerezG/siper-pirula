@@ -1,51 +1,350 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Nueva compra</title>
-</head>
-<body>
-    <h1>Registrar compra</h1>
+{% extends "../../core/base.html" %}
+{% load static %}
 
-    <form method="post">
-        {% csrf_token %}
+{% block title %}Registrar compra - SIPER Pirula{% endblock %}
 
-        <fieldset>
-            <legend>Datos de la compra</legend>
-            {{ form.as_p }}
-        </fieldset>
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Registrar compra</h1>
 
-        <fieldset>
-            <legend>Ítems</legend>
-            {{ formset.management_form }}
-            <table border="1" cellpadding="5">
-                <tr>
-                    <th>Producto</th>
-                    <th>Cantidad</th>
-                    <th>Costo unitario</th>
-                    <th>Eliminar</th>
-                </tr>
-                {% for f in formset %}
+<form method="post" class="space-y-6">
+    {% csrf_token %}
+
+    <!-- DATOS DE LA COMPRA -->
+    <section class="bg-white rounded-lg shadow-sm p-6">
+        <h2 class="text-lg font-semibold mb-4 text-slate-700">Datos de la compra</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+                <label class="block text-slate-600 font-medium mb-1">
+                    Proveedor
+                </label>
+                {{ form.proveedor }}
+            </div>
+
+            <div>
+                <label class="block text-slate-600 font-medium mb-1">
+                    Tipo documento
+                </label>
+                {{ form.doc_tipo }}
+            </div>
+
+            <div>
+                <label class="block text-slate-600 font-medium mb-1">
+                    Número documento
+                </label>
+                {{ form.doc_num }}
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="block text-slate-600 font-medium mb-1">
+                    Comentario
+                </label>
+                {{ form.comentario }}
+            </div>
+        </div>
+    </section>
+
+    <!-- ÍTEMS -->
+    <section class="bg-white rounded-lg shadow-sm p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-slate-700">Ítems</h2>
+
+            <div class="flex items-center gap-2 text-sm">
+                <label for="ean-input" class="text-slate-600">Escanear EAN</label>
+                <input id="ean-input"
+                       type="text"
+                       autocomplete="off"
+                       placeholder="EAN..."
+                       class="border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring focus:ring-amber-300 focus:border-amber-400">
+                <button type="button"
+                        id="btn-agregar-fila"
+                        class="ml-2 px-3 py-1.5 rounded bg-slate-900 text-white text-xs font-medium hover:bg-slate-800">
+                    + Agregar fila
+                </button>
+            </div>
+        </div>
+
+        {{ formset.management_form }}
+
+        <div class="overflow-x-auto">
+            <table id="items-table" class="min-w-full text-sm border border-slate-200">
+                <thead class="bg-slate-50">
                     <tr>
-                        <td>{{ f.producto }}</td>
-                        <td>{{ f.cantidad }}</td>
-                        <td>{{ f.costo_unit }}</td>
-                        <td>
-                            {% if f.instance.pk %}
-                                {{ f.DELETE }}
-                            {% endif %}
-                        </td>
+                        <th class="px-3 py-2 text-left border-b border-slate-200">Producto</th>
+                        <th class="px-3 py-2 text-center border-b border-slate-200 w-28">Cantidad</th>
+                        <th class="px-3 py-2 text-center border-b border-slate-200 w-32">Costo unitario</th>
+                        <th class="px-3 py-2 text-center border-b border-slate-200 w-32">Subtotal</th>
+                        <th class="px-3 py-2 text-center border-b border-slate-200 w-16">Eliminar</th>
                     </tr>
-                {% endfor %}
+                </thead>
+                <tbody>
+                    {% for f in formset %}
+                        <tr class="item-row border-b border-slate-100">
+                            <!-- IMPORTANTE: hidden_fields para no romper el formset -->
+                            {% for hidden in f.hidden_fields %}
+                                {{ hidden }}
+                            {% endfor %}
+
+                            <td class="px-3 py-2">
+                                {{ f.producto }}
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                {{ f.cantidad }}
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                {{ f.costo_unit }}
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                <span data-subtotal>—</span>
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                <span class="hidden">
+                                    {{ f.DELETE }}
+                                </span>
+                                <button type="button"
+                                        class="btn-eliminar text-red-600 font-semibold hover:text-red-800"
+                                        title="Eliminar fila">
+                                    ✕
+                                </button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
             </table>
-        </fieldset>
+        </div>
 
-        <button type="submit">Guardar compra</button>
-    </form>
+        <p class="mt-2 text-xs text-slate-500">
+            Las filas vacías no se guardarán. Puedes usar “Eliminar” para quitar ítems de esta compra.
+        </p>
+    </section>
 
-    <p>
-        <a href="{% url 'inventario:compra_lista' %}">Volver a la lista</a> |
-        <a href="{% url 'core:dashboard' %}">Volver al inicio</a>
-    </p>
-</body>
-</html>
+    <!-- BOTONES -->
+    <div class="flex flex-wrap gap-3">
+        <button type="submit"
+                class="px-4 py-2 rounded bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">
+            Guardar compra
+        </button>
+
+        <a href="{% url 'inventario:compra_lista' %}"
+           class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+            Volver a la lista
+        </a>
+
+        <a href="{% url 'core:dashboard' %}"
+           class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+            Volver al inicio
+        </a>
+    </div>
+</form>
+
+{# ---- FILA PROTOTIPO OCULTA PARA NUEVOS ÍTEMS ---- #}
+<table class="hidden">
+    <tbody>
+        <tr id="empty-form-row" class="item-row border-b border-slate-100">
+            {% for hidden in formset.empty_form.hidden_fields %}
+                {{ hidden }}
+            {% endfor %}
+
+            <td class="px-3 py-2">
+                {{ formset.empty_form.producto }}
+            </td>
+            <td class="px-3 py-2 text-center">
+                {{ formset.empty_form.cantidad }}
+            </td>
+            <td class="px-3 py-2 text-center">
+                {{ formset.empty_form.costo_unit }}
+            </td>
+            <td class="px-3 py-2 text-center">
+                <span data-subtotal>—</span>
+            </td>
+            <td class="px-3 py-2 text-center">
+                <span class="hidden">
+                    {{ formset.empty_form.DELETE }}
+                </span>
+                <button type="button"
+                        class="btn-eliminar text-red-600 font-semibold hover:text-red-800"
+                        title="Eliminar fila">
+                    ✕
+                </button>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Mapas que manda la view:
+    // - COSTOS: { id_producto: costo_unitario }
+    // - EAN_MAP: { ean: id_producto }
+    const COSTOS = {{ costos_json|safe }};
+    const EAN_MAP = {{ ean_map_json|safe }};
+
+    function recalcularSubtotalFila(row) {
+        const qtyInput   = row.querySelector("input[name$='-cantidad']");
+        const costInput  = row.querySelector("input[name$='-costo_unit']");
+        const subtotalEl = row.querySelector("[data-subtotal]");
+
+        if (!qtyInput || !costInput || !subtotalEl) return;
+
+        const qty  = parseFloat(qtyInput.value)  || 0;
+        const cost = parseFloat(costInput.value) || 0;
+        const subtotal = qty * cost;
+
+        subtotalEl.textContent = subtotal > 0 ? subtotal.toString() : "—";
+    }
+
+    function attachRowEvents(row) {
+        const selectProd = row.querySelector("select[name$='-producto']");
+        const qtyInput   = row.querySelector("input[name$='-cantidad']");
+        const costInput  = row.querySelector("input[name$='-costo_unit']");
+        const chkDelete  = row.querySelector("input[type='checkbox'][name$='-DELETE']");
+        const btnEliminar = row.querySelector(".btn-eliminar");
+
+        if (selectProd) {
+            selectProd.addEventListener("change", () => {
+                const prodId = selectProd.value;
+                if (prodId && COSTOS[prodId] !== undefined) {
+                    costInput.value = COSTOS[prodId];
+                } else {
+                    costInput.value = "";
+                }
+                // Si elegimos producto nuevo y cantidad está vacía, ponemos 1
+                if (prodId && qtyInput && !qtyInput.value) {
+                    qtyInput.value = 1;
+                }
+                recalcularSubtotalFila(row);
+            });
+        }
+
+        if (qtyInput) {
+            qtyInput.addEventListener("input", () => recalcularSubtotalFila(row));
+        }
+        if (costInput) {
+            costInput.addEventListener("input", () => recalcularSubtotalFila(row));
+        }
+
+        if (btnEliminar && chkDelete) {
+            btnEliminar.addEventListener("click", () => {
+                chkDelete.checked = true;     // lo marca para el formset
+                row.style.display = "none";   // lo ocultamos visualmente
+            });
+        }
+
+        // Recalcular al cargar (por si venimos con datos)
+        recalcularSubtotalFila(row);
+    }
+
+    function getTotalFormsInput() {
+        return document.querySelector("input[name$='-TOTAL_FORMS']");
+    }
+
+    function agregarFila(prodId = null) {
+        const totalFormsInput = getTotalFormsInput();
+        if (!totalFormsInput) return null;
+
+        const formIndex = parseInt(totalFormsInput.value, 10) || 0;
+        const emptyRowTemplate = document.getElementById("empty-form-row");
+        if (!emptyRowTemplate) return null;
+
+        // Clone de la fila prototipo, reemplazando __prefix__ por el índice
+        let newRowHtml = emptyRowTemplate.outerHTML.replace(/__prefix__/g, formIndex);
+        const tbody = document.querySelector("#items-table tbody");
+        const temp = document.createElement("tbody");
+        temp.innerHTML = newRowHtml;
+        const newRow = temp.querySelector("tr");
+
+        newRow.id = "";
+        newRow.style.display = "";
+        tbody.appendChild(newRow);
+
+        // Actualizamos TOTAL_FORMS
+        totalFormsInput.value = formIndex + 1;
+
+        // Enganchamos eventos
+        attachRowEvents(newRow);
+
+        // Si nos pasaron un producto (por la pistola)
+        if (prodId) {
+            const selectProd = newRow.querySelector("select[name$='-producto']");
+            const qtyInput   = newRow.querySelector("input[name$='-cantidad']");
+            if (selectProd) {
+                selectProd.value = prodId;
+                selectProd.dispatchEvent(new Event("change"));
+            }
+            if (qtyInput && !qtyInput.value) {
+                qtyInput.value = 1;
+            }
+        }
+
+        return newRow;
+    }
+
+    function filaVaciaDisponible() {
+        const filas = document.querySelectorAll("#items-table tbody tr.item-row");
+        for (const row of filas) {
+            if (row.style.display === "none") continue;
+            const selectProd = row.querySelector("select[name$='-producto']");
+            if (selectProd && !selectProd.value) {
+                return row;
+            }
+        }
+        return null;
+    }
+
+    function manejarScanEAN(ean) {
+        if (!ean) return;
+        const prodId = EAN_MAP[ean];
+        if (!prodId) {
+            alert("EAN no encontrado en el catálogo.");
+            return;
+        }
+
+        // Buscamos una fila vacía; si no hay, la creamos
+        let row = filaVaciaDisponible();
+        if (!row) {
+            row = agregarFila();
+        }
+        if (!row) return;
+
+        const selectProd = row.querySelector("select[name$='-producto']");
+        const qtyInput   = row.querySelector("input[name$='-cantidad']");
+
+        if (selectProd) {
+            selectProd.value = prodId;
+            selectProd.dispatchEvent(new Event("change"));
+        }
+        if (qtyInput && !qtyInput.value) {
+            qtyInput.value = 1;
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        // Enganchar eventos a las filas iniciales
+        document.querySelectorAll("#items-table tbody tr.item-row")
+            .forEach(attachRowEvents);
+
+        // Botón agregar fila manual
+        const btnAgregar = document.getElementById("btn-agregar-fila");
+        if (btnAgregar) {
+            btnAgregar.addEventListener("click", () => {
+                agregarFila();
+            });
+        }
+
+        // Escáner EAN
+        const eanInput = document.getElementById("ean-input");
+        if (eanInput) {
+            eanInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();   // importante para que NO envíe el form
+                    const ean = eanInput.value.trim();
+                    manejarScanEAN(ean);
+                    eanInput.value = "";
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,38 +1,50 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Ventas</title>
-</head>
-<body>
-    <h1>Ventas</h1>
+{% extends "core/base.html" %}
 
-    <p>
-        <a href="{% url 'ventas:venta_crear' %}">Registrar nueva venta</a> |
-        <a href="{% url 'core:dashboard' %}">Volver al inicio</a>
-    </p>
+{% block title %}Ventas - SIPER Pirula{% endblock %}
 
-    {% if ventas %}
-        <table border="1" cellpadding="5">
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Ventas</h1>
+
+<div class="mb-4">
+    <a href="{% url 'ventas:venta_crear' %}"
+       class="inline-flex items-center px-3 py-1.5 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700">
+        Registrar nueva venta
+    </a>
+</div>
+
+<div class="bg-white shadow-sm rounded-lg overflow-hidden">
+    <table class="min-w-full text-sm">
+        <thead class="bg-slate-100 text-left">
             <tr>
-                <th>ID</th>
-                <th>Fecha</th>
-                <th>Documento</th>
-                <th>Medio de pago</th>
-                <th>Total</th>
+                <th class="px-4 py-2">ID</th>
+                <th class="px-4 py-2">Fecha</th>
+                <th class="px-4 py-2">Documento</th>
+                <th class="px-4 py-2">Medio de pago</th>
+                <th class="px-4 py-2 text-right">Total</th>
             </tr>
-            {% for venta in ventas %}
-                <tr>
-                    <td><a href="{% url 'ventas:venta_detalle' venta.pk %}">{{ venta.id }}</a></td>
-                    <td>{{ venta.fecha }}</td>
-                    <td>{{ venta.doc_tipo }} {{ venta.doc_num }}</td>
-                    <td>{{ venta.medio_pago }}</td>
-                    <td>${{ venta.total }}</td>
-                </tr>
-            {% endfor %}
-        </table>
-    {% else %}
-        <p>No hay ventas registradas.</p>
-    {% endif %}
-</body>
-</html>
+        </thead>
+        <tbody>
+        {% for venta in ventas %}
+            <tr class="border-t hover:bg-slate-50">
+                <td class="px-4 py-2">
+                    <a href="{% url 'ventas:venta_detalle' venta.pk %}"
+                       class="text-emerald-700 hover:underline">
+                        {{ venta.id }}
+                    </a>
+                </td>
+                <td class="px-4 py-2">{{ venta.fecha }}</td>
+                <td class="px-4 py-2">{{ venta.doc_tipo }} {{ venta.doc_num }}</td>
+                <td class="px-4 py-2">{{ venta.medio_pago }}</td>
+                <td class="px-4 py-2 text-right">$ {{ venta.total }}</td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="5" class="px-4 py-4 text-center text-slate-500">
+                    No hay ventas registradas.
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

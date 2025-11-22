@@ -1,28 +1,68 @@
-<h1>Productos con stock crítico</h1>
+{% extends "../../core/base.html" %}
 
-<table border="1" cellpadding="4">
-    <tr>
-        <th>Nombre</th>
-        <th>EAN</th>
-        <th>Categoría</th>
-        <th>Stock mínimo</th>
-        <th>Stock actual</th>
-        <th></th>
-    </tr>
-    {% for p in productos %}
-        <tr>
-            <td>{{ p.nombre }}</td>
-            <td>{{ p.ean }}</td>
-            <td>{{ p.categoria }}</td>
-            <td>{{ p.stock_min }}</td>
-            <td>{{ p.stock_actual }}</td>
-            <td><a href="{% url 'inventario:producto_detalle' p.pk %}">Ver</a></td>
-        </tr>
-    {% empty %}
-        <tr>
-            <td colspan="6">No hay productos bajo el stock mínimo 😊</td>
-        </tr>
-    {% endfor %}
-</table>
+{% block title %}Stock crítico - SIPER Pirula{% endblock %}
 
-<p><a href="{% url 'inventario:producto_lista' %}">Volver al listado de productos</a></p>
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-slate-800">
+            Productos con stock crítico
+        </h1>
+
+        <a href="{% url 'inventario:producto_lista' %}"
+           class="text-sm text-slate-600 hover:text-slate-900 underline">
+            Volver al listado
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="px-3 py-2 text-left border-b">Nombre</th>
+                    <th class="px-3 py-2 text-left border-b">EAN</th>
+                    <th class="px-3 py-2 text-left border-b">Categoría</th>
+                    <th class="px-3 py-2 text-right border-b">Stock mín.</th>
+                    <th class="px-3 py-2 text-right border-b">Stock actual</th>
+                    <th class="px-3 py-2 text-center border-b"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in productos %}
+                    <tr class="border-b border-slate-100 hover:bg-slate-50">
+                        <td class="px-3 py-2 font-medium">
+                            {{ p.nombre }}
+                        </td>
+                        <td class="px-3 py-2">
+                            {{ p.ean }}
+                        </td>
+                        <td class="px-3 py-2">
+                            {{ p.categoria }}
+                        </td>
+                        <td class="px-3 py-2 text-right">
+                            {{ p.stock_min }}
+                        </td>
+                        <td class="px-3 py-2 text-right font-semibold text-red-600">
+                            {{ p.stock_actual }}
+                        </td>
+                        <td class="px-3 py-2 text-center">
+                            <a href="{% url 'inventario:producto_detalle' p.pk %}"
+                               class="text-emerald-600 hover:underline text-sm font-medium">
+                                Ver
+                            </a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-3 py-6 text-center text-slate-500">
+                            ✅ No hay productos bajo el stock mínimo
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+{% endblock %}

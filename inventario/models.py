@@ -1,10 +1,13 @@
 from django.db import models
 from django.db.models import Sum, Case, When, IntegerField, F
 from django.core.exceptions import ValidationError
+from core.models import Negocio 
 
-# Create your models here.
+
+# Modelo Inventario.
 
 class Categoria(models.Model):
+    negocio = models.ForeignKey(Negocio, on_delete=models.PROTECT)
     nombre = models.CharField(max_length=80)
 
     class Meta:
@@ -15,6 +18,7 @@ class Categoria(models.Model):
 
 
 class Producto(models.Model):
+    negocio = models.ForeignKey(Negocio, on_delete=models.PROTECT)
     sku = models.CharField(max_length=40, blank=True, null=True)
     ean = models.CharField("Código de barras", max_length=40, unique=True)
     nombre = models.CharField(max_length=120)
@@ -24,6 +28,11 @@ class Producto(models.Model):
     stock_min = models.IntegerField(default=0)
     ubicacion = models.CharField(max_length=60, blank=True, null=True)
     activo = models.BooleanField(default=True)
+    imagen = models.ImageField(
+        upload_to="productos/",
+        blank=True,
+        null=True,
+    )
 
     class Meta:
         db_table = "producto"
@@ -103,6 +112,7 @@ class MovimientoInventario(models.Model):
         
 
 class Proveedor(models.Model):
+    negocio = models.ForeignKey(Negocio, on_delete=models.PROTECT)
     nombre = models.CharField(max_length=120)
     contacto = models.CharField(max_length=120, blank=True, null=True)
     telefono = models.CharField(max_length=40, blank=True, null=True)
@@ -128,7 +138,7 @@ class Compra(models.Model):
         (DOC_GUIA, "Guía de despacho"),
         (DOC_OTRO, "Otro"),
     ]
-
+    negocio = models.ForeignKey(Negocio, on_delete=models.PROTECT)
     proveedor = models.ForeignKey(Proveedor, on_delete=models.PROTECT)
     doc_tipo = models.CharField(max_length=20, choices=DOC_CHOICES)
     doc_num = models.CharField(max_length=40, blank=True, null=True)

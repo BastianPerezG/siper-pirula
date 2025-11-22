@@ -1,19 +1,47 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>SIPER PIRULA - Dashboard</title>
-</head>
-<body>
-    <h1>SIPER PIRULA</h1>
-    <p>Bienvenido al sistema de inventario y ventas de la botillería.</p>
+{% extends "./base.html" %}
 
-    <ul>
-        <li><a href="{% url 'inventario:scan_ean' %}">Escanear producto</a></li>
-        <li><a href="{% url 'inventario:producto_lista' %}">Ver listado de productos</a></li>
-        <li><a href="{% url 'inventario:producto_stock_critico' %}">Stock crítico</a></li>
-        <li><a href="{% url 'inventario:compra_lista' %}">Compras a Proveedores</a></li>
-    </ul>
+{% block title %}Dashboard - SIPER Pirula{% endblock %}
 
-</body>
-</html>
+{% block content %}
+<div class="space-y-6">
+
+    <div>
+        <h1 class="text-3xl font-bold text-slate-800">SIPER Pirula</h1>
+        <p class="text-slate-600 mt-1">Sistema de inventario y ventas de la botillería.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+        <a href="{% url 'inventario:scan_ean' %}"
+           class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+            <h2 class="font-semibold text-lg">📷 Escanear producto</h2>
+            <p class="text-sm text-slate-600 mt-2">Buscar productos por código de barras</p>
+        </a>
+
+        <a href="{% url 'inventario:producto_lista' %}"
+           class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+            <h2 class="font-semibold text-lg">📦 Productos</h2>
+            <p class="text-sm text-slate-600 mt-2">Ver listado completo</p>
+        </a>
+
+        <a href="{% url 'inventario:producto_stock_critico' %}"
+           class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+            <h2 class="font-semibold text-lg">⚠️ Stock crítico</h2>
+            <p class="text-sm text-slate-600 mt-2">Productos con bajo stock</p>
+        </a>
+
+        <a href="{% url 'inventario:compra_lista' %}"
+           class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+            <h2 class="font-semibold text-lg">🧾 Compras</h2>
+            <p class="text-sm text-slate-600 mt-2">Compras a proveedores</p>
+        </a>
+
+        <a href="{% url 'ventas:venta_lista' %}"
+           class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+            <h2 class="font-semibold text-lg">💵 Ventas</h2>
+            <p class="text-sm text-slate-600 mt-2">Ventas realizadas</p>
+        </a>
+
+    </div>
+</div>
+{% endblock %}

@@ -1,7 +1,10 @@
 from django.db import models
 from inventario.models import Producto, MovimientoInventario
 from django.core.exceptions import ValidationError
-# Create your models here.
+from core.models import Negocio
+from django.conf import settings
+
+# Modelo Ventas
 
 
 class Venta(models.Model):
@@ -26,7 +29,17 @@ class Venta(models.Model):
         (MED_CREDITO, "Tarjeta crédito"),
         (MED_TRANSFERENCIA, "Transferencia"),
     ]
+    
+    EST_ABIERTA = "ABIERTA"
+    EST_CERRADA = "CERRADA"
+    EST_ANULADA = "ANULADA"
 
+    ESTADO_CHOICES = [
+        (EST_ABIERTA, "Abierta"),
+        (EST_CERRADA, "Cerrada"),
+        (EST_ANULADA, "Anulada"),
+    ]
+    negocio = models.ForeignKey(Negocio, on_delete=models.PROTECT)
     fecha = models.DateTimeField(auto_now_add=True)
     doc_tipo = models.CharField(
         max_length=10,
@@ -45,6 +58,12 @@ class Venta(models.Model):
         default=MED_EFECTIVO,
     )
     comentario = models.CharField(max_length=200, blank=True, null=True)
+
+    estado = models.CharField(
+        max_length=10,
+        choices=ESTADO_CHOICES,
+        default=EST_CERRADA,  # o ABIERTA, según flujo
+    )
 
     class Meta:
         db_table = "venta"
@@ -73,6 +92,13 @@ class VentaItem(models.Model):
         help_text="Precio de venta en pesos chilenos"
     )
 
+    descuento_pct = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        help_text="Descuento porcentual sobre este ítem (0–100)",
+    )
+
     class Meta:
         db_table = "venta_item"
 
@@ -80,8 +106,17 @@ class VentaItem(models.Model):
         return f"{self.cantidad} x {self.producto.nombre} en Venta #{self.venta_id}"
 
     @property
-    def subtotal(self):
+    def subtotal_bruto(self):
+        """Subtotal sin descuento, solo cantidad x precio."""
         return self.cantidad * self.precio_unit
+
+    @property
+    def subtotal(self):
+        """Subtotal aplicando descuento_pct, si existe."""
+        bruto = self.subtotal_bruto
+        if self.descuento_pct:
+            return int(bruto * (1 - float(self.descuento_pct) / 100))
+        return bruto
 
     def clean(self):
         """
@@ -90,16 +125,19 @@ class VentaItem(models.Model):
         """
         super().clean()
 
+        # Validar stock
         if self.producto and self.cantidad:
-            # stock disponible ANTES de registrar este ítem
-            disponible = self.producto.stock_actual
-
-            # Si en algún futuro permitimos editar VentaItem,
-            # podríamos ajustar 'disponible' sumando la cantidad previa.
-
+            disponible = self.producto.stock_actual  # usa MovimientoInventario
             if self.cantidad > disponible:
                 raise ValidationError({
                     "cantidad": f"No hay stock suficiente. Disponible: {disponible} unidades."
+                })
+
+        # (opcional) Validar rango del descuento
+        if self.descuento_pct is not None:
+            if float(self.descuento_pct) < 0 or float(self.descuento_pct) > 100:
+                raise ValidationError({
+                    "descuento_pct": "El descuento debe estar entre 0 y 100%."
                 })
 
     def save(self, *args, **kwargs):
@@ -118,3 +156,24 @@ class VentaItem(models.Model):
                 comentario=f"Venta #{self.venta_id}",
                 venta_item=self,
             )
+
+
+class Anulacion(models.Model):
+    venta = models.ForeignKey(Venta, on_delete=models.PROTECT)
+    venta_item = models.ForeignKey(
+        "VentaItem",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+    )
+    motivo = models.CharField(max_length=120)
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+    )
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "anulacion"

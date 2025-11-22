@@ -1,220 +1,346 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Registrar venta</title>
-</head>
-<body>
-    <h1>Registrar venta</h1>
+{% extends "../core/base.html" %}
+{% load static %}
 
-    <form method="post">
-        {% csrf_token %}
+{% block title %}Registrar venta - SIPER Pirula{% endblock %}
 
-        {# --- Datos generales de la venta --- #}
-        <fieldset>
-            <legend>Datos de la venta</legend>
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Registrar venta</h1>
 
-            <p>
-                {{ form.doc_tipo.label_tag }}
+<form method="post" class="space-y-6">
+    {% csrf_token %}
+
+    {# --- Datos generales de la venta --- #}
+    <section class="bg-white rounded-lg shadow-sm p-6">
+        <h2 class="text-lg font-semibold mb-4 text-slate-700">Datos de la venta</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+                <label class="block text-slate-600 font-medium mb-1">
+                    Tipo documento
+                </label>
                 {{ form.doc_tipo }}
                 {{ form.doc_tipo.errors }}
-            </p>
-            <p>
-                {{ form.doc_num.label_tag }}
+            </div>
+
+            <div>
+                <label class="block text-slate-600 font-medium mb-1">
+                    Número documento
+                </label>
                 {{ form.doc_num }}
                 {{ form.doc_num.errors }}
-            </p>
-            <p>
-                {{ form.medio_pago.label_tag }}
+            </div>
+
+            <div>
+                <label class="block text-slate-600 font-medium mb-1">
+                    Medio de pago
+                </label>
                 {{ form.medio_pago }}
                 {{ form.medio_pago.errors }}
-            </p>
-            <p>
-                {{ form.comentario.label_tag }}
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="block text-slate-600 font-medium mb-1">
+                    Comentario
+                </label>
                 {{ form.comentario }}
                 {{ form.comentario.errors }}
-            </p>
-        </fieldset>
+            </div>
+        </div>
+    </section>
 
-        <h2>Ítems</h2>
+    {# --- Ítems --- #}
+    <section class="bg-white rounded-lg shadow-sm p-6">
+        <div class="flex items-center justify-between gap-4 mb-4">
+            <h2 class="text-lg font-semibold text-slate-700">Ítems</h2>
+
+            <div class="flex items-center gap-2">
+                <label class="text-sm text-slate-600">Escanear EAN</label>
+                <input type="text" id="ean-input" class="border rounded px-2 py-1 text-sm w-56" placeholder="EAN..."
+                    autocomplete="off">
+                <button type="button" id="btn-agregar"
+                    class="px-3 py-1.5 rounded bg-slate-900 text-white text-sm hover:bg-slate-800">
+                    + Agregar ítem
+                </button>
+            </div>
+        </div>
 
         {{ formset.management_form }}
         {{ formset.non_form_errors }}
 
-        <table id="items-table" border="1" cellpadding="4" cellspacing="0">
-            <thead>
-                <tr>
-                    <th>Producto</th>
-                    <th>Cantidad</th>
-                    <th>Precio unitario</th>
-                    <th>Eliminar</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for f in formset %}
-                    <tr class="item-row">
-                        <td>
+        <div class="overflow-x-auto">
+            <table id="items-table" class="min-w-full text-sm border border-slate-200">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        <th class="px-3 py-2 text-left">Producto</th>
+                        <th class="px-3 py-2 text-center w-24">Cantidad</th>
+                        <th class="px-3 py-2 text-center w-28">Precio unitario</th>
+                        <th class="px-3 py-2 text-center w-28">Subtotal</th>
+                        <th class="px-3 py-2 text-center w-16">Eliminar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in formset %}
+                    <tr class="item-row border-b border-slate-100">
+                        <td class="px-3 py-2">
                             {{ f.producto }}
                             {{ f.producto.errors }}
                         </td>
-                        <td>
+                        <td class="px-3 py-2 text-center">
                             {{ f.cantidad }}
                             {{ f.cantidad.errors }}
                         </td>
-                        <td>
+                        <td class="px-3 py-2 text-center">
                             {{ f.precio_unit }}
                             {{ f.precio_unit.errors }}
                         </td>
-                        <td style="text-align: center;">
+                        <td class="px-3 py-2 text-center">
+                            <span class="subtotal-cell">0</span>
+                        </td>
+                        <td class="px-3 py-2 text-center">
                             {{ f.DELETE }}
-                            <button type="button" class="btn-eliminar">X</button>
+                            <button type="button" class="btn-eliminar text-red-600 hover:text-red-800 font-semibold">
+                                ✕
+                            </button>
                         </td>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-        <p>
-            <button type="button" id="btn-agregar">Agregar ítem</button>
+        <p class="mt-2 text-xs text-slate-500">
+            Las filas vacías no se guardarán. Puedes usar “Eliminar” para quitar ítems de esta venta.
         </p>
 
-        <p>
+        <p class="mt-4 text-right text-base">
             <strong>Total estimado: $<span id="total-venta">0</span></strong>
         </p>
+    </section>
 
-        <p>
-            <button type="submit">Guardar venta</button>
-        </p>
-    </form>
+    <div class="flex flex-wrap gap-3">
+        <button type="submit"
+            class="px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
+            Guardar venta
+        </button>
 
-    <p>
-        <a href="{% url 'ventas:venta_lista' %}">Volver a la lista</a> |
-        <a href="{% url 'core:dashboard' %}">Volver al inicio</a>
-    </p>
+        <a href="{% url 'ventas:venta_lista' %}"
+            class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+            Volver a la lista
+        </a>
 
-    {# --- Fila prototipo oculta para nuevos ítems --- #}
-    <table style="display:none;">
-        <tbody>
-            <tr id="empty-form-row" class="item-row" style="display:none;">
-                <td>
-                    {{ formset.empty_form.producto }}
-                </td>
-                <td>
-                    {{ formset.empty_form.cantidad }}
-                </td>
-                <td>
-                    {{ formset.empty_form.precio_unit }}
-                </td>
-                <td style="text-align:center;">
-                    {{ formset.empty_form.DELETE }}
-                    <button type="button" class="btn-eliminar">X</button>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+        <a href="{% url 'core:dashboard' %}"
+            class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+            Volver al inicio
+        </a>
+    </div>
+</form>
+{% endblock %}
 
-    <script>
-        // Mapa {id_producto: precio} enviado desde la vista
-        const PRECIOS = JSON.parse('{{ precios_json|escapejs }}');
+{% block extra_js %}
+<script>
+    // Mapa {id_producto: precio} enviado desde la vista
+    // Mapa enviado por la vista: {ean: {id, precio}}
+    const PRODUCTOS_EAN = JSON.parse('{{ productos_ean_json|escapejs }}');
+    const PRECIOS = JSON.parse('{{ precios_json|escapejs }}');
 
+    const eanInput = document.getElementById("ean-input");
 
-        function attachRowEvents(row) {
-            const selectProducto = row.querySelector("select[name$='producto']");
-            const inputCantidad  = row.querySelector("input[name$='cantidad']");
-            const inputPrecio    = row.querySelector("input[name$='precio_unit']");
-            const chkDelete      = row.querySelector("input[type='checkbox'][name$='DELETE']");
-            const btnEliminar    = row.querySelector(".btn-eliminar");
-
-            if (selectProducto) {
-                selectProducto.addEventListener("change", function () {
-                    const prodId = this.value;
-                    if (prodId && PRECIOS[prodId] !== undefined) {
-                        inputPrecio.value = PRECIOS[prodId];
-                    } else {
-                        inputPrecio.value = "";
-                    }
-                    recalcularTotal();
-                });
-            }
-
-            if (inputCantidad) {
-                inputCantidad.addEventListener("input", recalcularTotal);
-            }
-
-            if (inputPrecio) {
-                inputPrecio.addEventListener("input", recalcularTotal);
-            }
-
-            if (btnEliminar && chkDelete) {
-                btnEliminar.addEventListener("click", function () {
-                    // Marcamos el DELETE del formset
-                    chkDelete.checked = true;
-                    // Ocultamos la fila visualmente
-                    row.style.display = "none";
-                    recalcularTotal();
-                });
-            }
-        }
-
-        function recalcularTotal() {
-            let total = 0;
-
-            document.querySelectorAll("#items-table tbody tr.item-row").forEach(row => {
-                if (row.style.display === "none") {
-                    return; // fila oculta (eliminada o prototipo)
-                }
-
+    function buscarFilaVacia() {
+        return Array.from(document.querySelectorAll("#items-table tbody tr.item-row"))
+            .find(row => {
+                const select = row.querySelector("select[name$='producto']");
                 const chkDelete = row.querySelector("input[type='checkbox'][name$='DELETE']");
-                if (chkDelete && chkDelete.checked) {
-                    return; // marcada para borrar
-                }
-
-                const cantidad = parseInt(
-                    (row.querySelector("input[name$='cantidad']") || {}).value
-                ) || 0;
-
-                const precio = parseInt(
-                    (row.querySelector("input[name$='precio_unit']") || {}).value
-                ) || 0;
-
-                total += cantidad * precio;
+                return select && !select.value && (!chkDelete || !chkDelete.checked);
             });
+    }
 
-            document.getElementById("total-venta").textContent = total;
+    function seleccionarProductoEnFila(row, productoId) {
+        const select = row.querySelector("select[name$='producto']");
+        const cantidad = row.querySelector("input[name$='cantidad']");
+        const precio = row.querySelector("input[name$='precio_unit']");
+
+        if (!select) return;
+
+        select.value = productoId;
+        select.dispatchEvent(new Event("change"));
+
+        if (cantidad) cantidad.value = 1;
+        if (precio && PRECIOS[productoId]) precio.value = PRECIOS[productoId];
+    }
+
+    // Captura escáner (Enter)
+    eanInput.addEventListener("keydown", function (e) {
+        if (e.key !== "Enter") return;
+
+        e.preventDefault();
+        const ean = eanInput.value.trim();
+        eanInput.value = "";
+
+        if (!ean || !PRODUCTOS_EAN[ean]) {
+            alert("Producto no encontrado");
+            return;
         }
 
-        function inicializar() {
-            // Enganchar eventos a las filas iniciales
-            document.querySelectorAll("#items-table tbody tr.item-row").forEach(attachRowEvents);
-            recalcularTotal();
+        const producto = PRODUCTOS_EAN[ean];
+        let fila = buscarFilaVacia();
 
-            const btnAgregar = document.getElementById("btn-agregar");
-            const totalFormsInput = document.getElementById("id_items-TOTAL_FORMS");
-            const emptyRowTemplate = document.getElementById("empty-form-row");
+        if (!fila) {
+            document.getElementById("btn-agregar").click();
+            const filas = document.querySelectorAll("#items-table tbody tr.item-row");
+            fila = filas[filas.length - 1];
+        }
 
-            btnAgregar.addEventListener("click", function () {
-                const formIndex = parseInt(totalFormsInput.value);
+        seleccionarProductoEnFila(fila, producto.id);
+        recalcularTotal();
+    });
 
-                // Clonamos la fila prototipo reemplazando __prefix__ por el índice
-                let newRowHtml = emptyRowTemplate.outerHTML.replace(/__prefix__/g, formIndex);
+    // Autofocus del input
+    document.addEventListener("click", () => eanInput.focus());
+    window.addEventListener("load", () => eanInput.focus());
 
-                const tbody = document.querySelector("#items-table tbody");
-                const temp = document.createElement("tbody");
-                temp.innerHTML = newRowHtml;
-                const newRow = temp.querySelector("tr");
+    function attachRowEvents(row) {
+        const selectProducto = row.querySelector("select[name$='producto']");
+        const inputCantidad = row.querySelector("input[name$='cantidad']");
+        const inputPrecio = row.querySelector("input[name$='precio_unit']");
+        const chkDelete = row.querySelector("input[type='checkbox'][name$='DELETE']");
+        const btnEliminar = row.querySelector(".btn-eliminar");
+        const subtotalCell = row.querySelector(".subtotal-cell");
 
-                newRow.id = "";
-                newRow.style.display = "";  // visible
-                tbody.appendChild(newRow);
+        function actualizarSubtotal() {
+            const cantidad = parseInt(inputCantidad?.value || "0") || 0;
+            const precio = parseInt(inputPrecio?.value || "0") || 0;
+            const subtotal = cantidad * precio;
+            if (subtotalCell) {
+                subtotalCell.textContent = subtotal;
+            }
+        }
 
-                totalFormsInput.value = formIndex + 1;
-
-                attachRowEvents(newRow);
+        if (selectProducto) {
+            selectProducto.addEventListener("change", function () {
+                const prodId = this.value;
+                if (prodId && PRECIOS[prodId] !== undefined) {
+                    if (inputPrecio) inputPrecio.value = PRECIOS[prodId];
+                } else {
+                    if (inputPrecio) inputPrecio.value = "";
+                }
+                actualizarSubtotal();
                 recalcularTotal();
             });
         }
 
-        document.addEventListener("DOMContentLoaded", inicializar);
-    </script>
-</body>
-</html>
+        if (inputCantidad) {
+            inputCantidad.addEventListener("input", () => {
+                actualizarSubtotal();
+                recalcularTotal();
+            });
+        }
+
+        if (inputPrecio) {
+            inputPrecio.addEventListener("input", () => {
+                actualizarSubtotal();
+                recalcularTotal();
+            });
+        }
+
+        if (btnEliminar && chkDelete) {
+            btnEliminar.addEventListener("click", function () {
+                // marcamos DELETE y ocultamos fila
+                chkDelete.checked = true;
+                row.style.display = "none";
+                recalcularTotal();
+            });
+        }
+
+        // Inicializar subtotal al cargar
+        actualizarSubtotal();
+    }
+
+    function recalcularTotal() {
+        let total = 0;
+
+        document.querySelectorAll("#items-table tbody tr.item-row").forEach(row => {
+            if (row.style.display === "none") return;
+
+            const chkDelete = row.querySelector("input[type='checkbox'][name$='DELETE']");
+            if (chkDelete && chkDelete.checked) return;
+
+            const cantidad = parseInt(
+                (row.querySelector("input[name$='cantidad']") || {}).value
+            ) || 0;
+
+            const precio = parseInt(
+                (row.querySelector("input[name$='precio_unit']") || {}).value
+            ) || 0;
+
+            total += cantidad * precio;
+        });
+
+        document.getElementById("total-venta").textContent = total;
+    }
+
+    function inicializar() {
+        // Enganchar eventos a filas existentes
+        document
+            .querySelectorAll("#items-table tbody tr.item-row")
+            .forEach(attachRowEvents);
+        recalcularTotal();
+
+        const btnAgregar = document.getElementById("btn-agregar");
+        const totalFormsInput = document.getElementById("id_items-TOTAL_FORMS");
+        const emptyRowTemplate = document.getElementById("empty-form-row");
+
+        if (!btnAgregar || !totalFormsInput || !emptyRowTemplate) return;
+
+        btnAgregar.addEventListener("click", function () {
+            const formIndex = parseInt(totalFormsInput.value);
+
+            // Clonamos la fila prototipo reemplazando __prefix__ por el índice
+            let newRowHtml = emptyRowTemplate.outerHTML.replace(/__prefix__/g, formIndex);
+
+            const tbody = document.querySelector("#items-table tbody");
+            const temp = document.createElement("tbody");
+            temp.innerHTML = newRowHtml;
+            const newRow = temp.querySelector("tr");
+
+            newRow.id = "";
+            newRow.style.display = "";
+            newRow.classList.add("border-b", "border-slate-100", "item-row");
+
+            tbody.appendChild(newRow);
+
+            totalFormsInput.value = formIndex + 1;
+
+            attachRowEvents(newRow);
+            recalcularTotal();
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", inicializar);
+</script>
+
+{# Fila prototipo oculta para nuevos ítems #}
+<table style="display:none;">
+    <tbody>
+        <tr id="empty-form-row" class="item-row" style="display:none;">
+            <td class="px-3 py-2">
+                {{ formset.empty_form.producto }}
+            </td>
+            <td class="px-3 py-2 text-center">
+                {{ formset.empty_form.cantidad }}
+            </td>
+            <td class="px-3 py-2 text-center">
+                {{ formset.empty_form.precio_unit }}
+            </td>
+            <td class="px-3 py-2 text-center">
+                <span class="subtotal-cell">0</span>
+            </td>
+            <td class="px-3 py-2 text-center">
+                {{ formset.empty_form.DELETE }}
+                <button type="button" class="btn-eliminar text-red-600 hover:text-red-800 font-semibold">
+                    ✕
+                </button>
+            </td>
+        </tr>
+    </tbody>
+</table>
+{% endblock %}

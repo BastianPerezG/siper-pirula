@@ -1,13 +1,32 @@
-{# templates/inventario/producto_editar.html #}
-<h1>Editar producto</h1>
+{% extends "../../core/base.html" %}
 
-<form method="post">
+{% block title %}Editar producto - SIPER Pirula{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Editar producto</h1>
+
+<form method="post" class="space-y-6 max-w-3xl">
     {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Guardar cambios</button>
-</form>
 
-<p>
-    <a href="{% url 'inventario:producto_detalle' object.pk %}">Volver a la ficha</a> |
-    <a href="{% url 'inventario:scan_ean' %}">Ir al lector</a>
-</p>
+    <div class="bg-white shadow-sm rounded-lg p-6 grid gap-4 md:grid-cols-2 text-sm">
+        {{ form.as_p }}
+    </div>
+
+    <div class="flex flex-wrap gap-3">
+        <button type="submit"
+                class="px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
+            Guardar cambios
+        </button>
+
+        <a href="{% url 'inventario:producto_detalle' object.pk %}"
+           class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+            Volver a la ficha
+        </a>
+
+        <a href="{% url 'inventario:scan_ean' %}"
+           class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+            Ir al lector
+        </a>
+    </div>
+</form>
+{% endblock %}

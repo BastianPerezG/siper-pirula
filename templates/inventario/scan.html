@@ -1,48 +1,53 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Escanear producto</title>
-</head>
-<body>
-    <h1>Escanear producto</h1>
+{% extends "../core/base.html" %}
 
-    <nav>
-        <a href="{% url 'core:dashboard' %}">Inicio</a> |
-        <a href="{% url 'inventario:producto_lista' %}">Listado de productos</a> |
-        <a href="{% url 'inventario:producto_stock_critico' %}">Stock crítico</a>
-    </nav>
+{% block title %}Escanear producto - SIPER Pirula{% endblock %}
 
-    <hr>
+{% block content %}
+<div class="max-w-xl mx-auto space-y-6">
 
-    <form id="scan-form" method="get">
-        <input
-            type="text"
-            name="ean"
-            id="ean-input"
-            autocomplete="off"
-            autofocus
-            style="font-size: 2rem; padding: 0.5rem; width: 320px;"
-        >
-    </form>
+    <div>
+        <h1 class="text-3xl font-bold text-slate-800">📷 Escanear producto</h1>
+        <p class="text-slate-600 mt-1">Escanea o escribe el código de barras (EAN).</p>
+    </div>
 
-    {% if ean %}
-        <p>Último código leído: <strong>{{ ean }}</strong></p>
-    {% endif %}
+    <div class="bg-white p-6 rounded-xl shadow space-y-4">
 
-    <script>
-        const input = document.getElementById("ean-input");
-        const form = document.getElementById("scan-form");
+        <form id="scan-form" method="get">
+            <input
+                type="text"
+                name="ean"
+                id="ean-input"
+                autocomplete="off"
+                autofocus
+                placeholder="Escanea aquí..."
+                class="w-full text-2xl p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring focus:ring-amber-300"
+            >
+        </form>
 
-        window.addEventListener("load", () => input.focus());
-        window.addEventListener("click", () => input.focus());
+        {% if ean %}
+            <div class="bg-slate-100 p-4 rounded-lg text-sm">
+                Último código leído:
+                <span class="font-mono font-bold text-slate-800">{{ ean }}</span>
+            </div>
+        {% endif %}
 
-        input.addEventListener("keydown", function (e) {
-            if (e.key === "Enter") {
-                e.preventDefault();
-                form.submit();
-            }
-        });
-    </script>
-</body>
-</html>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const input = document.getElementById("ean-input");
+    const form = document.getElementById("scan-form");
+
+    window.addEventListener("load", () => input.focus());
+    window.addEventListener("click", () => input.focus());
+
+    input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            form.submit();
+        }
+    });
+</script>
+{% endblock %}

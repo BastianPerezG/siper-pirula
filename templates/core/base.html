@@ -1,0 +1,70 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}SIPER Pirula{% endblock %}</title>
+
+    <!-- Tailwind Play CDN (simple para desarrollo) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Aquí podrías cargar un CSS propio si quieres -->
+    {# <link rel="stylesheet" href="{% static 'css/app.css' %}"> #}
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-slate-100 min-h-screen flex flex-col">
+
+    <!-- Navbar superior -->
+    <header class="bg-slate-900 text-slate-100">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="{% url 'core:dashboard' %}" class="font-bold text-lg tracking-wide">
+                SIPER Pirula
+            </a>
+
+            <nav class="flex gap-4 text-sm">
+                <a href="{% url 'core:dashboard' %}" class="hover:text-amber-300">Inicio</a>
+                <a href="{% url 'inventario:producto_lista' %}" class="hover:text-amber-300">Productos</a>
+                <a href="{% url 'inventario:compra_lista' %}" class="hover:text-amber-300">Compras</a>
+                <a href="{% url 'ventas:venta_lista' %}" class="hover:text-amber-300">Ventas</a>
+                <a href="{% url 'inventario:scan_ean' %}" class="hover:text-amber-300">Escanear</a>
+            </nav>
+
+            {# Aquí más adelante podemos poner usuario / logout #}
+            {# <div class="text-xs">Usuario: {{ request.user.username }}</div> #}
+        </div>
+    </header>
+
+    <!-- Contenido principal -->
+    <main class="flex-1">
+        <div class="max-w-6xl mx-auto px-4 py-6">
+
+            {# Mensajes de Django #}
+            {% if messages %}
+                <div class="mb-4 space-y-2">
+                    {% for message in messages %}
+                        <div class="px-4 py-2 rounded text-sm
+                                    {% if message.tags == 'success' %}bg-emerald-100 text-emerald-800
+                                    {% elif message.tags == 'error' %}bg-red-100 text-red-800
+                                    {% else %}bg-slate-200 text-slate-800{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Footer simple -->
+    <footer class="bg-slate-900 text-slate-400 text-xs">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between">
+            <span>SIPER Pirula &copy; {{ now|date:"Y" }}</span>
+            <span>Proyecto de título</span>
+        </div>
+    </footer>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

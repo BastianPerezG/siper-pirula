@@ -1,26 +1,52 @@
-<h1>Productos</h1>
+{% extends "../../core/base.html" %}
 
-<table border="1" cellpadding="4">
-    <tr>
-        <th>ID</th>
-        <th>Nombre</th>
-        <th>EAN</th>
-        <th>Categoría</th>
-        <th>Precio</th>
-        <th></th>
-    </tr>
-    {% for p in productos %}
-        <tr>
-            <td>{{ p.id }}</td>
-            <td>{{ p.nombre }}</td>
-            <td>{{ p.ean }}</td>
-            <td>{{ p.categoria }}</td>
-            <td>${{ p.precio }}</td>
-            <td><a href="{% url 'inventario:producto_detalle' p.pk %}">Ver</a></td>
-        </tr>
-    {% empty %}
-        <tr><td colspan="6">No hay productos registrados.</td></tr>
-    {% endfor %}
-</table>
+{% block title %}Productos - SIPER Pirula{% endblock %}
 
-<p><a href="{% url 'inventario:scan_ean' %}">Ir a lector</a></p>
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-bold">Productos</h1>
+
+    <a href="{% url 'inventario:scan_ean' %}"
+       class="px-3 py-1.5 rounded bg-slate-900 text-white text-sm hover:bg-slate-700">
+        Escanear producto
+    </a>
+</div>
+
+<div class="bg-white shadow-sm rounded-lg overflow-x-auto">
+    <table class="min-w-full text-sm">
+        <thead class="bg-slate-50 border-b border-slate-200">
+            <tr>
+                <th class="px-3 py-2 text-left">ID</th>
+                <th class="px-3 py-2 text-left">Nombre</th>
+                <th class="px-3 py-2 text-left">EAN</th>
+                <th class="px-3 py-2 text-left">Categoría</th>
+                <th class="px-3 py-2 text-right">Precio</th>
+                <th class="px-3 py-2 text-center">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for p in productos %}
+            <tr class="border-b border-slate-100 hover:bg-slate-50">
+                <td class="px-3 py-2">{{ p.id }}</td>
+                <td class="px-3 py-2 font-medium">{{ p.nombre }}</td>
+                <td class="px-3 py-2">{{ p.ean }}</td>
+                <td class="px-3 py-2">{{ p.categoria }}</td>
+                <td class="px-3 py-2 text-right">$ {{ p.precio }}</td>
+                <td class="px-3 py-2 text-center">
+                    <a href="{% url 'inventario:producto_detalle' p.pk %}"
+                       class="text-emerald-600 hover:text-emerald-800 font-medium">
+                       Ver
+                    </a>
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="6" class="px-3 py-4 text-center text-slate-500">
+                    No hay productos registrados.
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -15,6 +15,7 @@ class ProductoAdmin(admin.ModelAdmin):
     list_filter = ("categoria", "activo")
     search_fields = ("nombre", "ean", "sku")
 
+# Admin Inventario 
 
 @admin.register(MovimientoInventario)
 class MovimientoInventarioAdmin(admin.ModelAdmin):

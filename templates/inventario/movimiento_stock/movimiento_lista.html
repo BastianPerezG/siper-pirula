@@ -1,30 +1,70 @@
-<h1>Movimientos de inventario</h1>
+{% extends "../../core/base.html" %}
 
-<p><strong>Producto:</strong> {{ producto.nombre }} (EAN: {{ producto.ean }})</p>
-<p><strong>Stock actual:</strong> {{ producto.stock_actual }}</p>
+{% block title %}Movimientos - SIPER Pirula{% endblock %}
 
-<table border="1" cellpadding="4">
-    <tr>
-        <th>Fecha</th>
-        <th>Tipo</th>
-        <th>Cantidad</th>
-        <th>Comentario</th>
-    </tr>
-    {% for m in movimientos %}
-        <tr>
-            <td>{{ m.fecha }}</td>
-            <td>{{ m.get_tipo_display }}</td>
-            <td>{{ m.cantidad }}</td>
-            <td>{{ m.comentario }}</td>
-        </tr>
-    {% empty %}
-        <tr>
-            <td colspan="4">No hay movimientos registrados.</td>
-        </tr>
-    {% endfor %}
-</table>
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
 
-<p>
-    <a href="{% url 'inventario:movimiento_crear' producto.pk %}">Registrar nuevo movimiento</a> |
-    <a href="{% url 'inventario:producto_detalle' producto.pk %}">Volver a la ficha</a>
-</p>
+    <div>
+        <h1 class="text-2xl font-bold text-slate-800">
+            Historial de movimientos
+        </h1>
+    </div>
+
+    <!-- Info del producto -->
+    <div class="bg-white rounded-lg shadow-sm p-4 text-sm text-slate-700">
+        <p><span class="font-semibold">Producto:</span> {{ producto.nombre }}</p>
+        <p><span class="font-semibold">EAN:</span> {{ producto.ean }}</p>
+        <p><span class="font-semibold">Stock actual:</span>
+            <span class="text-emerald-600 font-semibold">{{ producto.stock_actual }}</span>
+        </p>
+    </div>
+
+    <!-- Tabla -->
+    <div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="px-3 py-2 text-left border-b">Fecha</th>
+                    <th class="px-3 py-2 text-left border-b">Tipo</th>
+                    <th class="px-3 py-2 text-right border-b">Cantidad</th>
+                    <th class="px-3 py-2 text-left border-b">Comentario</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in movimientos %}
+                    <tr class="border-b border-slate-100">
+                        <td class="px-3 py-2">{{ m.fecha|date:"d-m-Y H:i" }}</td>
+                        <td class="px-3 py-2">{{ m.get_tipo_display }}</td>
+                        <td class="px-3 py-2 text-right font-medium">
+                            {{ m.cantidad }}
+                        </td>
+                        <td class="px-3 py-2">
+                            {{ m.comentario|default:"—" }}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-3 py-4 text-center text-slate-500">
+                            No hay movimientos registrados.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="flex flex-wrap gap-3">
+        <a href="{% url 'inventario:movimiento_crear' producto.pk %}"
+           class="px-4 py-2 bg-emerald-600 text-white rounded text-sm font-medium hover:bg-emerald-700">
+            Registrar nuevo movimiento
+        </a>
+
+        <a href="{% url 'inventario:producto_detalle' producto.pk %}"
+           class="px-4 py-2 border border-slate-300 rounded text-sm hover:bg-slate-50">
+            Volver a la ficha
+        </a>
+    </div>
+
+</div>
+{% endblock %}

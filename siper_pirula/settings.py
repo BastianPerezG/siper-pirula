@@ -91,7 +91,7 @@ DATABASES = {
 # 5) Static/Media (útil para despliegue)
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"          # collectstatic en producción
-MEDIA_URL = "media/"
+MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
