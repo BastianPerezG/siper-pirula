@@ -1,0 +1,67 @@
+{% extends "core/base.html" %}
+
+{% block title %}Carrito de compras{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Carrito de compras</h1>
+
+{% if items %}
+    <div class="bg-white rounded-lg shadow overflow-hidden mb-4">
+        <table class="min-w-full text-sm">
+            <thead class="bg-slate-100 text-xs uppercase text-slate-600">
+                <tr>
+                    <th class="px-4 py-3 text-left">Producto</th>
+                    <th class="px-4 py-3 text-right">Cantidad</th>
+                    <th class="px-4 py-3 text-right">Subtotal</th>
+                    <th class="px-4 py-3"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for it in items %}
+                    <tr>
+                        <td class="px-4 py-2">{{ it.producto.nombre }}</td>
+                        <td class="px-4 py-2 text-right">{{ it.cantidad }}</td>
+                        <td class="px-4 py-2 text-right">$ {{ it.subtotal|floatformat:0 }}</td>
+                        <td class="px-4 py-2 text-right">
+                            <a href="{% url 'tienda:carrito_eliminar' it.producto.id %}"
+                               class="text-xs text-red-600 hover:underline">
+                                Eliminar
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="bg-slate-50">
+                <tr>
+                    <td colspan="2" class="px-4 py-3 text-right font-semibold">
+                        Total
+                    </td>
+                    <td class="px-4 py-3 text-right font-bold text-lg">
+                        $ {{ total|floatformat:0 }}
+                    </td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <div class="flex justify-between">
+        <a href="{% url 'tienda:home' %}"
+           class="px-4 py-2 text-sm rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50">
+            Seguir comprando
+        </a>
+        <a href="{% url 'tienda:checkout' %}"
+           class="px-4 py-2 text-sm rounded-md bg-slate-900 text-slate-100 hover:bg-slate-800">
+            Continuar a checkout
+        </a>
+    </div>
+{% else %}
+    <p class="text-sm text-slate-500">
+        Tu carrito está vacío.
+    </p>
+    <a href="{% url 'tienda:home' %}"
+       class="inline-flex mt-3 px-4 py-2 text-sm rounded-md bg-slate-900 text-slate-100 hover:bg-slate-800">
+        Ir a la tienda
+    </a>
+{% endif %}
+{% endblock %}

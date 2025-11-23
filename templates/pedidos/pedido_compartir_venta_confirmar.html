@@ -1,0 +1,54 @@
+{% extends "core/base.html" %}
+
+{% block title %}Convertir pedido en venta{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto">
+    <div class="bg-white shadow rounded-lg p-6 space-y-4">
+        <h1 class="text-xl font-bold text-slate-800">
+            Convertir pedido en Venta POS
+        </h1>
+
+        <p class="text-sm text-slate-600">
+            Vas a generar una <strong>Venta</strong> a partir del pedido
+            <strong>{{ pedido.codigo }}</strong>.
+        </p>
+
+        <ul class="text-xs text-slate-600 mb-2">
+            <li>• Se creará una venta con los mismos productos y cantidades.</li>
+            <li>• Se descontará el stock (Movimiento de inventario de SALIDA).</li>
+            <li>• La venta quedará con documento <strong>Boleta</strong> y medio de pago <strong>Efectivo</strong> (editables luego).</li>
+        </ul>
+
+        <h2 class="font-semibold text-sm mt-3 mb-1">Resumen del pedido:</h2>
+        <table class="min-w-full text-xs mb-4">
+            <thead class="bg-slate-100 text-slate-600 uppercase">
+                <tr>
+                    <th class="px-2 py-2 text-left">Producto</th>
+                    <th class="px-2 py-2 text-right">Cant.</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for item in pedido.items.all %}
+                <tr>
+                    <td class="px-2 py-1">{{ item.producto.nombre }}</td>
+                    <td class="px-2 py-1 text-right">{{ item.cantidad }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <form method="post" class="flex justify-end gap-3">
+            {% csrf_token %}
+            <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
+               class="px-4 py-2 text-xs rounded border border-slate-300 text-slate-700 hover:bg-slate-50">
+                Volver
+            </a>
+            <button type="submit"
+                    class="px-4 py-2 text-xs rounded bg-emerald-700 text-white hover:bg-emerald-600">
+                Confirmar y crear Venta
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

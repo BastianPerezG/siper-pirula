@@ -26,6 +26,7 @@ urlpatterns = [
     path("", include("core.urls")),          # home / dashboard
     path("inventario/", include("inventario.urls")),
     path("pedidos/", include("pedidos.urls")),
+    path("tienda/", include("tienda.urls")),
     path("ventas/", include("ventas.urls")),
 ]
 

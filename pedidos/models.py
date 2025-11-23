@@ -4,6 +4,9 @@ from django.conf import settings
 from core.models import Negocio
 from inventario.models import Producto
 
+import random
+import string
+
 # Modelo Pedidos
 
 class Cliente(models.Model):
@@ -102,6 +105,22 @@ class Pedido(models.Model):
             estado=nuevo_estado,
             usuario=usuario,
         )
+    
+    def _generar_codigo_unico(self):
+        """
+        Genera un código tipo ABC123, y se asegura de que no exista ya en la BD.
+        """
+        while True:
+            nuevo = "".join(
+                random.choices(string.ascii_uppercase + string.digits, k=6)
+            )
+            if not Pedido.objects.filter(codigo=nuevo).exists():
+                return nuevo
+
+    def save(self, *args, **kwargs):
+        if not self.codigo:
+            self.codigo = self._generar_codigo_unico()
+        super().save(*args, **kwargs)
 
 
 class PedidoItem(models.Model):

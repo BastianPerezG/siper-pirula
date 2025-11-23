@@ -101,6 +101,13 @@
                     CANCELAR pedido
                 </a>
             {% endif %}
+            
+              {% if pedido.items.all %}
+                <a href="{% url 'pedidos:pedido_convertir_venta' pedido.pk %}"
+                   class="px-4 py-2 text-xs rounded bg-emerald-700 text-white hover:bg-emerald-600">
+                    Convertir en Venta POS
+                </a>
+            {% endif %}
 
         </div>
     </section>

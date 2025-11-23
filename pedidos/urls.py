@@ -9,5 +9,11 @@ urlpatterns = [
     path("<int:pk>/", views.PedidoDetalleView.as_view(), name="pedido_detalle"),
     path("<int:pk>/estado/<str:nuevo_estado>/", views.pedido_cambiar_estado_view, name="pedido_cambiar_estado"),
     path("cocina/", views.PedidoCocinaView.as_view(), name="pedido_cocina"),
+    path(
+    "<int:pk>/convertir-a-venta/",
+    views.pedido_convertir_en_venta_view,
+    name="pedido_convertir_venta",
+),
+
 
 ]

@@ -1,0 +1,32 @@
+{% extends "core/base.html" %}
+
+{% block title %}Pedido recibido{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto bg-white rounded-lg shadow p-6 text-center">
+    <h1 class="text-2xl font-bold mb-2 text-emerald-700">
+        ¡Pedido recibido!
+    </h1>
+    <p class="text-sm text-slate-600 mb-4">
+        Hemos registrado tu pedido. Pronto estará listo para retiro en la botillería.
+    </p>
+
+    <div class="mb-4">
+        <p class="text-xs text-slate-500 mb-1">
+            Código de pedido:
+        </p>
+        <p class="font-mono text-lg font-bold">
+            {{ pedido.codigo }}
+        </p>
+    </div>
+
+    <p class="text-xs text-slate-500 mb-4">
+        Por favor, presenta este código al momento del retiro.
+    </p>
+
+    <a href="{% url 'tienda:home' %}"
+       class="inline-flex px-4 py-2 text-sm rounded-md bg-slate-900 text-slate-100 hover:bg-slate-800">
+        Volver a la tienda
+    </a>
+</div>
+{% endblock %}
