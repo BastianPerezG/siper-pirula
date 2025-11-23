@@ -1,0 +1,125 @@
+{% extends "core/base.html" %}
+
+{% block title %}Pedido {{ pedido.codigo }} - SIPER Pirula{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold">Pedido {{ pedido.codigo }}</h1>
+            <p class="text-xs text-slate-500">
+                Creado el {{ pedido.fecha|date:"d/m/Y H:i" }}
+            </p>
+        </div>
+        <div>
+            <span class="inline-flex px-3 py-1 text-xs rounded-full bg-slate-200 text-slate-800">
+                {{ pedido.get_estado_display }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Datos del cliente -->
+    <section class="bg-white rounded-lg shadow p-4 space-y-2 text-sm">
+        <h2 class="font-semibold text-slate-700">Datos de contacto</h2>
+        <div><strong>Cliente:</strong> {{ pedido.cliente.nombre|default:"-" }}</div>
+        <div><strong>Nombre:</strong> {{ pedido.nombre|default:"-" }}</div>
+        <div><strong>Correo:</strong> {{ pedido.correo|default:"-" }}</div>
+        <div><strong>Teléfono:</strong> {{ pedido.telefono|default:"-" }}</div>
+    </section>
+
+    <!-- Tabla de ítems -->
+    <section class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="min-w-full text-sm">
+            <thead class="bg-slate-100 text-xs uppercase text-slate-600">
+                <tr>
+                    <th class="px-4 py-3 text-left">Producto</th>
+                    <th class="px-4 py-3 text-right">Cantidad</th>
+                    <th class="px-4 py-3 text-right">Precio</th>
+                    <th class="px-4 py-3 text-right">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for item in pedido.items.all %}
+                <tr>
+                    <td class="px-4 py-2">{{ item.producto.nombre }}</td>
+                    <td class="px-4 py-2 text-right">{{ item.cantidad }}</td>
+                    <td class="px-4 py-2 text-right">$ {{ item.precio|floatformat:0 }}</td>
+                    <td class="px-4 py-2 text-right font-semibold">
+                        $ {{ item.subtotal|floatformat:0 }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="bg-slate-50">
+                <tr>
+                    <td colspan="3" class="px-4 py-3 text-right font-semibold">
+                        TOTAL
+                    </td>
+                    <td class="px-4 py-3 text-right font-bold text-lg">
+                        $ {{ pedido.total|floatformat:0 }}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </section>
+
+    <!-- Botones de cambio de estado -->
+    <section class="bg-white rounded-lg shadow p-4 space-y-3">
+        <h2 class="font-semibold text-slate-700">Acciones</h2>
+
+        <div class="flex flex-wrap gap-2">
+
+            {% if pedido.estado == "RECIBIDO" %}
+                <a href="{% url 'pedidos:pedido_cambiar_estado' pedido.pk 'PREPARANDO' %}"
+                   class="px-4 py-2 text-xs rounded bg-blue-600 text-white hover:bg-blue-500">
+                    Marcar como PREPARANDO
+                </a>
+            {% endif %}
+
+            {% if pedido.estado == "PREPARANDO" %}
+                <a href="{% url 'pedidos:pedido_cambiar_estado' pedido.pk 'LISTO' %}"
+                   class="px-4 py-2 text-xs rounded bg-amber-600 text-white hover:bg-amber-500">
+                    Marcar como LISTO
+                </a>
+            {% endif %}
+
+            {% if pedido.estado == "LISTO" %}
+                <a href="{% url 'pedidos:pedido_cambiar_estado' pedido.pk 'RETIRADO' %}"
+                   class="px-4 py-2 text-xs rounded bg-green-600 text-white hover:bg-green-500">
+                    Marcar como RETIRADO
+                </a>
+                <a href="{% url 'pedidos:pedido_cambiar_estado' pedido.pk 'NO_RETIRA' %}"
+                   class="px-4 py-2 text-xs rounded bg-orange-600 text-white hover:bg-orange-500">
+                    Marcar como NO RETIRA
+                </a>
+            {% endif %}
+
+            {% if pedido.estado != "CANCELADO" and pedido.estado != "RETIRADO" %}
+                <a href="{% url 'pedidos:pedido_cambiar_estado' pedido.pk 'CANCELADO' %}"
+                   class="px-4 py-2 text-xs rounded bg-red-600 text-white hover:bg-red-500">
+                    CANCELAR pedido
+                </a>
+            {% endif %}
+
+        </div>
+    </section>
+
+    <!-- Historial de estados -->
+    <section class="bg-white rounded-lg shadow p-4">
+        <h2 class="font-semibold text-slate-700 mb-3">Historial de estados</h2>
+
+        <ul class="space-y-2 text-xs text-slate-600">
+            {% for log in pedido.estado_log.all %}
+                <li class="flex justify-between border-b pb-1">
+                    <span>{{ log.get_estado_display|default:log.estado }}</span>
+                    <span>{{ log.fecha|date:"d/m/Y H:i" }}</span>
+                </li>
+            {% empty %}
+                <li>No hay historial aún.</li>
+            {% endfor %}
+        </ul>
+    </section>
+
+</div>
+{% endblock %}

@@ -25,7 +25,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("core.urls")),          # home / dashboard
     path("inventario/", include("inventario.urls")),
-    #path("pedidos/", include("pedidos.urls")),
+    path("pedidos/", include("pedidos.urls")),
     path("ventas/", include("ventas.urls")),
 ]
 

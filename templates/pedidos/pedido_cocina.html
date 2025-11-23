@@ -1,0 +1,53 @@
+{% extends "core/base.html" %}
+
+{% block title %}Monitor de pedidos - SIPER Pirula{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Monitor de pedidos</h1>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+    {% for pedido in pedidos %}
+        <div class="bg-white shadow rounded-lg p-4 border-l-4
+            {% if pedido.estado == 'RECIBIDO' %}
+                border-blue-500
+            {% elif pedido.estado == 'PREPARANDO' %}
+                border-amber-500
+            {% elif pedido.estado == 'LISTO' %}
+                border-green-500
+            {% endif %}
+        ">
+            <div class="flex justify-between items-center mb-2">
+                <div class="text-sm font-bold">{{ pedido.codigo }}</div>
+                <div class="text-xs text-slate-500">
+                    {{ pedido.fecha|timesince }} atrás
+                </div>
+            </div>
+
+            <div class="text-xs text-slate-500 mb-2">
+                {{ pedido.get_estado_display }}
+            </div>
+
+            <ul class="space-y-1 text-sm">
+                {% for item in pedido.items.all %}
+                    <li class="flex justify-between">
+                        <span>{{ item.producto.nombre }}</span>
+                        <span class="font-semibold">x{{ item.cantidad }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+
+            <div class="mt-3 text-right">
+                <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
+                   class="text-xs text-slate-600 hover:underline">
+                    Ver detalle →
+                </a>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-span-3 text-center text-slate-500">
+            No hay pedidos activos.
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

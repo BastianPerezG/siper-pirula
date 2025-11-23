@@ -1,0 +1,87 @@
+{% extends "core/base.html" %}
+
+{% block title %}Nuevo pedido - SIPER Pirula{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Registrar pedido</h1>
+
+<form method="post" class="space-y-6">
+    {% csrf_token %}
+
+    <section class="bg-white rounded-lg shadow p-4 space-y-4">
+        <h2 class="text-lg font-semibold">Datos del cliente / retiro</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            {{ form.non_field_errors }}
+            <div>
+                <label class="block text-slate-700 text-xs font-semibold mb-1">
+                    Cliente registrado
+                </label>
+                {{ form.cliente }}
+            </div>
+            <div>
+                <label class="block text-slate-700 text-xs font-semibold mb-1">
+                    Nombre de contacto
+                </label>
+                {{ form.nombre }}
+            </div>
+            <div>
+                <label class="block text-slate-700 text-xs font-semibold mb-1">
+                    Correo
+                </label>
+                {{ form.correo }}
+            </div>
+            <div>
+                <label class="block text-slate-700 text-xs font-semibold mb-1">
+                    Teléfono
+                </label>
+                {{ form.telefono }}
+            </div>
+        </div>
+    </section>
+
+    <section class="bg-white rounded-lg shadow p-4 space-y-4">
+        <h2 class="text-lg font-semibold">Ítems del pedido</h2>
+
+        {{ formset.management_form }}
+        {{ formset.non_form_errors }}
+
+        <table class="min-w-full text-sm">
+            <thead class="bg-slate-100 text-xs uppercase text-slate-600">
+                <tr>
+                    <th class="px-2 py-2 text-left">Producto</th>
+                    <th class="px-2 py-2 text-right">Cantidad</th>
+                    <th class="px-2 py-2 text-right">Precio</th>
+                    <th class="px-2 py-2 text-center">Eliminar</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for f in formset %}
+                    <tr>
+                        <td class="px-2 py-1">{{ f.producto }}</td>
+                        <td class="px-2 py-1 text-right">{{ f.cantidad }}</td>
+                        <td class="px-2 py-1 text-right">{{ f.precio }}</td>
+                        <td class="px-2 py-1 text-center">
+                            {% if f.instance.pk %}
+                                {{ f.DELETE }}
+                            {% else %}
+                                &mdash;
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <div class="flex justify-end gap-2">
+        <a href="{% url 'pedidos:pedido_lista' %}"
+           class="px-4 py-2 text-sm rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50">
+            Cancelar
+        </a>
+        <button type="submit"
+                class="px-4 py-2 text-sm rounded-md bg-slate-900 text-slate-100 hover:bg-slate-800">
+            Guardar pedido
+        </button>
+    </div>
+</form>
+{% endblock %}

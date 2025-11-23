@@ -1,0 +1,37 @@
+{% extends "core/base.html" %}
+
+{% block title %}Confirmar cambio de estado{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto">
+    <div class="bg-white shadow rounded-lg p-6 space-y-4">
+        <h1 class="text-xl font-bold text-slate-800">
+            Confirmar cambio de estado
+        </h1>
+
+        <p class="text-sm text-slate-600">
+            ¿Estás seguro que deseas cambiar el estado del pedido
+            <strong>{{ pedido.codigo }}</strong>
+            a:
+        </p>
+
+        <div class="text-center">
+            <span class="inline-flex px-4 py-2 bg-slate-200 rounded-full text-sm font-semibold">
+                {{ nuevo_estado }}
+            </span>
+        </div>
+
+        <form method="post" class="flex justify-end gap-3">
+            {% csrf_token %}
+            <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
+               class="px-4 py-2 text-sm rounded border border-slate-300 text-slate-700 hover:bg-slate-50">
+                Cancelar
+            </a>
+            <button type="submit"
+                    class="px-4 py-2 text-sm rounded bg-red-600 text-white hover:bg-red-500">
+                Confirmar
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
