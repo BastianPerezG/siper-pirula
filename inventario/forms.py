@@ -2,8 +2,7 @@ from django import forms
 from django.forms import inlineformset_factory
 
 from .models import Producto, MovimientoInventario, Compra, CompraItem, Proveedor
-
-
+#hola
 # -------------------------
 #  Productos
 # -------------------------
