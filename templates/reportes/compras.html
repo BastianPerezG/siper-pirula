@@ -1,0 +1,90 @@
+{% extends "core/base.html" %}
+{% load humanize %}
+
+{% block title %}Reporte de compras - SIPER Pirula{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-800">🧾 Reporte de compras</h1>
+        <p class="text-slate-600 mt-1 text-sm">
+            Compras del mes {{ hoy|date:"m/Y" }} y resumen por proveedor.
+        </p>
+    </div>
+
+    <!-- Resumen mensual -->
+    <div class="bg-white rounded-xl shadow p-4">
+        <h2 class="text-sm font-semibold text-slate-500">Total de compras del mes</h2>
+        <p class="mt-2 text-3xl font-bold text-slate-900">
+            $ {{ total_mes|floatformat:0|intcomma }}
+        </p>
+        <p class="text-xs text-slate-500 mt-1">
+            {{ compras_mes|length }} documento(s) de compra registrados.
+        </p>
+    </div>
+
+    <!-- Compras por proveedor -->
+    <div class="bg-white rounded-xl shadow p-4">
+        <h2 class="text-lg font-semibold text-slate-800 mb-2">🏢 Total por proveedor</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-slate-100">
+                    <tr>
+                        <th class="px-3 py-2 text-left">Proveedor</th>
+                        <th class="px-3 py-2 text-right">Total comprado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in compras_por_proveedor %}
+                    <tr class="border-t">
+                        <td class="px-3 py-2">{{ c.compra__proveedor__nombre }}</td>
+                        <td class="px-3 py-2 text-right font-mono">
+                            $ {{ c.total|default:0|floatformat:0|intcomma }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2" class="px-3 py-4 text-center text-slate-500">
+                            No hay compras registradas.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Productos más comprados -->
+    <div class="bg-white rounded-xl shadow p-4">
+        <h2 class="text-lg font-semibold text-slate-800 mb-2">📦 Productos más comprados</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-amber-50">
+                    <tr>
+                        <th class="px-3 py-2 text-left">Producto</th>
+                        <th class="px-3 py-2 text-right">Unidades</th>
+                        <th class="px-3 py-2 text-right">Total invertido</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in top_comprados %}
+                    <tr class="border-t">
+                        <td class="px-3 py-2">{{ p.producto__nombre }}</td>
+                        <td class="px-3 py-2 text-right font-mono">{{ p.unidades }}</td>
+                        <td class="px-3 py-2 text-right font-mono">
+                            $ {{ p.total|default:0|floatformat:0|intcomma }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="px-3 py-4 text-center text-slate-500">
+                            No hay compras registradas.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,323 @@
+{% extends "core/base.html" %}
+{% load humanize %}
+
+{% block title %}Reporte de ventas - SIPER Pirula{% endblock %}
+
+{% block content %}
+
+<!-- ================= FILTROS ================= -->
+<form method="get" class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div>
+        <label class="block text-xs text-slate-500">Desde</label>
+        <input type="date" name="desde" value="{{ desde|date:'Y-m-d' }}"
+            class="border rounded px-2 py-1 w-full text-sm">
+    </div>
+    <div>
+        <label class="block text-xs text-slate-500">Hasta</label>
+        <input type="date" name="hasta" value="{{ hasta|date:'Y-m-d' }}"
+            class="border rounded px-2 py-1 w-full text-sm">
+    </div>
+    <div>
+        <label class="block text-xs text-slate-500">Medio de pago</label>
+        <select name="medio" class="border rounded px-2 py-1 w-full text-sm">
+            <option value="">Todos</option>
+            {% for value, label in medios_pago %}
+            <option value="{{ value }}" {% if value == medio_seleccionado %}selected{% endif %}>
+                {{ label }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label class="block text-xs text-slate-500">Categoría</label>
+        <select name="categoria" class="border rounded px-2 py-1 w-full text-sm">
+            <option value="">Todas</option>
+            {% for cat in categorias %}
+            <option value="{{ cat.id }}" {% if cat.id == categoria_seleccionada %}selected{% endif %}>
+                {{ cat.nombre }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="md:col-span-4 flex flex-wrap gap-2 mt-2">
+        <button class="px-4 py-2 bg-slate-900 text-white text-sm rounded shadow">
+            Filtrar
+        </button>
+
+        <a href="?export=csv&desde={{ desde|date:'Y-m-d' }}&hasta={{ hasta|date:'Y-m-d' }}&medio={{ medio_seleccionado|default:'' }}&categoria={{ categoria_seleccionada|default:'' }}"
+            class="px-4 py-2 bg-emerald-600 text-white text-sm rounded shadow">
+            Exportar CSV
+        </a>
+    </div>
+</form>
+
+<!-- ================= TÍTULO ================= -->
+<div class="space-y-2 mb-4">
+    <h1 class="text-2xl font-bold text-slate-900">💵 Reporte de ventas</h1>
+    <p class="text-slate-600 text-sm">
+        Resumen de ventas del día {{ hoy|date:"d/m/Y" }} y del mes actual.
+    </p>
+</div>
+
+<!-- ================= CARDS PRINCIPALES ================= -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+        <p class="text-xs font-semibold text-slate-500">Ventas hoy</p>
+        <p class="mt-2 text-3xl font-bold text-slate-900">
+            $ {{ total_hoy|floatformat:0|intcomma }}
+        </p>
+        <p class="text-xs text-slate-500 mt-1">
+            {{ ventas_hoy|length }} venta(s)
+        </p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+        <p class="text-xs font-semibold text-slate-500">Ventas del mes</p>
+        <p class="mt-2 text-3xl font-bold text-emerald-700">
+            $ {{ total_mes|floatformat:0|intcomma }}
+        </p>
+        <p class="text-xs text-slate-500 mt-1">
+            {{ ventas_mes|length }} venta(s) cerradas
+        </p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+        <p class="text-xs font-semibold text-slate-500">Ticket promedio (mes)</p>
+        <p class="mt-2 text-3xl font-bold text-slate-900">
+            $ {{ ticket_promedio_mes|floatformat:0|intcomma }}
+        </p>
+    </div>
+</div>
+
+<!-- ================= TABLA MEDIOS DE PAGO ================= -->
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-6">
+    <h2 class="text-lg font-semibold text-slate-800 mb-2">💳 Total por medio de pago (mes)</h2>
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-slate-100">
+                <tr>
+                    <th class="px-3 py-2 text-left">Medio de pago</th>
+                    <th class="px-3 py-2 text-right">Total</th>
+                    <th class="px-3 py-2 text-right">Cantidad de ventas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pagos %}
+                <tr class="border-t">
+                    <td class="px-3 py-2">{{ p.medio_pago }}</td>
+                    <td class="px-3 py-2 text-right font-mono">
+                        $ {{ p.total|default:0|floatformat:0|intcomma }}
+                    </td>
+                    <td class="px-3 py-2 text-right font-mono">{{ p.cantidad }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="px-3 py-4 text-center text-slate-500">
+                        No hay ventas registradas en este mes.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ================= TOP PRODUCTOS ================= -->
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-6">
+    <h2 class="text-lg font-semibold text-slate-800 mb-2">🏆 Top productos más vendidos (mes)</h2>
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-emerald-50">
+                <tr>
+                    <th class="px-3 py-2 text-left">Producto</th>
+                    <th class="px-3 py-2 text-right">Unidades</th>
+                    <th class="px-3 py-2 text-right">Total vendido</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in top_productos %}
+                <tr class="border-t">
+                    <td class="px-3 py-2">{{ p.producto__nombre }}</td>
+                    <td class="px-3 py-2 text-right font-mono">{{ p.unidades }}</td>
+                    <td class="px-3 py-2 text-right font-mono">
+                        $ {{ p.total|default:0|floatformat:0|intcomma }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="px-3 py-4 text-center text-slate-500">
+                        No hay ventas registradas.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ================= KPI AÑO vs AÑO ================= -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+        <p class="text-xs font-medium text-slate-500">Ventas {{ anio_actual }}</p>
+        <p class="mt-1 text-2xl font-semibold text-slate-900">
+            $ {{ ventas_anio_actual|floatformat:0|intcomma }}
+        </p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+        <p class="text-xs font-medium text-slate-500">Ventas {{ anio_anterior }}</p>
+        <p class="mt-1 text-2xl font-semibold text-slate-900">
+            $ {{ ventas_anio_anterior|floatformat:0|intcomma }}
+        </p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex items-center justify-between">
+        <div>
+            <p class="text-xs font-medium text-slate-500">Variación año vs año</p>
+            <p
+                class="mt-1 text-xl font-semibold {% if ventas_yoy_abs >= 0 %}text-emerald-600{% else %}text-rose-600{% endif %}">
+                {% if ventas_yoy_abs >= 0 %}+{% endif %}{{ ventas_yoy_abs|floatformat:0|intcomma }}
+            </p>
+            <p class="text-xs {% if ventas_yoy_abs >= 0 %}text-emerald-600{% else %}text-rose-600{% endif %}">
+                {% if ventas_yoy_pct >= 0 %}+{% endif %}{{ ventas_yoy_pct|floatformat:1 }} %
+            </p>
+        </div>
+        <div class="rounded-full bg-slate-50 px-3 py-2">
+            {% if ventas_yoy_abs >= 0 %}
+            <span class="text-emerald-500 text-sm">▲ Mejor que el año pasado</span>
+            {% else %}
+            <span class="text-rose-500 text-sm">▼ Bajo el año pasado</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ================= GRÁFICO ÚNICO (Día / Mes / Año) ================= -->
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+        <div>
+            <h3 class="text-base font-semibold text-slate-900">Tendencia de ventas</h3>
+            <p class="text-sm text-slate-500">
+                El gráfico respeta los filtros de fecha, medio de pago y categoría seleccionados.
+            </p>
+        </div>
+        <div class="inline-flex rounded-full bg-slate-100 p-1 text-xs font-medium text-slate-600">
+            <button type="button" class="period-btn px-3 py-1.5 rounded-full" data-period="day" data-active="true">
+                Día
+            </button>
+            <button type="button" class="period-btn px-3 py-1.5 rounded-full" data-period="month">
+                Mes
+            </button>
+            <button type="button" class="period-btn px-3 py-1.5 rounded-full" data-period="year">
+                Año
+            </button>
+        </div>
+    </div>
+
+    <div class="h-80">
+        <canvas id="ventasChart"></canvas>
+    </div>
+</div>
+
+<!-- ================= SCRIPTS ================= -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    (function () {
+        const chartData = JSON.parse('{{ chart_data_json|escapejs }}');
+
+        const canvas = document.getElementById('ventasChart');
+        const ctx = canvas.getContext('2d');
+
+        const primaryColor = '#2563eb';
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(37, 99, 235, 0.35)');
+        gradient.addColorStop(1, 'rgba(37, 99, 235, 0.02)');
+
+        const buildConfig = (labels, data) => ({
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Ventas',
+                    data: data,
+                    borderColor: primaryColor,
+                    backgroundColor: gradient,
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: primaryColor,
+                    tension: 0.35,
+                    fill: true,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 600, easing: 'easeOutCubic' },
+                plugins: {
+                    legend: {
+                        display: true,
+                        labels: { usePointStyle: true, padding: 16 }
+                    },
+                    tooltip: {
+                        backgroundColor: '#0f172a',
+                        borderColor: '#bfdbfe',
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 10,
+                        displayColors: false,
+                        callbacks: {
+                            label: function (ctx) {
+                                const value = ctx.parsed.y || 0;
+                                return ' $ ' + value.toLocaleString('es-CL');
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#6b7280', maxRotation: 0, autoSkipPadding: 16 }
+                    },
+                    y: {
+                        grid: { color: 'rgba(148,163,184,0.2)', drawBorder: false },
+                        ticks: {
+                            color: '#6b7280',
+                            callback: value => '$ ' + value.toLocaleString('es-CL')
+                        }
+                    }
+                }
+            }
+        });
+
+        let currentPeriod = 'day';
+        let chart = new Chart(ctx, buildConfig(
+            chartData.day.labels,
+            chartData.day.data
+        ));
+
+        function updateChart(period) {
+            currentPeriod = period;
+            const cfg = buildConfig(chartData[period].labels, chartData[period].data);
+            chart.data = cfg.data;
+            chart.options = cfg.options;
+            chart.update();
+        }
+
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const period = btn.dataset.period;
+                if (period === currentPeriod) return;
+
+                document.querySelectorAll('.period-btn').forEach(b => b.dataset.active = "false");
+                btn.dataset.active = "true";
+
+                updateChart(period);
+            });
+        });
+    })();
+</script>
+
+{% endblock %}
