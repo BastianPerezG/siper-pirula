@@ -2,6 +2,8 @@
 # reportes/views.py
 import csv
 import json
+from datetime import datetime, timedelta
+from django.utils import timezone
 from django.db.models.functions import TruncDay
 from datetime import datetime
 from django.http import HttpResponse
@@ -13,6 +15,118 @@ from django.db.models.functions import TruncDay, TruncWeek, TruncMonth, TruncYea
 from django.db.models import DecimalField
 from inventario.models import Compra, CompraItem, Categoria, Producto, Proveedor
 from ventas.models import Venta, VentaItem
+
+class ReporteNoRetiraView(LoginRequiredMixin, TemplateView):
+    template_name = "reportes/no_retira.html"
+
+    def get_pedidos_queryset(self, request):
+        """
+        Filtra los pedidos según los parámetros del formulario.
+        Ajusta los nombres de campos si en tu modelo se llaman distinto.
+        """
+        qs = Pedido.objects.filter(negocio=request.user.negocio)
+
+        # --- filtros de fecha ---
+        desde_str = request.GET.get("desde")
+        hasta_str = request.GET.get("hasta")
+
+        if desde_str:
+            qs = qs.filter(fecha_creacion__date__gte=desde_str)
+        if hasta_str:
+            qs = qs.filter(fecha_creacion__date__lte=hasta_str)
+
+        # --- filtro canal ---
+        canal = request.GET.get("canal")
+        if canal and canal != "TODOS":
+            qs = qs.filter(canal=canal)
+
+        # --- filtro monto mínimo ---
+        monto_min = request.GET.get("monto_min")
+        if monto_min:
+            try:
+                qs = qs.filter(total__gte=monto_min)  # cambia "total" si tu campo se llama distinto
+            except ValueError:
+                pass
+
+        # Pedidos “no retirados”: por ejemplo estado = "NO_RETIRADO"
+        # Ajusta el campo/valor dependiendo de tu modelo
+        qs = qs.filter(estado="NO_RETIRADO")
+
+        return qs
+
+    # ---------- EXPORTAR CSV ----------
+    def export_csv(self, pedidos):
+        """
+        Genera el CSV con BOM para que Excel muestre bien los acentos.
+        """
+        response = HttpResponse(
+            content_type="text/csv; charset=utf-8"
+        )
+        filename = f"reporte_no_retira_{timezone.now().date().isoformat()}.csv"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        # Escribimos BOM para que Excel detecte UTF-8
+        response.write("\ufeff")
+
+        writer = csv.writer(response, delimiter=";")
+
+        # Cabeceras
+        writer.writerow([
+            "N° pedido",
+            "Fecha creación",
+            "Fecha límite retiro",
+            "Fecha cancelación",
+            "Monto total",
+            "Cliente",
+            "Canal",
+        ])
+
+        for p in pedidos:
+            writer.writerow([
+                p.id,
+                p.fecha_creacion.strftime("%Y-%m-%d %H:%M") if p.fecha_creacion else "",
+                p.fecha_limite_retiro.strftime("%Y-%m-%d %H:%M") if getattr(p, "fecha_limite_retiro", None) else "",
+                p.fecha_cancelacion.strftime("%Y-%m-%d %H:%M") if getattr(p, "fecha_cancelacion", None) else "",
+                float(p.total) if getattr(p, "total", None) is not None else "",
+                getattr(p.cliente, "nombre", "") if getattr(p, "cliente", None) else "",
+                p.get_canal_display() if hasattr(p, "get_canal_display") else getattr(p, "canal", ""),
+            ])
+
+        return response
+
+    # ---------- GET ----------
+    def get(self, request, *args, **kwargs):
+        pedidos_no_retirados = self.get_pedidos_queryset(request)
+
+        # Si viene ?export=csv -> devolvemos archivo
+        if request.GET.get("export") == "csv":
+            return self.export_csv(pedidos_no_retirados)
+
+        # Si es vista normal -> contexto para la plantilla
+        total_pedidos = Pedido.objects.filter(
+            negocio=request.user.negocio
+        ).count()
+
+        total_no_retirados = pedidos_no_retirados.count()
+
+        monto_no_retirado = pedidos_no_retirados.aggregate(
+            total=Sum("total")  # cambia "total" por el campo correcto si es necesario
+        )["total"] or 0
+
+        tasa_no_retira = (
+            (total_no_retirados / total_pedidos * 100)
+            if total_pedidos > 0 else 0
+        )
+
+        context = self.get_context_data(
+            pedidos_no_retirados=pedidos_no_retirados,
+            total_pedidos=total_pedidos,
+            total_no_retirados=total_no_retirados,
+            monto_no_retirado=monto_no_retirado,
+            tasa_no_retira=tasa_no_retira,
+        )
+        return self.render_to_response(context)
+
 
 
 
@@ -415,9 +529,6 @@ class ReporteInventarioView(LoginRequiredMixin, TemplateView):
         }
         chart_data_json = json.dumps(chart_data)
 
-        # =====================================================
-        #   KPIs Año vs Año (ventas totales del año completo)
-        # =====================================================
         anio_actual = hoy.year
         anio_anterior = hoy.year - 1
 
@@ -621,9 +732,6 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
             .order_by("-unidades")[:10]
         )
 
-        # =====================================================
-        #   GRÁFICO ÚNICO (Día / Mes / Año) – respeta filtros
-        # =====================================================
         items_filtrados = VentaItem.objects.filter(venta__in=ventas_filtradas)
 
         # Día
@@ -1105,5 +1213,128 @@ class ReporteDiaHoraView(LoginRequiredMixin, TemplateView):
                     row["total"],
                 ]
             )
+
+        return response
+
+
+class ReporteNoRetiraView(LoginRequiredMixin, TemplateView):
+    template_name = "reportes/no_retira.html"
+
+    def _get_pedidos_no_retirados(self, request):
+        negocio = request.user.perfilusuario.negocio
+        hoy = timezone.now().date()
+
+        desde_str = request.GET.get("desde")
+        hasta_str = request.GET.get("hasta")
+     
+        canal = request.GET.get("canal")
+        monto_min_str = request.GET.get("monto_min")
+
+
+        if desde_str:
+            try:
+                desde = datetime.strptime(desde_str, "%Y-%m-%d").date()
+            except ValueError:
+                desde = hoy - timedelta(days=30)
+        else:
+            desde = hoy - timedelta(days=30)
+
+        if hasta_str:
+            try:
+                hasta = datetime.strptime(hasta_str, "%Y-%m-%d").date()
+            except ValueError:
+                hasta = hoy
+        else:
+            hasta = hoy
+
+     
+        pedidos = Venta.objects.filter(
+            negocio=negocio,
+            fecha__date__gte=desde,
+            fecha__date__lte=hasta,
+        )
+
+
+        if monto_min_str:
+            try:
+                monto_min = int(monto_min_str)
+                pedidos = pedidos.filter(total__gte=monto_min)
+            except ValueError:
+                monto_min = None
+
+
+        total_pedidos = pedidos.count()
+
+
+        estado_no_retira = getattr(Venta, "EST_NO_RETIRA", None)
+
+        if estado_no_retira is not None:
+            pedidos_no_retirados = pedidos.filter(estado=estado_no_retira)
+        else:
+        
+            pedidos_no_retirados = pedidos.filter(estado="NO_RETIRA")
+
+        total_no_retirados = pedidos_no_retirados.count()
+        monto_no_retirado = sum(v.total for v in pedidos_no_retirados)
+
+        tasa_no_retira = (
+            (total_no_retirados / total_pedidos) * 100 if total_pedidos else 0
+        )
+
+        detalle = pedidos_no_retirados.select_related().order_by("-fecha")
+
+        return {
+            "desde": desde,
+            "hasta": hasta,
+            "canal": canal or "TODOS",
+            "monto_min": monto_min_str or "",
+            "total_pedidos": total_pedidos,
+            "total_no_retirados": total_no_retirados,
+            "tasa_no_retira": tasa_no_retira,
+            "monto_no_retirado": monto_no_retirado,
+            "detalle_no_retirados": detalle,
+        }
+
+    def get(self, request, *args, **kwargs):
+        if request.GET.get("export") == "csv":
+            return self.export_csv(request)
+        return super().get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        datos = self._get_pedidos_no_retirados(self.request)
+        context.update(datos)
+        return context
+
+    def export_csv(self, request):
+        
+        datos = self._get_pedidos_no_retirados(request)
+        pedidos = datos["detalle_no_retirados"]
+
+        response = HttpResponse(content_type="text/csv")
+        filename = f"reporte_no_retira_{datos['desde']}_a_{datos['hasta']}.csv"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        writer = csv.writer(response)
+        writer.writerow([
+            "N° pedido",
+            "Fecha creación",
+            "Fecha límite retiro",
+            "Fecha cancelación",
+            "Monto total",
+            "Cliente",
+            "Canal",
+        ])
+
+        for v in pedidos:
+            writer.writerow([
+                v.id,
+                getattr(v, "fecha", ""),
+                getattr(v, "fecha_limite_retiro", ""),
+                getattr(v, "fecha_cancelacion", ""),
+                getattr(v, "total", ""),
+                getattr(v, "cliente", ""),
+                getattr(v, "canal", ""),
+            ])
 
         return response

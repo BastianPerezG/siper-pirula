@@ -1,0 +1,138 @@
+{% extends "core/base.html" %}
+{% load humanize %}
+
+{% block title %}Tasa no retira - SIPER Pirula{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+
+    <!-- Filtros -->
+    <form method="get" class="bg-white rounded-xl shadow p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+            <label class="block text-xs text-slate-500">Desde</label>
+            <input type="date" name="desde" value="{{ desde|date:'Y-m-d' }}"
+                class="border rounded px-2 py-1 w-full text-sm">
+        </div>
+        <div>
+            <label class="block text-xs text-slate-500">Hasta</label>
+            <input type="date" name="hasta" value="{{ hasta|date:'Y-m-d' }}"
+                class="border rounded px-2 py-1 w-full text-sm">
+        </div>
+        <div>
+            <label class="block text-xs text-slate-500">Canal</label>
+            <select name="canal" class="border rounded px-2 py-1 w-full text-sm">
+                <option value="TODOS" {% if canal == "TODOS" %}selected{% endif %}>Todos</option>
+                <option value="ONLINE" {% if canal == "ONLINE" %}selected{% endif %}>Online</option>
+                <option value="MOSTRADOR" {% if canal == "MOSTRADOR" %}selected{% endif %}>Mostrador</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs text-slate-500">Monto mínimo ($)</label>
+            <input type="number" name="monto_min" value="{{ monto_min }}"
+                class="border rounded px-2 py-1 w-full text-sm" min="0">
+        </div>
+
+        <div class="md:col-span-4 flex items-center justify-between mt-2">
+            <button type="submit"
+                class="inline-flex items-center px-3 py-2 rounded-md bg-sky-600 text-white text-sm font-medium hover:bg-sky-700">
+                Aplicar filtros
+            </button>
+
+            <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}export=csv"
+                class="inline-flex items-center px-3 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">
+                Exportar CSV
+            </a>
+        </div>
+    </form>
+
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl shadow p-4">
+            <p class="text-xs text-slate-500 uppercase">Pedidos totales</p>
+            <p class="mt-2 text-2xl font-bold text-slate-900">
+                {{ total_pedidos }}
+            </p>
+            <p class="text-xs text-slate-400">
+                Desde {{ desde|date:"d-m-Y" }} hasta {{ hasta|date:"d-m-Y" }}
+            </p>
+        </div>
+        <div class="bg-white rounded-xl shadow p-4">
+            <p class="text-xs text-slate-500 uppercase">Pedidos no retirados</p>
+            <p class="mt-2 text-2xl font-bold text-rose-600">
+                {{ total_no_retirados }}
+            </p>
+        </div>
+        <div class="bg-white rounded-xl shadow p-4">
+            <p class="text-xs text-slate-500 uppercase">Tasa "no retira"</p>
+            <p class="mt-2 text-2xl font-bold text-amber-600">
+                {{ tasa_no_retira|floatformat:1 }}%
+            </p>
+        </div>
+        <div class="bg-white rounded-xl shadow p-4">
+            <p class="text-xs text-slate-500 uppercase">Monto asociado</p>
+            <p class="mt-2 text-2xl font-bold text-slate-900">
+                $ {{ monto_no_retirado|floatformat:0|intcomma }}
+            </p>
+        </div>
+    </div>
+
+    {% if total_no_retirados == 0 %}
+    <div class="bg-white rounded-xl shadow p-6 text-center text-slate-500">
+        No se registraron pedidos no retirados para los filtros seleccionados. 🎉
+    </div>
+    {% else %}
+
+
+    <div class="bg-white rounded-xl shadow p-4">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-slate-700">Detalle de pedidos no retirados</h2>
+            <p class="text-xs text-slate-400">
+                Lista de pedidos marcados como "no retira" en el período seleccionado.
+            </p>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-slate-50 text-xs uppercase text-slate-500">
+                    <tr>
+                        <th class="px-3 py-2 text-left">N° Pedido</th>
+                        <th class="px-3 py-2 text-left">Fecha creación</th>
+                        <th class="px-3 py-2 text-left">Fecha límite retiro</th>
+                        <th class="px-3 py-2 text-left">Fecha cancelación</th>
+                        <th class="px-3 py-2 text-right">Monto</th>
+                        <th class="px-3 py-2 text-left">Cliente</th>
+                        <th class="px-3 py-2 text-left">Canal</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for v in detalle_no_retirados %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-3 py-2">#{{ v.id }}</td>
+                        <td class="px-3 py-2">
+                            {{ v.fecha|date:"d-m-Y H:i" }}
+                        </td>
+                        <td class="px-3 py-2">
+                            {{ v.fecha_limite_retiro|default:"-" }}
+                        </td>
+                        <td class="px-3 py-2">
+                            {{ v.fecha_cancelacion|default:"-" }}
+                        </td>
+                        <td class="px-3 py-2 text-right">
+                            $ {{ v.total|floatformat:0|intcomma }}
+                        </td>
+                        <td class="px-3 py-2">
+                            {{ v.cliente|default:"-" }}
+                        </td>
+                        <td class="px-3 py-2">
+                            {{ v.canal|default:"-" }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% endif %}
+</div>
+{% endblock %}
