@@ -8,8 +8,8 @@ from django.http import HttpResponse
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
-from django.db.models import Sum, F, Count, ExpressionWrapper, fields, Q, Max, Subquery, OuterRef
-from django.db.models.functions import TruncDay, TruncWeek, TruncMonth, TruncYear, ExtractYear
+from django.db.models import Sum, F, Count
+from django.db.models.functions import TruncDay, TruncWeek, TruncMonth, TruncYear, ExtractYear, ExtractYear,ExtractHour,ExtractWeekDay
 from django.db.models import DecimalField
 from inventario.models import Compra, CompraItem, Categoria, Producto, Proveedor
 from ventas.models import Venta, VentaItem
@@ -495,7 +495,7 @@ class ReporteInventarioView(LoginRequiredMixin, TemplateView):
 class ReporteVentasView(LoginRequiredMixin, TemplateView):
     template_name = "reportes/ventas.html"
 
-    # ----------------- Filtros compartidos (formulario + CSV + gráfico) -----------------
+
     def _get_ventas_filtradas(self, request):
         negocio = request.user.perfilusuario.negocio
         hoy = timezone.now().date()
@@ -505,7 +505,6 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
             estado=Venta.EST_CERRADA,
         )
 
-        # Filtros GET
         desde_str = request.GET.get("desde")
         hasta_str = request.GET.get("hasta")
         medio = request.GET.get("medio") or ""
@@ -544,7 +543,6 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
 
         return ventas.distinct(), desde, hasta, medio, categoria_id, negocio, hoy
 
-    # ----------------- GET: CSV o HTML -----------------
     def get(self, request, *args, **kwargs):
         if request.GET.get("export") == "csv":
             ventas_qs, *_ = self._get_ventas_filtradas(request)
@@ -558,7 +556,6 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
             f'attachment; filename="reporte_ventas_{timezone.now().date()}.csv"'
         )
 
-        # BOM para que Excel reconozca bien UTF-8
         response.write("\ufeff")
 
         writer = csv.writer(response, delimiter=";")
@@ -573,7 +570,6 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
 
         return response
 
-    # ----------------- Contexto para el dashboard -----------------
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         request = self.request
@@ -581,7 +577,6 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
         ventas_filtradas, desde, hasta, medio, categoria_id, negocio, hoy = \
             self._get_ventas_filtradas(request)
 
-        # ==== Tarjetas: ventas hoy (fija) ====
         ventas_hoy = Venta.objects.filter(
             negocio=negocio,
             estado=Venta.EST_CERRADA,
@@ -589,14 +584,12 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
         )
         total_hoy = sum(v.total for v in ventas_hoy)
 
-        # ==== Tarjetas: ventas del PERÍODO filtrado ====
         total_periodo = sum(v.total for v in ventas_filtradas)
         cant_ventas_periodo = ventas_filtradas.count()
         ticket_promedio_periodo = (
             total_periodo / cant_ventas_periodo if cant_ventas_periodo else 0
         )
 
-        # ==== Tabla: total por medio de pago (PERÍODO) ====
         pagos = (
             VentaItem.objects
             .filter(venta__in=ventas_filtradas)
@@ -613,7 +606,7 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
             .order_by("medio_pago")
         )
 
-        # ==== Top productos más vendidos (PERÍODO) ====
+       
         top_productos = (
             VentaItem.objects
             .filter(venta__in=ventas_filtradas)
@@ -765,7 +758,6 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
         return context
 
 
-  
 class ReporteComprasView(LoginRequiredMixin, TemplateView):
     """
     Reporte de compras:
@@ -921,3 +913,197 @@ class ReporteComprasView(LoginRequiredMixin, TemplateView):
 
         return context
 
+
+class ReporteDiaHoraView(LoginRequiredMixin, TemplateView):
+    template_name = "reportes/dia_hora.html"
+
+    DIA_SEMANA_LABELS = {
+        1: "Domingo",
+        2: "Lunes",
+        3: "Martes",
+        4: "Miércoles",
+        5: "Jueves",
+        6: "Viernes",
+        7: "Sábado",
+    }
+    def get(self, request, *args, **kwargs):
+        if request.GET.get("export") == "csv":
+            return self.export_csv(request)
+        return super().get(request, *args, **kwargs)
+
+    def _get_datos_base(self, request):
+       
+        # Reutilizamos el método ya existente en ReporteVentasView
+        ventas_view = ReporteVentasView()
+        (ventas_qs,desde,hasta,medio_seleccionado,categoria_id,hoy,negocio,) = ventas_view._get_ventas_filtradas(request)
+
+        # Si no hay ventas en el rango, devolvemos todo vacío pero sin romper nada
+        if not ventas_qs.exists():
+            return {
+                "ventas_qs": ventas_qs,
+                "desde": desde,
+                "hasta": hasta,
+                "total_pedidos": 0,
+                "total_monto": 0,
+                "ventas_por_hora": [],
+                "ventas_por_dia": [],
+                "dia_hora_list": [],
+                "top3": [],
+                "bottom3": [],
+                "chart_horas_labels_json": "[]",
+                "chart_horas_data_json": "[]",
+                "chart_dias_labels_json": "[]",
+                "chart_dias_data_json": "[]",
+            }
+
+        # Total de pedidos y monto total del período
+        total_pedidos = ventas_qs.values("id").distinct().count()
+        total_monto = (
+            ventas_qs.annotate(
+                total_venta=F("items__cantidad") * F("items__precio_unit")
+            )
+            .aggregate(total=Sum("total_venta"))["total"]
+            or 0
+        )
+
+        # --- Distribución por HORA (0–23) ---
+        ventas_por_hora_qs = (
+            ventas_qs.annotate(hora = ExtractHour("fecha"))
+            .values("hora")
+            .annotate(
+                cantidad=Count("id", distinct=True),
+                total=Sum(F("items__cantidad") * F("items__precio_unit")),
+            )
+            .order_by("hora")
+        )
+
+        ventas_por_hora = list(ventas_por_hora_qs)
+
+        # Para el gráfico: rellenamos todas las horas aunque no haya datos
+        horas_labels = [f"{h:02d}:00" for h in range(24)]
+        cantidad_por_hora = {row["hora"]: row["cantidad"]
+                             for row in ventas_por_hora}
+        chart_horas_data = [cantidad_por_hora.get(h, 0) for h in range(24)]
+
+        # --- Distribución por DÍA DE LA SEMANA ---
+        ventas_por_dia_qs = (
+            ventas_qs.annotate(dia_semana = ExtractWeekDay("fecha"))
+            .values("dia_semana")
+            .annotate(
+                cantidad=Count("id", distinct=True),
+                total=Sum(F("items__cantidad") * F("items__precio_unit")),
+            )
+        )
+
+        ventas_por_dia = list(ventas_por_dia_qs)
+
+        # Ordenamos Lunes–Domingo (en ExtractWeekDay 1=Domingo)
+        orden_dias = [2, 3, 4, 5, 6, 7, 1]
+        cantidad_por_dia = {
+            row["dia_semana"]: row["cantidad"] for row in ventas_por_dia
+        }
+        chart_dias_labels = [self.DIA_SEMANA_LABELS[d] for d in orden_dias]
+        chart_dias_data = [cantidad_por_dia.get(d, 0) for d in orden_dias]
+
+        # --- Combinación DÍA + HORA ---
+        dia_hora_qs = (
+            ventas_qs.annotate(
+                dia_semana = ExtractWeekDay("fecha"),
+                hora = ExtractHour("fecha"),
+            )
+            .values("dia_semana", "hora")
+            .annotate(
+                cantidad=Count("id", distinct=True),
+                total=Sum(F("items__cantidad") * F("items__precio_unit")),
+            )
+            .order_by("dia_semana", "hora")
+        )
+
+        dia_hora_list = [
+            {
+                "dia_semana": row["dia_semana"],
+                "dia_label": self.DIA_SEMANA_LABELS.get(row["dia_semana"], "-"),
+                "hora": row["hora"],
+                "hora_label": f"{row['hora']:02d}:00",
+                "cantidad": row["cantidad"],
+                "total": row["total"],
+            }
+            for row in dia_hora_qs
+        ]
+
+        # Top 3 y Bottom 3 por cantidad de pedidos
+        top3 = sorted(
+            dia_hora_list, key=lambda r: r["cantidad"], reverse=True)[:3]
+        bottom3 = sorted(dia_hora_list, key=lambda r: r["cantidad"])[:3]
+
+        import json
+
+        return {
+            "ventas_qs": ventas_qs,
+            "desde": desde,
+            "hasta": hasta,
+            "total_pedidos": total_pedidos,
+            "total_monto": total_monto,
+            "ventas_por_hora": ventas_por_hora,
+            "ventas_por_dia": ventas_por_dia,
+            "dia_hora_list": dia_hora_list,
+            "top3": top3,
+            "bottom3": bottom3,
+            "chart_horas_labels_json": json.dumps(horas_labels),
+            "chart_horas_data_json": json.dumps(chart_horas_data),
+            "chart_dias_labels_json": json.dumps(chart_dias_labels),
+            "chart_dias_data_json": json.dumps(chart_dias_data),
+        }
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        datos = self._get_datos_base(self.request)
+
+        context.update(
+            {
+                "desde": datos["desde"],
+                "hasta": datos["hasta"],
+                "total_pedidos": datos["total_pedidos"],
+                "total_monto": datos["total_monto"],
+                "ventas_por_hora": datos["ventas_por_hora"],
+                "ventas_por_dia": datos["ventas_por_dia"],
+                "dia_hora_list": datos["dia_hora_list"],
+                "top3": datos["top3"],
+                "bottom3": datos["bottom3"],
+                "chart_horas_labels_json": datos["chart_horas_labels_json"],
+                "chart_horas_data_json": datos["chart_horas_data_json"],
+                "chart_dias_labels_json": datos["chart_dias_labels_json"],
+                "chart_dias_data_json": datos["chart_dias_data_json"],
+            }
+        )
+        return context
+
+    def export_csv(self, request):
+        """
+        Exporta la tabla día x hora a CSV para usarla en Excel.
+        """
+        datos = self._get_datos_base(request)
+        dia_hora_list = datos["dia_hora_list"]
+
+        response = HttpResponse(content_type="text/csv")
+        filename = f"reporte_dia_hora_{datos['desde']}_a_{datos['hasta']}.csv"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        import csv
+
+        writer = csv.writer(response)
+        writer.writerow(
+            ["Día de la semana", "Hora", "Cantidad de pedidos", "Monto total"]
+        )
+
+        for row in dia_hora_list:
+            writer.writerow(
+                [
+                    row["dia_label"],
+                    row["hora_label"],
+                    row["cantidad"],
+                    row["total"],
+                ]
+            )
+
+        return response
