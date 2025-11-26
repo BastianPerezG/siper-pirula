@@ -44,7 +44,7 @@
                             {{ p.stock_min }}
                         </td>
                         <td class="px-3 py-2 text-right font-semibold text-red-600">
-                            {{ p.stock_actual }}
+                            {{ p.movimientos.stock_actual }}
                         </td>
                         <td class="px-3 py-2 text-center">
                             <a href="{% url 'inventario:producto_detalle' p.pk %}"

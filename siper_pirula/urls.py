@@ -28,6 +28,8 @@ urlpatterns = [
     path("pedidos/", include("pedidos.urls")),
     path("tienda/", include("tienda.urls")),
     path("ventas/", include("ventas.urls")),
+    path("reportes/", include("reportes.urls")),
+    
 ]
 
 

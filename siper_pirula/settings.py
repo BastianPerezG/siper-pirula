@@ -29,8 +29,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.humanize",
     # tus apps:
-    "core", "inventario", "pedidos", "ventas", "tienda"
+    "core", "inventario", "pedidos", "ventas", "tienda","reportes"
 ]
 
 
