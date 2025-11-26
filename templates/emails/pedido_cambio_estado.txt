@@ -1,0 +1,13 @@
+Actualización de tu pedido {{ pedido.codigo }}
+
+Hola {{ pedido.nombre|default:"cliente" }},
+
+{% if es_listo %}
+Tu pedido {{ pedido.codigo }} ya está LISTO para retirar en El Gran Pirula.
+Preséntate en la botillería indicando tu código de pedido.
+{% else %}
+El estado de tu pedido {{ pedido.codigo }} ha cambiado a: {{ estado_display }}.
+{% endif %}
+
+Gracias por tu compra,
+El Gran Pirula

@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-
+from pedidos.emails import enviar_correo_cambio_estado
 from core.models import Negocio
 from inventario.models import Producto
 
@@ -105,6 +105,7 @@ class Pedido(models.Model):
             estado=nuevo_estado,
             usuario=usuario,
         )
+        enviar_correo_cambio_estado(self)
     
     def _generar_codigo_unico(self):
         """

@@ -101,3 +101,20 @@ CSRF_TRUSTED_ORIGINS = env.list(
     "CSRF_TRUSTED_ORIGINS",
     default=["https://*.pythonanywhere.com"]
 )
+
+# Para desarrollo: imprime los correos en la consola
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "no-reply@siperpirula.local"
+SITE_URL = "http://localhost:8000"  # y en producción lo cambias a https://tudominio.cl
+
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="basstiiaan@gmail.com")
+EMAIL_HOST_PASSWORD = "fiqpooxxywvgbjle"
+
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER

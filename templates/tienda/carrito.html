@@ -6,6 +6,9 @@
 <h1 class="text-2xl font-bold mb-4">Carrito de compras</h1>
 
 {% if items %}
+<form method="post" action="{% url 'tienda:carrito_actualizar' %}">
+    {% csrf_token %}
+
     <div class="bg-white rounded-lg shadow overflow-hidden mb-4">
         <table class="min-w-full text-sm">
             <thead class="bg-slate-100 text-xs uppercase text-slate-600">
@@ -18,17 +21,24 @@
             </thead>
             <tbody class="divide-y divide-slate-100">
                 {% for it in items %}
-                    <tr>
-                        <td class="px-4 py-2">{{ it.producto.nombre }}</td>
-                        <td class="px-4 py-2 text-right">{{ it.cantidad }}</td>
-                        <td class="px-4 py-2 text-right">$ {{ it.subtotal|floatformat:0 }}</td>
-                        <td class="px-4 py-2 text-right">
-                            <a href="{% url 'tienda:carrito_eliminar' it.producto.id %}"
-                               class="text-xs text-red-600 hover:underline">
-                                Eliminar
-                            </a>
-                        </td>
-                    </tr>
+                <tr>
+                    <td class="px-4 py-2">{{ it.producto.nombre }}</td>
+                    <td class="px-4 py-2 text-right">
+                        <input type="number" name="cant_{{ it.producto.id }}" value="{{ it.cantidad }}" min="0"
+                            class="w-16 text-right border border-slate-300 rounded px-1 py-0.5 text-xs cantidad-input"
+                            data-precio="{{ it.producto.precio }}">
+                    </td>
+                    <td class="px-4 py-2 text-right subtotal">
+                        $ {{ it.subtotal|floatformat:0 }}
+                    </td>
+
+                    <td class="px-4 py-2 text-right">
+                        <a href="{% url 'tienda:carrito_eliminar' it.producto.id %}"
+                            class="text-xs text-red-600 hover:underline">
+                            Eliminar
+                        </a>
+                    </td>
+                </tr>
                 {% endfor %}
             </tbody>
             <tfoot class="bg-slate-50">
@@ -36,7 +46,7 @@
                     <td colspan="2" class="px-4 py-3 text-right font-semibold">
                         Total
                     </td>
-                    <td class="px-4 py-3 text-right font-bold text-lg">
+                    <td class="px-4 py-3 text-right font-bold text-lg" id="total-carrito">
                         $ {{ total|floatformat:0 }}
                     </td>
                     <td></td>
@@ -45,23 +55,65 @@
         </table>
     </div>
 
-    <div class="flex justify-between">
-        <a href="{% url 'tienda:home' %}"
-           class="px-4 py-2 text-sm rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50">
-            Seguir comprando
-        </a>
-        <a href="{% url 'tienda:checkout' %}"
-           class="px-4 py-2 text-sm rounded-md bg-slate-900 text-slate-100 hover:bg-slate-800">
-            Continuar a checkout
-        </a>
-    </div>
+<div class="flex justify-between">
+    <button type="submit"
+            name="go_home"
+            value="1"
+            class="px-4 py-2 text-sm rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50">
+        Seguir comprando
+    </button>
+
+    <button type="submit"
+            name="go_checkout"
+            value="1"
+            class="px-4 py-2 text-sm rounded-md bg-slate-900 text-slate-100 hover:bg-slate-800">
+        Continuar a checkout
+    </button>
+</div>
+
+</form>
 {% else %}
-    <p class="text-sm text-slate-500">
-        Tu carrito está vacío.
-    </p>
-    <a href="{% url 'tienda:home' %}"
-       class="inline-flex mt-3 px-4 py-2 text-sm rounded-md bg-slate-900 text-slate-100 hover:bg-slate-800">
-        Ir a la tienda
-    </a>
+<p class="text-sm text-slate-500">
+    Tu carrito está vacío.
+</p>
+<a href="{% url 'tienda:home' %}"
+    class="inline-flex mt-3 px-4 py-2 text-sm rounded-md bg-slate-900 text-slate-100 hover:bg-slate-800">
+    Ir a la tienda
+</a>
 {% endif %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        function recalcular() {
+            let total = 0;
+
+            document.querySelectorAll("tr").forEach(function (row) {
+                const input = row.querySelector(".cantidad-input");
+                const subtotalCell = row.querySelector(".subtotal");
+
+                if (!input || !subtotalCell) return;
+
+                const precio = parseInt(input.dataset.precio || "0");
+                const cantidad = parseInt(input.value || "0");
+
+                const subtotal = precio * cantidad;
+                subtotalCell.innerText = "$ " + subtotal.toLocaleString("es-CL");
+
+                total += subtotal;
+            });
+
+            const totalElem = document.getElementById("total-carrito");
+            if (totalElem) {
+                totalElem.innerText = "$ " + total.toLocaleString("es-CL");
+            }
+        }
+
+        document.querySelectorAll(".cantidad-input").forEach(function (input) {
+            input.addEventListener("input", recalcular);
+        });
+
+        recalcular();
+    });
+</script>
+
 {% endblock %}

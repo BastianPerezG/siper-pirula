@@ -1,0 +1,27 @@
+{% extends "emails/base_email.html" %}
+{% block content %}
+    <h1 style="font-size:20px;margin:0 0 12px 0;color:#222222;">
+        Hemos recibido tu pedido 🍷
+    </h1>
+
+    <p style="font-size:14px;color:#444444;margin:0 0 8px 0;">
+        Hola {{ pedido.nombre|default:"cliente" }},
+    </p>
+
+    <p style="font-size:14px;color:#444444;margin:0 0 8px 0;">
+        Tu pedido <strong>{{ pedido.codigo }}</strong> ha sido registrado correctamente en El Gran Pirula.
+    </p>
+
+    <p style="font-size:14px;color:#444444;margin:0 0 8px 0;">
+        Monto total: <strong>${{ pedido.total }}</strong>
+    </p>
+
+    <p style="font-size:14px;color:#444444;margin:0 0 8px 0;">
+        Te enviaremos un correo cuando tu pedido esté <strong>LISTO para retirar</strong> en la botillería.
+    </p>
+
+    <p style="font-size:13px;color:#666666;margin-top:16px;">
+        Gracias por preferirnos,<br>
+        <strong>El Gran Pirula</strong>
+    </p>
+{% endblock %}

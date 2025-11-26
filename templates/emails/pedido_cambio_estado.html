@@ -1,0 +1,29 @@
+{% extends "emails/base_email.html" %}
+{% block content %}
+    <h1 style="font-size:20px;margin:0 0 12px 0;color:#222222;">
+        Actualización de tu pedido {{ pedido.codigo }}
+    </h1>
+
+    <p style="font-size:14px;color:#444444;margin:0 0 8px 0;">
+        Hola {{ pedido.nombre|default:"cliente" }},
+    </p>
+
+    {% if es_listo %}
+        <p style="font-size:14px;color:#444444;margin:0 0 8px 0;">
+            Tu pedido <strong>{{ pedido.codigo }}</strong> ya está <strong>LISTO para retirar</strong> en la botillería.
+        </p>
+        <p style="font-size:14px;color:#444444;margin:0 0 8px 0;">
+            Preséntate en El Gran Pirula indicando tu código de pedido.
+        </p>
+    {% else %}
+        <p style="font-size:14px;color:#444444;margin:0 0 8px 0;">
+            El estado de tu pedido <strong>{{ pedido.codigo }}</strong> ha cambiado a:
+            <strong>{{ estado_display }}</strong>.
+        </p>
+    {% endif %}
+
+    <p style="font-size:13px;color:#666666;margin-top:16px;">
+        Gracias por tu compra,<br>
+        <strong>El Gran Pirula</strong>
+    </p>
+{% endblock %}
