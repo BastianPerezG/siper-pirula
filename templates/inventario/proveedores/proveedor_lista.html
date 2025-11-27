@@ -1,0 +1,98 @@
+{% extends "../../core/base.html" %}
+
+{% block title %}Lista de Distribuidores{% endblock %}
+
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6"> 
+    
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-slate-800">
+            Gestión de Distribuidores (Proveedores Activos)
+        </h1>
+        <a href="{{ url_crear_proveedor }}" 
+           class="px-4 py-2 rounded bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition duration-150">
+            <i class="fas fa-plus"></i> Registrar Nuevo Distribuidor
+        </a>
+    </div>
+
+    <hr class="border-slate-200">
+
+    <section class="bg-white rounded-lg shadow-sm p-6">
+        <h2 class="text-xl font-semibold mb-3 text-slate-700">🔍 Acceso Rápido a Plantillas</h2>
+
+        <div class="space-y-4">
+            <p class="text-sm text-slate-600">Utilice el campo de búsqueda para seleccionar un proveedor y saltar directamente a la gestión de su **Plantilla de Productos**.</p>
+            
+            <label for="select-proveedor-rapido" class="block text-slate-600 font-medium mb-1 text-sm">Buscar Distribuidor:</label>
+            
+            <select class="select2-enabled w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-amber-300 focus:border-amber-400" id="select-proveedor-rapido">
+                <option value="">-- Seleccione o escriba el nombre --</option>
+                {% for proveedor in proveedores %}
+                    <option value="{% url 'inventario:proveedor_detalle' pk=proveedor.pk %}"> 
+                        {{ proveedor.nombre }} (ID: {{ proveedor.pk }}) 
+                    </option>
+                {% endfor %}
+            </select>
+            
+            <button id="btn-ir-plantilla" 
+                    class="px-4 py-2 rounded bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 disabled:opacity-50 transition duration-150">
+                Ir a Plantilla
+            </button>
+            
+        </div>
+    </section>
+    
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+// Usamos el patrón de cierre (closure) para pasar jQuery y evitar conflictos con otras librerías.
+jQuery(document).ready(function($) {
+    // Aquí, el $ de forma SEGURA siempre se refiere a jQuery
+    var selectProveedor = $('#select-proveedor-rapido');
+    var btnIr = $('#btn-ir-plantilla');
+
+    // Inicializar Select2
+    selectProveedor.select2({
+        // Añadimos la clase de Tailwind aquí para forzar el estilo del contenedor Select2 (aunque Select2 es difícil de estilizar con Tailwind)
+        containerCssClass: "border border-slate-300 rounded focus:ring focus:ring-amber-300", 
+        dropdownCssClass: "shadow-lg", // Solo un ejemplo
+        placeholder: "Buscar por nombre de proveedor...",
+        allowClear: true
+    });
+
+    function toggleButton() {
+        if (selectProveedor.val()) {
+            btnIr.prop('disabled', false); 
+        } else {
+            btnIr.prop('disabled', true); 
+        }
+    }
+
+    // 1. Manejar el evento 'change'
+    selectProveedor.on('change', function() {
+        toggleButton();
+    });
+
+    // 2. Manejar el evento 'click'
+    btnIr.on('click', function(e) {
+        e.preventDefault(); 
+        
+        var urlSeleccionada = selectProveedor.val();
+        
+        if (urlSeleccionada) {
+            // Redirigir
+            window.location.href = urlSeleccionada;
+        }
+    });
+    
+    // Si el botón ya está en el HTML sin el atributo 'disabled', esta línea lo añade si no hay valor seleccionado
+    if (!selectProveedor.val()) {
+        btnIr.prop('disabled', true); 
+    }
+});
+</script>
+{% endblock %}
