@@ -1,5 +1,6 @@
 from pathlib import Path
 import environ, os
+from dotenv import load_dotenv
 
 # 1) BASE_DIR primero
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -7,6 +8,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # 2) Cargar .env desde la raíz del proyecto (donde está manage.py)
 env = environ.Env(DEBUG=(bool, True))
 environ.Env.read_env(BASE_DIR / ".env")
+
+# Cargar el .env desde la raíz del proyecto
+load_dotenv(BASE_DIR / ".env")
 
 # 3) Variables
 DEBUG = env("DEBUG")
@@ -115,7 +119,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
 
-EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="basstiiaan@gmail.com")
-EMAIL_HOST_PASSWORD = ""
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+DEFAULT_FROM_EMAIL = f"SIPER Pirula <{EMAIL_HOST_USER}>"
