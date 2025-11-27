@@ -1,0 +1,47 @@
+{% extends "core/base.html" %}
+
+{% block title %}El Gran Pirula - Categorías{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-2">
+    ¿Qué quieres llevar hoy?
+</h1>
+<p class="text-sm text-slate-600 mb-6">
+    Elige una categoría para explorar los productos disponibles para retiro en local.
+</p>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    {% for item in categorias_data %}
+        {% with categoria=item.categoria imagen=item.imagen %}
+        <a href="{% url 'tienda:categoria_detalle' categoria.id %}"
+           class="group bg-white rounded-2xl shadow hover:shadow-lg overflow-hidden flex flex-col transition-shadow duration-200">
+
+            {% if imagen %}
+                <img src="{{ imagen.url }}"
+                     alt="{{ categoria.nombre }}"
+                     class="h-40 w-full object-cover group-hover:scale-105 transition-transform duration-300">
+            {% else %}
+                <div class="h-40 w-full bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center">
+                    <span class="text-3xl font-bold text-slate-100">
+                        {{ categoria.nombre|slice:":1" }}
+                    </span>
+                </div>
+            {% endif %}
+
+            <div class="p-4 flex-1 flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-slate-900">
+                    {{ categoria.nombre }}
+                </h2>
+                <span class="ml-3 inline-flex items-center justify-center rounded-full bg-slate-900 text-slate-100 text-xs px-3 py-1">
+                    Ver
+                </span>
+            </div>
+        </a>
+        {% endwith %}
+    {% empty %}
+        <p class="text-sm text-slate-500">
+            No hay categorías configuradas aún. Créalas desde el panel de inventario.
+        </p>
+    {% endfor %}
+</div>
+{% endblock %}

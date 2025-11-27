@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models import Sum, Case, When, IntegerField, F
 from django.core.exceptions import ValidationError
 from core.models import Negocio 
-
+from django.utils.text import slugify
 
 # Modelo Inventario.
 
@@ -10,8 +10,23 @@ class Categoria(models.Model):
     negocio = models.ForeignKey(Negocio, on_delete=models.PROTECT)
     nombre = models.CharField(max_length=80)
 
+    slug = models.SlugField(max_length=100, blank=True)
+    imagen = models.ImageField(upload_to="categorias/", null=True, blank=True)
+
+    activa = models.BooleanField(default=True)
+    orden = models.PositiveIntegerField(default=0)
+
+    creada = models.DateTimeField(auto_now_add=True)
+    actualizada = models.DateTimeField(auto_now=True)
+
     class Meta:
         db_table = "categoria"
+        ordering = ["orden", "nombre"]
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.nombre)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.nombre

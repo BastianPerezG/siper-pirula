@@ -3,7 +3,7 @@ from django.urls import reverse
 from django import forms
 
 from core.models import Negocio
-from inventario.models import Producto
+from inventario.models import Producto, Categoria
 from pedidos.models import Pedido, PedidoItem, Cliente
 from pedidos.emails import enviar_correo_pedido_creado
 
@@ -67,17 +67,68 @@ def _build_cart_items(request, negocio):
 # ------------------------------------------------------------------
 
 def tienda_home(request):
+    """
+    Portada de la tienda:
+    muestra tarjetas grandes por categoría.
+    Usa la Categoria del inventario.
+    """
     negocio = get_negocio_actual()
-    productos = Producto.objects.filter(
-        negocio=negocio,
-        activo=True,
+
+    categorias = Categoria.objects.filter(
+        negocio=negocio
     ).order_by("nombre")
 
-    return render(
-        request,
-        "tienda/producto_lista.html",
-        {"productos": productos},
+    # Para cada categoría buscamos una imagen representativa:
+    categorias_data = []
+    for cat in categorias:
+        producto_con_imagen = (
+            Producto.objects
+            .filter(
+                negocio=negocio,
+                categoria=cat,
+                activo=True,
+                imagen__isnull=False,
+            )
+            .first()
+        )
+        categorias_data.append(
+            {
+                "categoria": cat,
+                "imagen": producto_con_imagen.imagen if producto_con_imagen else None,
+            }
+        )
+
+    context = {
+        "categorias_data": categorias_data,
+    }
+    return render(request, "tienda/home.html", context)
+
+
+
+def categoria_detalle(request, categoria_id):
+    """
+    Listado de productos filtrado por categoría,
+    accesible desde las tarjetas del home.
+    """
+    negocio = get_negocio_actual()
+
+    categoria = get_object_or_404(
+        Categoria,
+        pk=categoria_id,
+        negocio=negocio,
     )
+
+    productos = Producto.objects.filter(
+        negocio=negocio,
+        categoria=categoria,
+        activo=True,
+    ).order_by("nombre")  # puedes cambiar a "precio" si quieres
+
+    context = {
+        "categoria": categoria,
+        "productos": productos,
+    }
+    return render(request, "tienda/producto_lista.html", context)
 
 
 def carrito_agregar(request, producto_id):

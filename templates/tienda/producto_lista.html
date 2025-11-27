@@ -1,42 +1,41 @@
 {% extends "core/base.html" %}
 
-{% block title %}Tienda - SIPER Pirula{% endblock %}
+{% block title %}
+    {% if categoria %}
+        {{ categoria.nombre }} - SIPER Pirula
+    {% else %}
+        Tienda - SIPER Pirula
+    {% endif %}
+{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Tienda online</h1>
+<h1 class="text-2xl font-bold mb-2">
+    {% if categoria %}
+        {{ categoria.nombre }}
+    {% else %}
+        Tienda online
+    {% endif %}
+</h1>
 
 <p class="text-sm text-slate-600 mb-4">
-    Selecciona tus productos y confírmalos para retiro en local.
+    {% if categoria %}
+        Productos disponibles en la categoría <strong>{{ categoria.nombre }}</strong>.
+    {% else %}
+        Selecciona tus productos y confírmalos para retiro en local.
+    {% endif %}
 </p>
 
-<div class="mb-4">
+<div class="mb-4 flex justify-between items-center">
+    <a href="{% url 'tienda:home' %}"
+       class="text-xs text-slate-600 hover:underline">
+        ← Volver a categorías
+    </a>
+
     <a href="{% url 'tienda:carrito_ver' %}"
        class="inline-flex items-center px-4 py-2 text-sm rounded-md bg-slate-900 text-slate-100 hover:bg-slate-800">
         Ver carrito
     </a>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    {% for producto in productos %}
-        <div class="bg-white shadow rounded-lg p-4 flex flex-col">
-            <div class="font-semibold text-sm mb-1">
-                {{ producto.nombre }}
-            </div>
-            <div class="text-xs text-slate-500 mb-2">
-                {{ producto.ean }}
-            </div>
-            <div class="text-lg font-bold mb-3">
-                $ {{ producto.precio|floatformat:0 }}
-            </div>
-            <div class="mt-auto">
-                <a href="{% url 'tienda:carrito_agregar' producto.id %}"
-                   class="inline-flex items-center px-3 py-2 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-500">
-                    Agregar al carrito
-                </a>
-            </div>
-        </div>
-    {% empty %}
-        <p class="text-slate-500 text-sm">No hay productos disponibles.</p>
-    {% endfor %}
-</div>
+{# ... deja el resto de tu grid de productos igual ... #}
 {% endblock %}
