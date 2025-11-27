@@ -2,6 +2,7 @@ from django.db import models
 from django.db.models import Sum, Case, When, IntegerField, F
 from django.core.exceptions import ValidationError
 from core.models import Negocio 
+from django.contrib.auth.models import User
 
 
 # Modelo Inventario.
@@ -16,15 +17,18 @@ class Categoria(models.Model):
     def __str__(self):
         return self.nombre
 
-
+#Producto con mas de un proveedor, many to many*
 class Producto(models.Model):
     negocio = models.ForeignKey(Negocio, on_delete=models.PROTECT)
+    proveedor = models.ForeignKey("Proveedor", on_delete=models.PROTECT)
     sku = models.CharField(max_length=40, blank=True, null=True)
     ean = models.CharField("Código de barras", max_length=40, unique=True)
     nombre = models.CharField(max_length=120)
     categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT)
     precio = models.PositiveIntegerField(default=0, help_text="Precio de venta en pesos chilenos")
     costo = models.PositiveIntegerField(default=0, help_text="Costo en pesos chilenos")
+    unidad_de_venta = models.CharField(max_length=120, blank=True, null=False)
+    formato = models.CharField(max_length=120,blank=True, null=False)
     stock_min = models.IntegerField(default=0)
     ubicacion = models.CharField(max_length=60, blank=True, null=True)
     activo = models.BooleanField(default=True)
@@ -184,3 +188,77 @@ class CompraItem(models.Model):
                 comentario=f"Compra #{self.compra.id} {self.compra.doc_tipo} {self.compra.doc_num or ''}".strip(),
                 compra_item=self,
             )
+#=============================sebastian====================#
+
+# inventario/models.py
+
+# Asumiendo que Producto y Proveedor ya existen:
+# class Producto(models.Model): ...
+# class Proveedor(models.Model): ...
+
+class PlantillaProveedorProducto(models.Model):
+    """
+    Modelo de relación que actúa como la 'Plantilla por Distribuidor'
+    para almacenar los datos específicos de costo y unidad para un producto
+    ofrecido por un proveedor particular.
+    """
+    # FKs a los modelos existentes
+    proveedor = models.ForeignKey(Proveedor, on_delete=models.CASCADE)
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE)
+
+    # Requerimientos de la Plantilla
+    sku_proveedor = models.CharField(
+        max_length=40,
+        null=True,
+        blank=True,
+        verbose_name="SKU del Proveedor"
+    )
+    precio_costo = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Precio de Costo"
+    )
+    precio_sugerido = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Precio Sugerido"
+    )
+    unidad_venta = models.CharField(
+        max_length=40,
+        null=True,
+        blank=True,
+        verbose_name="Unidad de Venta (e.g., Pack, Caja, Botella)"
+    )
+    formato = models.CharField(
+        max_length=40,
+        null=True,
+        blank=True,
+        verbose_name="Formato/Volumen"
+    )
+
+    class Meta:
+        verbose_name = "Plantilla Proveedor-Producto"
+        verbose_name_plural = "Plantillas Proveedor-Producto"
+        # Asegura que un proveedor solo pueda listar un producto una vez
+        unique_together = ('proveedor', 'producto')
+        
+    def __str__(self):
+        return f"{self.proveedor.nombre} - {self.producto.nombre}"
+    # Propiedad para obtener la última fecha de compra para este par proveedor/producto
+    @property
+    def ultima_fecha_compra(self):
+        return Compra.objects.filter(
+            items__producto=self.producto, # Filtra las compras del producto
+            proveedor=self.proveedor       # Y que fueron a este proveedor
+        ).order_by('-fecha').values_list('fecha', flat=True).first()
+
+    # Propiedad para obtener la cantidad recibida en la última compra (historial)
+    @property
+    def ultima_cantidad_recibida(self):
+        ultimo_item = CompraItem.objects.filter(
+            compra__proveedor=self.proveedor,
+            producto=self.producto
+        ).order_by('-compra__fecha').first()
+        return ultimo_item.cantidad if ultimo_item else 0

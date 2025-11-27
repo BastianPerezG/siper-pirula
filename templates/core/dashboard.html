@@ -41,7 +41,12 @@
             <h2 class="font-semibold text-lg">💵 Ventas</h2>
             <p class="text-sm text-slate-600 mt-2">Ventas realizadas</p>
         </a>
-
+        
+        <a href="{% url 'inventario:proveedor_lista' %}"
+           class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+            <h2 class="font-semibold text-lg"> Proveedores</h2>
+            <p class="text-sm text-slate-600 mt-2">Proveedores habituales</p>
+        </a>
     </div>
 </div>
 {% endblock %}
