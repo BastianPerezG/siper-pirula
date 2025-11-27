@@ -19,4 +19,15 @@ urlpatterns = [
     path("compras/nueva/", views.compra_crear_view, name="compra_crear"),
     path("compras/<int:pk>/", views.CompraDetalleView.as_view(), name="compra_detalle"),
     path("compras/<int:pk>/eliminar/", views.CompraEliminarView.as_view(), name="compra_eliminar"),
+    # Proveedores
+    path("proveedores/", views.ProveedorListView.as_view(), name="proveedor_lista"),
+    path("proveedores/crear/", views.ProveedorCreateView.as_view(), name="proveedor_crear"),
+    path("proveedores/<int:pk>/editar/", views.ProveedorUpdateView.as_view(), name="proveedor_actualizar"),
+    path("proveedores/<int:pk>/ocultar/", views.ProveedorHideView.as_view(), name="proveedor_ocultar"),
+    # Plantilas P
+    path("plantilla/<int:proveedor_id>/plantilla", views.PlantillaProveedorProductoListView.as_view(), name="plantilla_lista"),
+    path("plantilla/<int:pk>/detalle", views.ProveedorDetailView.as_view(), name="proveedor_detalle"),
+
+    
+ 
 ]

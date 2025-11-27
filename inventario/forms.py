@@ -1,7 +1,7 @@
 from django import forms
 from django.forms import inlineformset_factory
 
-from .models import Producto, MovimientoInventario, Compra, CompraItem, Proveedor
+from .models import Producto, MovimientoInventario, Compra, CompraItem, Proveedor,PlantillaProveedorProducto
 #hola
 # -------------------------
 #  Productos
@@ -11,6 +11,7 @@ class ProductoCrearForm(forms.ModelForm):
         model = Producto
         fields = [
             "ean",
+            "proveedor",
             "nombre",
             "categoria",
             "precio",
@@ -51,13 +52,13 @@ class CompraForm(forms.ModelForm):
         # Sacamos negocio de kwargs para que NO llegue a BaseModelForm
         negocio = kwargs.pop("negocio", None)
         super().__init__(*args, **kwargs)
-
+        # Permite ver los proveedores registrados
         # Si quieres que el combo de proveedores muestre solo los del negocio:
         if negocio is not None:
             self.fields["proveedor"].queryset = Proveedor.objects.filter(
                 negocio=negocio, activo=True
             )
-
+   
 
 class CompraItemForm(forms.ModelForm):
     class Meta:
@@ -82,3 +83,96 @@ CompraItemFormSet = inlineformset_factory(
     extra=1,          # antes 3 ó más
     can_delete=True,
 )
+#==================sebastian-prov para mostrar============#
+#=========================================================#
+
+
+   
+
+
+#==================sebastian-prov=========================#
+#=========================================================#
+class ProveedorForm(forms.ModelForm):
+    """
+    Formulario básico para la creación y edición de proveedores/distribuidores.
+    """
+    class Meta:
+        model = Proveedor
+        # Excluímos 'negocio' y 'activo' ya que se manejan automáticamente en la vista
+        fields = [
+            'nombre', 
+            #'rut', 
+            'contacto', 
+            'telefono', 
+            'correo', # Usamos 'correo' si es el nombre de campo en tu modelo
+        ]
+        
+        widgets = {
+            'nombre': forms.TextInput(attrs={'placeholder': 'Nombre completo o Razón Social'}),
+            #'rut': forms.TextInput(attrs={'placeholder': 'Ej: 76.284.425-4'}),
+            'contacto': forms.TextInput(attrs={'placeholder': 'Nombre del vendedor o encargado'}),
+            'telefono': forms.TextInput(attrs={'placeholder': '+56 9 XXXXXXXX'}),
+            'correo': forms.EmailInput(attrs={'placeholder': 'contacto@proveedor.cl'}),
+        }
+        
+        labels = {
+            'nombre': 'Nombre / Razón Social',
+            #'rut': 'RUT/ID Tributario',
+            'contacto': 'Persona de Contacto',
+            'telefono': 'Teléfono',
+            'correo': 'Correo Electrónico',
+        }
+
+#=================sebastian-plantilla-prov================#
+#=========================================================#
+class PlantillaProveedorProductoForm(forms.ModelForm):
+    """
+    Formulario para crear y editar la Plantilla Proveedor-Producto.
+    Permite al Encargado de Compras/Bodega registrar los detalles específicos 
+    (costo, SKU) que aplica un proveedor a un producto de nuestro inventario.
+    """
+    
+    # El campo 'producto' es clave, ya que vincula la plantilla a un producto existente.
+    producto = forms.ModelChoiceField(
+        queryset=Producto.objects.all(), # El queryset se puede limitar en la vista si es necesario
+        help_text="Producto del inventario central que este proveedor suministra.",
+        label="Producto del Inventario"
+    )
+    
+    class Meta:
+        model = PlantillaProveedorProducto
+        fields = [
+            'producto',
+            'sku_proveedor',
+            'precio_sugerido',
+            'unidad_venta',
+            'formato',
+        ]
+        
+        widgets = {
+            'sku_proveedor': forms.TextInput(attrs={'placeholder': 'SKU/Código que usa el proveedor'}),
+            'precio_costo_actual': forms.NumberInput(attrs={'placeholder': 'Costo de compra unitario sin IVA'}),
+            'precio_sugerido': forms.NumberInput(attrs={'placeholder': 'Precio de venta recomendado (opcional)'}),
+            'unidad_venta': forms.TextInput(attrs={'placeholder': 'Ej: Botella, Caja x12, Pack x6'}),
+            'formato': forms.TextInput(attrs={'placeholder': 'Ej: 750ml, 1 Litro, 5 Kg'}),
+        }
+        
+        labels = {
+            'sku_proveedor': 'SKU del Proveedor',
+            'precio_costo_actual': 'Costo Unitario',
+            'precio_sugerido': 'Precio Sugerido',
+            'unidad_venta': 'Unidad de Venta',
+        }
+        
+    def __init__(self, *args, **kwargs):
+        negocio = kwargs.pop('negocio', None)
+        super().__init__(*args, **kwargs)
+        
+        # Opcional: Si el formulario es para crear una nueva plantilla, 
+        # limitamos la lista de productos a solo los del negocio del usuario.
+        if negocio:
+             self.fields['producto'].queryset = Producto.objects.filter(negocio=negocio, activo=True)
+
+        # Si estamos editando (instance existe), el campo 'producto' no debería ser editable
+        if self.instance.pk:
+            self.fields['producto'].disabled = True

@@ -2,13 +2,15 @@
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
-from django.views.generic import DetailView, CreateView, UpdateView, ListView, DeleteView
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic import DetailView, CreateView, UpdateView, ListView, DeleteView,View
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.utils.safestring import mark_safe
-from .models import Producto, MovimientoInventario, Compra
-from .forms import ProductoCrearForm, MovimientoCrearForm, CompraItemFormSet, CompraForm
+from .models import Producto, MovimientoInventario, Compra,Proveedor,PlantillaProveedorProducto
+from .forms import ProductoCrearForm, MovimientoCrearForm, CompraItemFormSet, CompraForm,PlantillaProveedorProductoForm,ProveedorForm
+#seba#
+from django.contrib.auth.decorators import login_required, permission_required
 
 import json
 
@@ -80,7 +82,7 @@ class ProductoCrearView(LoginRequiredMixin, CreateView):
         producto = form.save(commit=False)
         producto.negocio = self.request.user.perfilusuario.negocio
         producto.save()
-        return redirect(self.get_success_url())
+        return super().form_valid(form)
 
 
 class ProductoActualizarView(LoginRequiredMixin, UpdateView):
@@ -231,3 +233,216 @@ class CompraEliminarView(LoginRequiredMixin, DeleteView):
     def get_queryset(self):
         negocio = self.request.user.perfilusuario.negocio
         return Compra.objects.filter(negocio=negocio)
+#==================sebastian-proveedores======================#
+#=============================================================#
+class ProveedorListView(LoginRequiredMixin, ListView):
+    """Muestra la lista de proveedores activos, filtrados por el negocio del usuario."""
+    model = Proveedor
+    template_name = "inventario/proveedores/proveedor_lista.html"
+    context_object_name = 'proveedores'
+    ordering = ["nombre"]
+    paginate_by = 25
+    def get_queryset(self):
+        # 1. Obtener el negocio del usuario actual
+        negocio = self.request.user.perfilusuario.negocio
+        
+        # 2. Filtrar por el negocio Y por el estado activo
+        return (
+            Proveedor.objects
+            .filter(negocio=negocio, activo=True)
+            .order_by("nombre")
+        )
+    
+    def get_context_data(self, **kwargs):
+        # Mantiene la adición de la URL de creación para el template
+        context = super().get_context_data(**kwargs)
+        context["url_crear_proveedor"] = reverse_lazy("inventario:proveedor_crear")
+        return context
+    
+
+# ----------------------------------------------------
+# B. CREAR PROVEEDOR (CREATE)
+# ----------------------------------------------------
+class ProveedorCreateView(LoginRequiredMixin, CreateView):
+    """Permite crear un nuevo proveedor."""
+    model = Proveedor
+    form_class = ProveedorForm
+    template_name = "inventario/proveedores/proveedor_crear.html" # Template único para crear/editar
+    success_url = reverse_lazy("inventario:proveedor_lista") # Redirigir a la lista al éxito
+
+   
+    def form_valid(self, form):
+        # Asigna automáticamente el negocio del usuario (asumiendo que tu perfil lo tiene)
+        form.instance.negocio = self.request.user.perfilusuario.negocio 
+        return super().form_valid(form)
+
+
+
+
+# ----------------------------------------------------
+# C. ACTUALIZAR PROVEEDOR (UPDATE)
+# ----------------------------------------------------
+class ProveedorUpdateView(LoginRequiredMixin, UpdateView):
+    """Permite editar un proveedor existente."""
+    model = Proveedor
+    form_class = ProveedorForm
+    template_name = "inventario/proveedores/proveedor_editar.html"
+    context_object_name = 'proveedor'
+    success_url = reverse_lazy("inventario:proveedor_lista")
+
+# ----------------------------------------------------
+# D. DETALLE DE PROVEEDOR (DETAIL)
+# ----------------------------------------------------
+
+class ProveedorDetailView(LoginRequiredMixin, DetailView):
+    """Muestra el detalle de un proveedor específico y su plantilla asociada."""
+    model = Proveedor
+    template_name = "inventario/proveedores/proveedor_detalle.html" # Nuevo template
+    context_object_name = 'proveedor' # El objeto se pasará al template como 'proveedor'
+
+    # Opcional: Sobrescribir get_queryset para asegurar la seguridad por negocio
+    def get_queryset(self):
+        # Asegura que solo se puedan ver proveedores que pertenezcan al negocio del usuario
+        negocio = self.request.user.perfilusuario.negocio
+        return Proveedor.objects.filter(negocio=negocio, activo=True)
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        proveedor = self.object # El proveedor actual
+
+        
+
+        # 2. Obtener TODOS los productos del inventario que utilizan este proveedor.
+        # Asumiendo que el modelo Producto tiene un ForeignKey a Proveedor llamado 'proveedor'
+        context['productos_del_proveedor'] = Producto.objects.filter(
+            proveedor=proveedor,
+            negocio=self.request.user.perfilusuario.negocio
+        ).order_by('nombre')
+        
+        return context
+# ----------------------------------------------------
+# E. OCULTAR PROVEEDOR (SOFT DELETE / HIDE)
+# ----------------------------------------------------
+class ProveedorHideView(LoginRequiredMixin, DeleteView):
+    """Cambia el estado del proveedor a inactivo (is_active=False) en lugar de eliminarlo."""
+    
+    # Redirige a la lista de proveedores
+    url = reverse_lazy("inventario:proveedor_lista") 
+
+    def get(self, request, *args, **kwargs):
+        try:
+            # Obtiene el proveedor a ocultar
+            proveedor = Proveedor.objects.get(pk=self.kwargs['pk'])
+            
+            # Realiza la operación de "ocultar" (Soft Delete)
+            proveedor.is_active = False
+            proveedor.save()
+            
+            # Puedes agregar un mensaje de éxito si usas el sistema de mensajes de Django
+            # messages.success(request, f"Proveedor '{proveedor.nombre}' ocultado correctamente.")
+            
+        except Proveedor.DoesNotExist:
+            # Puedes agregar un mensaje de error
+            # messages.error(request, "El proveedor no existe.")
+            pass # Continúa la redirección
+            
+        return super().get(request, *args, **kwargs)
+
+#=============sebastian-plantilla de proveedores================#
+
+class PlantillaProveedorProductoListView(LoginRequiredMixin, ListView):
+    # Modelo CORREGIDO
+    model = PlantillaProveedorProducto 
+    template_name = "inventario/proveedores/plantilla_lista.html" # Nuevo template
+    context_object_name = "plantillas"
+
+    def get_queryset(self):
+        # Filtra por proveedor_id de la URL y por negocio del usuario
+        proveedor_id = self.kwargs["proveedor_id"]
+        negocio = self.request.user.perfilusuario.negocio
+        
+        return PlantillaProveedorProducto.objects.filter(
+            proveedor_id=proveedor_id,
+            proveedor__negocio=negocio, # Filtro de seguridad por negocio
+            is_active=True
+        ).select_related('producto')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Filtra el proveedor por su negocio para evitar acceso a proveedores de otros negocios
+        context["proveedor"] = get_object_or_404(
+            Proveedor, 
+            id=self.kwargs["proveedor_id"], 
+            negocio=self.request.user.perfilusuario.negocio
+        )
+        return context
+
+
+class PlantillaProveedorProductoCreateView(LoginRequiredMixin, CreateView): # USANDO MIXIN CORREGIDO
+    # Modelo CORREGIDO
+    model = PlantillaProveedorProducto 
+    form_class = PlantillaProveedorProductoForm # Formulario CORREGIDO
+    template_name = "inventario/proveedores/form_proveedores.html" # Nuevo template
+
+    def form_valid(self, form):
+        # Asegurar que la plantilla se asocia al proveedor correcto de la URL
+        proveedor = get_object_or_404(
+            Proveedor, 
+            id=self.kwargs["proveedor_id"], 
+            negocio=self.request.user.perfilusuario.negocio
+        )
+        form.instance.proveedor = proveedor
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse(
+            "inventario:proveedor_lista", # Ajustar URL
+            kwargs={"proveedor_id": self.kwargs["proveedor_id"]}
+        )
+
+
+class PlantillaProveedorProductoUpdateView(LoginRequiredMixin, UpdateView): # USANDO MIXIN CORREGIDO
+    # Modelo CORREGIDO
+    model = PlantillaProveedorProducto
+    form_class = PlantillaProveedorProductoForm # Formulario CORREGIDO
+    template_name = "inventario/proveedores/form_productos_proveedor.html" # Nuevo template
+
+    def get_queryset(self):
+        # Asegurar que solo se pueda editar la plantilla de su negocio
+        negocio = self.request.user.perfilusuario.negocio
+        return PlantillaProveedorProducto.objects.filter(proveedor__negocio=negocio)
+
+    def get_success_url(self):
+        # Redirige a la lista de plantillas del proveedor
+        return reverse(
+            "inventario:plantilla_lista",
+            kwargs={"proveedor_id": self.object.proveedor.id}
+        )
+
+
+class PlantillaProveedorProductoHideView(LoginRequiredMixin, View): # USANDO MIXIN CORREGIDO
+    def get(self, request, pk):
+        negocio = request.user.perfilusuario.negocio
+        
+        plantilla = get_object_or_404(
+            PlantillaProveedorProducto, 
+            pk=pk, 
+            proveedor__negocio=negocio # Filtro de seguridad
+        )
+        plantilla.is_active = False
+        plantilla.save()
+        
+        return redirect("inventario:lista_proveedores", proveedor_id=plantilla.proveedor.id)
+    
+
+    # En tu views.py para la vista que renderiza esto
+class ProveedorProductosView(DetailView): 
+    model = Proveedor
+    template_name = 'inventario/proveedores/proveedor_detalle.html' # Nuevo template
+    context_object_name = 'proveedor'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Asumiendo que 'producto_set' es el related_name del ForeignKey Producto a Proveedor
+        context['productos_del_proveedor'] = self.object.producto_set.all() 
+        return context

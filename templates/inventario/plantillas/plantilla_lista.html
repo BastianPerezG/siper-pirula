@@ -1,0 +1,107 @@
+{% extends "../../core/base.html" %}
+{% load static %}
+{% load humanize %} 
+{% load crispy_forms_tags %} 
+{% block title %}Plantilla de Productos - {{ proveedor.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>📋 Plantilla de Productos de {{ proveedor.nombre }}</h2>
+            <p class="lead text-muted">Aquí se detallan los productos que el distribuidor **{{ proveedor.nombre }}** ofrece, junto a sus costos y datos de formato.</p>
+        </div>
+        
+        <div class="d-flex flex-column align-items-end">
+            <a href="{% url 'inventario:proveedor_lista' %}" class="btn btn-secondary btn-sm mb-2">
+                <i class="fas fa-arrow-left"></i> Volver a Proveedores
+            </a>
+            <a href="{% url 'inventario:plantilla_crear' proveedor_id=proveedor.pk %}" class="btn btn-primary btn-lg">
+                <i class="fas fa-plus"></i> Agregar Producto a Plantilla
+            </a>
+        </div>
+    </div>
+
+    <hr>
+    
+    <div class="card bg-light mb-4 shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title"><i class="fas fa-truck"></i> Datos de Contacto</h5>
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>Contacto:</strong> {{ proveedor.contacto|default:"N/A" }}
+                </div>
+                <div class="col-md-4">
+                    <strong>Teléfono:</strong> {{ proveedor.telefono|default:"N/A" }}
+                </div>
+                <div class="col-md-4">
+                    <strong>Correo:</strong> {{ proveedor.correo|default:"N/A" }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if plantillas %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover table-bordered">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>Producto (Interno)</th>
+                        <th>SKU Proveedor</th>
+                        <th>Unidad de Venta</th>
+                        <th class="text-right">Costo Neto (CLP)</th>
+                        <th>Última Compra</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for plantilla in plantillas %}
+                    <tr>
+                        <td>
+                            <strong>{{ plantilla.producto.nombre }}</strong>
+                            <small class="d-block text-muted">EAN: {{ plantilla.producto.ean }}</small>
+                            <small class="d-block text-info">Stock Actual: {{ plantilla.producto.stock_actual }}</small>
+                        </td>
+                        <td>{{ plantilla.sku_proveedor|default:"-" }}</td>
+                        <td>
+                            {{ plantilla.unidad_venta|default:"Unidad" }} 
+                            {% if plantilla.formato %}({{ plantilla.formato }}){% endif %}
+                        </td>
+                        <td class="text-right text-success font-weight-bold">
+                            ${{ plantilla.precio_costo|floatformat:0|intcomma }} 
+                        </td>
+                        <td>
+                            {% if plantilla.ultima_fecha_compra %}
+                                {{ plantilla.ultima_fecha_compra|date:"d M Y" }}
+                                <small class="d-block text-muted">({{ plantilla.ultima_cantidad_recibida }} unidades)</small>
+                            {% else %}
+                                <span class="badge badge-warning">Sin historial</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <a href="{% url 'inventario:plantilla_actualizar' proveedor_id=proveedor.pk pk=plantilla.pk %}" 
+                               class="btn btn-sm btn-info" 
+                               title="Editar datos de la plantilla">
+                                <i class="fas fa-pencil-alt"></i> Editar
+                            </a>
+                            <a href="{% url 'inventario:plantilla_ocultar' pk=plantilla.pk %}" 
+                               class="btn btn-sm btn-danger ml-1" 
+                               title="Eliminar producto de la plantilla"
+                               onclick="return confirm('¿Confirma que desea eliminar este producto de la plantilla de {{ proveedor.nombre }}?')">
+                                <i class="fas fa-trash-alt"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info text-center" role="alert">
+            Este proveedor aún no tiene productos registrados en su plantilla. ¡Usa el botón "Agregar Producto" para comenzar!
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}
