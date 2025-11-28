@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from core.models import Negocio 
 from django.contrib.auth.models import User
 from django.utils.text import slugify
+
 # Modelo Inventario.
 
 class Categoria(models.Model):

@@ -3,7 +3,7 @@ from django.conf import settings
 from pedidos.emails import enviar_correo_cambio_estado
 from core.models import Negocio
 from inventario.models import Producto
-
+from pedidos.validators import validar_rut
 import random
 import string
 
@@ -15,9 +15,36 @@ class Cliente(models.Model):
         on_delete=models.PROTECT,
         related_name="clientes",
     )
+
+    # Opcional: usuario Django asociado (para login/registro)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cliente_perfil",
+    )
+
     nombre = models.CharField(max_length=120)
+
+    rut = models.CharField(
+        max_length=12,
+        blank=True,
+        null=True,
+        help_text="RUT chileno, ej: 12.345.678-9",
+        validators=[validar_rut],
+    )
+
     correo = models.EmailField(blank=True, null=True)
     telefono = models.CharField(max_length=40, blank=True, null=True)
+
+    direccion = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        help_text="Dirección principal para retiro/envío",
+    )
+
     activo = models.BooleanField(default=True)
 
     class Meta:

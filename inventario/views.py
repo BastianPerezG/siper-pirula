@@ -7,7 +7,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.utils.safestring import mark_safe
-from .models import Producto, MovimientoInventario, Compra,Proveedor,PlantillaProveedorProducto
+from .models import Producto, MovimientoInventario, Compra,Proveedor,PlantillaProveedorProducto, Categoria
 from .forms import ProductoCrearForm, MovimientoCrearForm, CompraItemFormSet, CompraForm,PlantillaProveedorProductoForm,ProveedorForm
 #seba#
 from django.contrib.auth.decorators import login_required, permission_required
@@ -446,3 +446,57 @@ class ProveedorProductosView(DetailView):
         # Asumiendo que 'producto_set' es el related_name del ForeignKey Producto a Proveedor
         context['productos_del_proveedor'] = self.object.producto_set.all() 
         return context
+    
+# ================== CATEGORÍAS (CRUD INTERNO) ======================
+
+class CategoriaListaView(LoginRequiredMixin, ListView):
+    model = Categoria
+    template_name = "inventario/categorias/categoria_lista.html"
+    context_object_name = "categorias"
+    paginate_by = 25
+
+    def get_queryset(self):
+        negocio = self.request.user.perfilusuario.negocio
+        return (
+            Categoria.objects
+            .filter(negocio=negocio)
+            .order_by("orden", "nombre")
+        )
+
+
+class CategoriaCrearView(LoginRequiredMixin, CreateView):
+    model = Categoria
+    fields = ["nombre", "imagen", "activa", "orden"]
+    template_name = "inventario/categorias/categoria_form.html"
+    success_url = reverse_lazy("inventario:categoria_lista")
+
+    def form_valid(self, form):
+        form.instance.negocio = self.request.user.perfilusuario.negocio
+        return super().form_valid(form)
+
+
+class CategoriaActualizarView(LoginRequiredMixin, UpdateView):
+    model = Categoria
+    fields = ["nombre", "imagen", "activa", "orden"]
+    template_name = "inventario/categorias/categoria_form.html"
+    success_url = reverse_lazy("inventario:categoria_lista")
+
+    def get_queryset(self):
+        negocio = self.request.user.perfilusuario.negocio
+        return Categoria.objects.filter(negocio=negocio)
+
+
+class CategoriaToggleActivaView(LoginRequiredMixin, View):
+    """
+    Soft-delete: sólo cambia 'activa' en vez de borrar.
+    """
+    def post(self, request, pk):
+        negocio = request.user.perfilusuario.negocio
+        categoria = get_object_or_404(
+            Categoria,
+            pk=pk,
+            negocio=negocio,
+        )
+        categoria.activa = not categoria.activa
+        categoria.save()
+        return redirect("inventario:categoria_lista")

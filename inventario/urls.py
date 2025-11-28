@@ -27,7 +27,10 @@ urlpatterns = [
     # Plantilas P
     path("plantilla/<int:proveedor_id>/plantilla", views.PlantillaProveedorProductoListView.as_view(), name="plantilla_lista"),
     path("plantilla/<int:pk>/detalle", views.ProveedorDetailView.as_view(), name="proveedor_detalle"),
-
-    
+     # Categorías
+    path("categorias/", views.CategoriaListaView.as_view(), name="categoria_lista"),
+    path("categorias/nueva/", views.CategoriaCrearView.as_view(), name="categoria_crear"),
+    path("categorias/<int:pk>/editar/", views.CategoriaActualizarView.as_view(), name="categoria_editar"),
+    path("categorias/<int:pk>/toggle/", views.CategoriaToggleActivaView.as_view(), name="categoria_toggle"),
  
 ]
