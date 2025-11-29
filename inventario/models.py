@@ -61,18 +61,24 @@ class Producto(models.Model):
 
     @property
     def stock_actual(self):
-        """
-        Calcula el stock actual a partir de todos los movimientos.
-        ENTRADA y AJUSTE suman, SALIDA y MERMA restan.
-        """
-
         resultado = self.movimientos.aggregate(
             total=Sum(
                 Case(
-                    When(tipo__in=[MovimientoInventario.TIPO_ENTRADA, MovimientoInventario.TIPO_AJUSTE],
-                         then=F("cantidad")),
-                    When(tipo__in=[MovimientoInventario.TIPO_SALIDA, MovimientoInventario.TIPO_MERMA],
-                         then=-F("cantidad")),
+                    When(
+                        tipo__in=[
+                            MovimientoInventario.TIPO_ENTRADA,
+                            MovimientoInventario.TIPO_AJUSTE
+                        ],
+                        then=F("cantidad")
+                    ),
+                    When(
+                        tipo__in=[
+                            MovimientoInventario.TIPO_SALIDA,
+                            MovimientoInventario.TIPO_MERMA,
+                            MovimientoInventario.TIPO_RESERVA,  # 🔹 NUEVO
+                        ],
+                        then=-F("cantidad")
+                    ),
                     default=0,
                     output_field=IntegerField(),
                 )
@@ -86,12 +92,14 @@ class MovimientoInventario(models.Model):
     TIPO_SALIDA = "SALIDA"
     TIPO_AJUSTE = "AJUSTE"
     TIPO_MERMA = "MERMA"
+    TIPO_RESERVA = "RESERVA"  # 🔹 NUEVO
 
     TIPO_CHOICES = [
         (TIPO_ENTRADA, "Entrada (compra, devolución)"),
         (TIPO_SALIDA, "Salida (venta manual, uso interno)"),
         (TIPO_AJUSTE, "Ajuste (conteo inventario)"),
         (TIPO_MERMA, "Merma (rotura, pérdida)"),
+        (TIPO_RESERVA, "Reserva por pedido"),  # 🔹 NUEVO
     ]
 
     producto = models.ForeignKey(
@@ -100,7 +108,6 @@ class MovimientoInventario(models.Model):
         related_name="movimientos",
     )
 
-    # De qué ítem de compra viene este movimiento
     compra_item = models.ForeignKey(
         "CompraItem",
         on_delete=models.CASCADE,
@@ -111,6 +118,15 @@ class MovimientoInventario(models.Model):
 
     venta_item = models.ForeignKey(
         "ventas.VentaItem",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="movimientos",
+    )
+
+    # 🔹 NUEVO: vincular al detalle de pedido
+    pedido_item = models.ForeignKey(
+        "pedidos.PedidoItem",
         on_delete=models.CASCADE,
         null=True,
         blank=True,

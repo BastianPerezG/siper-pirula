@@ -5,49 +5,162 @@
 {% block content %}
 <h1 class="text-2xl font-bold mb-6">Monitor de pedidos</h1>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<form method="get" class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+    {# ESTADO #}
+    <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">
+            ESTADO
+        </label>
+        <select name="estado"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="TODOS">Todos</option>
+            {% for value, label in ESTADO_CHOICES %}
+            <option value="{{ value }}" {% if estado == value %} selected{% endif %}>
+                {{ label }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
 
+    {# BUSCAR #}
+    <div class="md:col-span-2">
+        <label class="block text-xs font-semibold text-slate-600 mb-1">
+            BUSCAR
+        </label>
+        <input type="text" name="q" value="{{ q }}" placeholder="Código, nombre, RUT o correo"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </div>
+
+    {# FILTRO POR DÍAS #}
+    <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">
+            DÍAS
+        </label>
+        <select name="dias"
+            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">Todos</option>
+            <option value="1" {% if dias == "1" %}selected{% endif %}>Últimas 24 horas</option>
+            <option value="3" {% if dias == "3" %}selected{% endif %}>Últimos 3 días</option>
+            <option value="7" {% if dias == "7" %}selected{% endif %}>Última semana</option>
+            <option value="30" {% if dias == "30" %}selected{% endif %}>Último mes</option>
+        </select>
+    </div>
+
+    <div class="md:col-span-4 flex gap-2 justify-end">
+        <button type="submit"
+            class="px-5 py-2 rounded-full bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">
+            Filtrar
+        </button>
+        <a href="{% url 'pedidos:pedidos_monitor' %}"
+            class="px-4 py-2 rounded-full border text-sm font-semibold text-slate-600 hover:bg-slate-50">
+            Limpiar
+        </a>
+    </div>
+</form>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
     {% for pedido in pedidos %}
-        <div class="bg-white shadow rounded-lg p-4 border-l-4
+    <div class="bg-white shadow rounded-lg p-4 border-l-4
             {% if pedido.estado == 'RECIBIDO' %}
                 border-blue-500
             {% elif pedido.estado == 'PREPARANDO' %}
                 border-amber-500
             {% elif pedido.estado == 'LISTO' %}
                 border-green-500
+            {% elif pedido.estado == 'CANCELADO' or pedido.estado == 'NO_RETIRA' %}
+                border-red-500
+            {% else %}
+                border-slate-300
             {% endif %}
         ">
-            <div class="flex justify-between items-center mb-2">
+        <div class="flex justify-between items-start mb-2">
+            <div>
                 <div class="text-sm font-bold">{{ pedido.codigo }}</div>
                 <div class="text-xs text-slate-500">
                     {{ pedido.fecha|timesince }} atrás
                 </div>
             </div>
 
-            <div class="text-xs text-slate-500 mb-2">
-                {{ pedido.get_estado_display }}
-            </div>
-
-            <ul class="space-y-1 text-sm">
-                {% for item in pedido.items.all %}
-                    <li class="flex justify-between">
-                        <span>{{ item.producto.nombre }}</span>
-                        <span class="font-semibold">x{{ item.cantidad }}</span>
-                    </li>
-                {% endfor %}
-            </ul>
-
-            <div class="mt-3 text-right">
-                <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
-                   class="text-xs text-slate-600 hover:underline">
-                    Ver detalle →
-                </a>
-            </div>
+            {# BADGE PAGADO / POR PAGAR #}
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold
+                    {% if pedido.est_pagado %}
+                        bg-green-100 text-green-700
+                    {% else %}
+                        bg-amber-100 text-amber-700
+                    {% endif %}
+                ">
+                {% if pedido.est_pagado %}Pagado{% else %}Por pagar{% endif %}
+            </span>
         </div>
+
+        <div class="text-xs text-slate-500 mb-2">
+            {{ pedido.get_estado_display }}
+            {% if pedido.cliente %}
+            · {{ pedido.cliente.nombre }} ({{ pedido.cliente.rut }})
+            {% elif pedido.nombre %}
+            · {{ pedido.nombre }}
+            {% endif %}
+        </div>
+
+        <ul class="space-y-1 text-sm mb-3">
+            {% for item in pedido.items.all %}
+            <li class="flex justify-between">
+                <span>{{ item.producto.nombre }}</span>
+                <span class="font-semibold">x{{ item.cantidad }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <div class="mt-3 flex justify-between items-center gap-2">
+            {# FORM PARA CAMBIAR ESTADO #}
+            <form method="post" class="flex gap-2">
+                {% csrf_token %}
+                <input type="hidden" name="pedido_id" value="{{ pedido.id }}">
+
+                {# Botón de "siguiente" estado #}
+                {% if pedido.estado == 'RECIBIDO' %}
+                <button name="accion" value="next"
+                    class="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold hover:bg-blue-200">
+                    Preparando
+                </button>
+                {% elif pedido.estado == 'PREPARANDO' %}
+                <button name="accion" value="next"
+                    class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold hover:bg-emerald-200">
+                    Listo para retiro
+                </button>
+                {% elif pedido.estado == 'LISTO' %}
+                <button name="accion" value="next"
+                    class="px-3 py-1 rounded-full bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800">
+                    Marcar retirado
+                </button>
+                {% endif %}
+
+                {% if pedido.estado == 'RECIBIDO' or pedido.estado == 'PREPARANDO' %}
+                <button name="accion" value="cancelar"
+                    class="px-3 py-1 rounded-full bg-red-100 text-red-700 text-[11px] font-semibold hover:bg-red-200">
+                    Cancelar
+                </button>
+                {% endif %}
+
+                {# Botón NO RETIRA solo cuando está listo #}
+                {% if pedido.estado == 'LISTO' %}
+                <button name="accion" value="no_retira"
+                    class="px-3 py-1 rounded-full bg-red-100 text-red-700 text-[11px] font-semibold hover:bg-red-200">
+                    No retira
+                </button>
+                {% endif %}
+            </form>
+
+            <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
+                class="text-xs text-slate-600 hover:underline ml-auto">
+                Ver detalle →
+            </a>
+        </div>
+    </div>
     {% empty %}
-        <div class="col-span-3 text-center text-slate-500">
-            No hay pedidos activos.
-        </div>
+    <div class="col-span-3 text-center text-slate-500">
+        No hay pedidos que coincidan con los filtros.
+    </div>
     {% endfor %}
 </div>
 {% endblock %}

@@ -88,7 +88,7 @@
         </div>
         <div>
           <label class="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-            RUT (opcional)
+            RUT
           </label>
           {{ form.rut }}
           {% if form.rut.errors %}
@@ -99,7 +99,7 @@
         </div>
         <div>
           <label class="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-            Correo electrónico (opcional)
+            Correo electrónico
           </label>
           {{ form.correo }}
           {% if form.correo.errors %}
@@ -120,23 +120,21 @@
           </p>
           {% endif %}
         </div>
+        <div class="space-y-4">
+          <h2 class="text-lg font-semibold text-slate-800">Forma de pago</h2>
 
-
-        <div>
-          <label class="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-            Dirección (opcional)
+          <label class="flex items-center gap-2">
+            <input type="radio" name="forma_pago" value="RETIRO" checked>
+            <span>Pagar al retirar en la botillería</span>
           </label>
-          {{ form.direccion }}
-          {% if form.direccion.errors %}
-          <p class="mt-1 text-xs text-red-600">
-            {{ form.direccion.errors.0 }}
-          </p>
-          {% endif %}
-        </div>
 
+          <label class="flex items-center gap-2">
+            <input type="radio" name="forma_pago" value="WEBPAY">
+            <span>Pagar online con Webpay</span>
+          </label>
+        </div>
         <p class="mt-2 text-[11px] sm:text-xs text-slate-500">
           Al confirmar, tu pedido será enviado a la botillería para preparación.
-          El pago se realiza al momento del retiro.
         </p>
 
         <div class="mt-4 flex flex-col sm:flex-row sm:justify-between gap-3">
@@ -149,6 +147,7 @@
             Confirmar pedido
           </button>
         </div>
+
       </form>
     </section>
   </div>

@@ -28,4 +28,8 @@ urlpatterns = [
     path("registro/", views.registro_cliente_view, name="registro"),
     path("login/", views.login_cliente_view, name="login"),
     path("logout/", views.logout_cliente_view, name="logout"),
+
+    # Webpay
+    path("webpay/retorno/", views.webpay_retorno_view, name="webpay_retorno"),
+    
 ]

@@ -2,7 +2,7 @@ from django.db import models
 from django.conf import settings
 from pedidos.emails import enviar_correo_cambio_estado
 from core.models import Negocio
-from inventario.models import Producto
+from inventario.models import Producto, MovimientoInventario
 from pedidos.validators import validar_rut
 import random
 import string
@@ -56,15 +56,34 @@ class Cliente(models.Model):
 
 
 class Pedido(models.Model):
+
+    # Forma de pago
+    FORMA_RETIRO = "RETIRO"
+    FORMA_WEBPAY = "WEBPAY"
+
+    FORMA_PAGO_CHOICES = [
+        (FORMA_RETIRO, "Pagar al retirar"),
+        (FORMA_WEBPAY, "Pago online Webpay"),
+    ]
+
+    forma_pago = models.CharField(
+        max_length=10,
+        choices=FORMA_PAGO_CHOICES,
+        default=FORMA_RETIRO,
+    )
+
+    # Estados
     EST_RECIBIDO = "RECIBIDO"
     EST_PREPARANDO = "PREPARANDO"
     EST_LISTO = "LISTO"
     EST_RETIRADO = "RETIRADO"
     EST_CANCELADO = "CANCELADO"
     EST_NO_RETIRA = "NO_RETIRA"
+    EST_PAGADO = "PAGADO"    
 
     ESTADO_CHOICES = [
         (EST_RECIBIDO, "Recibido"),
+        (EST_PAGADO, "Pagado"),
         (EST_PREPARANDO, "Preparando"),
         (EST_LISTO, "Listo para retiro"),
         (EST_RETIRADO, "Retirado"),
@@ -106,6 +125,21 @@ class Pedido(models.Model):
     # Campo total opcional (puedes usarlo o sólo el @property)
     total_monto = models.PositiveIntegerField(default=0)
 
+        # Datos Webpay (opcionales)
+    webpay_token = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Token de la transacción Webpay"
+    )
+    webpay_status = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="Estado interno del pago Webpay (iniciado, autorizado, etc.)"
+    )
+
+
     class Meta:
         db_table = "pedido"
         ordering = ["-fecha"]
@@ -133,6 +167,68 @@ class Pedido(models.Model):
             usuario=usuario,
         )
         enviar_correo_cambio_estado(self)
+
+        # --- Integración con inventario (reservas de stock) ---
+
+    def crear_reservas_inventario(self):
+        """
+        Crea un MovimientoInventario.TIPO_RESERVA por cada ítem del pedido.
+        Esto descuenta stock mientras el pedido está pendiente de retiro.
+        """
+        for item in self.items.select_related("producto"):
+            MovimientoInventario.objects.create(
+                producto=item.producto,
+                tipo=MovimientoInventario.TIPO_RESERVA,
+                cantidad=item.cantidad,
+                pedido_item=item,
+                comentario=f"Reserva por pedido {self.codigo}",
+            )
+
+    def liberar_reservas_inventario(self):
+        """
+        Elimina las reservas asociadas a este pedido.
+        Se usa cuando el pedido se cancela o el cliente no retira.
+        """
+        MovimientoInventario.objects.filter(
+            pedido_item__pedido=self,
+            tipo=MovimientoInventario.TIPO_RESERVA,
+        ).delete()
+
+    def marcar_pagado_descontar_stock(self, usuario=None):
+        """
+        Se llama cuando Webpay confirma el pago.
+        - Marca el pedido como PAGADO.
+        - Por ahora NO tocamos las reservas de inventario porque ya
+          se descuentan al crear el pedido.
+        """
+        # Si quisieras hacer algo extra con inventario, este es el lugar.
+        # De momento sólo cambiamos el estado y registramos en el log.
+        self.actualizar_total()
+        self.cambiar_estado(self.EST_PAGADO, usuario=usuario)
+    
+    def marcar_cancelado_revertir_reserva(self, usuario=None):
+        """
+        Se usa cuando Webpay rechaza, expira o el usuario cancela el pago.
+        Debe devolver el stock que estaba reservado y marcar el pedido como CANCELADO.
+        """
+        # 1) Devolver stock (elimina los movimientos de tipo RESERVA)
+        self.liberar_reservas_inventario()
+
+        # 2) Marcar el pedido como cancelado y registrar en el log
+        self.cambiar_estado(self.EST_CANCELADO, usuario=usuario)
+    
+    def marcar_pendiente_retiro(self, usuario=None):
+        """
+        Caso: pedido con pago al retirar en la botillería.
+        - Crea las reservas de inventario.
+        - Deja el pedido en estado 'RECIBIDO'.
+        """
+        # Reservar stock para este pedido
+        self.crear_reservas_inventario()
+
+        # Actualizar estado
+        self.estado = self.EST_RECIBIDO
+        self.save(update_fields=["estado"])
     
     def _generar_codigo_unico(self):
         """

@@ -65,6 +65,14 @@ class Venta(models.Model):
         default=EST_CERRADA,  # o ABIERTA, según flujo
     )
 
+    pedido = models.ForeignKey(
+        "pedidos.Pedido",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="ventas",
+    )
+
     class Meta:
         db_table = "venta"
         ordering = ["-fecha"]
@@ -87,6 +95,15 @@ class VentaItem(models.Model):
         Producto,
         on_delete=models.PROTECT,
     )
+
+    pedido_item = models.ForeignKey(
+        "pedidos.PedidoItem",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="venta_items",
+    )
+
     cantidad = models.PositiveIntegerField()
     precio_unit = models.PositiveIntegerField(
         help_text="Precio de venta en pesos chilenos"
@@ -142,13 +159,39 @@ class VentaItem(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        Al crear un VentaItem, generamos un MovimientoInventario de SALIDA.
-        Suposición: los ítems no se editan; si hay error, se borran y se crean de nuevo.
+        Al crear un VentaItem, generamos o reutilizamos Movimientos de Inventario.
+
+        - Si viene desde un Pedido (pedido_item no es None) buscamos **todas** las
+          reservas correspondientes y las convertimos en SALIDA.
+        - Si no hay reservas (venta directa), creamos una SALIDA normal.
         """
         es_nuevo = self.pk is None
         super().save(*args, **kwargs)
 
-        if es_nuevo:
+        if not es_nuevo:
+            return
+
+        mov_usado = False
+
+        # Caso 1: venta originada desde un pedido
+        if self.pedido_item_id:
+            reservas = MovimientoInventario.objects.filter(
+                pedido_item=self.pedido_item,
+                tipo=MovimientoInventario.TIPO_RESERVA,
+            )
+
+            if reservas.exists():
+                for mov in reservas:
+                    mov.tipo = MovimientoInventario.TIPO_SALIDA
+                    mov.venta_item = self
+                    comentario_base = mov.comentario or ""
+                    extra = f" → Venta #{self.venta_id}"
+                    mov.comentario = (comentario_base + extra).strip()
+                    mov.save(update_fields=["tipo", "venta_item", "comentario"])
+                mov_usado = True
+
+        # Caso 2: venta directa (o no se encontró ninguna reserva)
+        if not mov_usado:
             MovimientoInventario.objects.create(
                 producto=self.producto,
                 tipo=MovimientoInventario.TIPO_SALIDA,
@@ -156,6 +199,7 @@ class VentaItem(models.Model):
                 comentario=f"Venta #{self.venta_id}",
                 venta_item=self,
             )
+
 
 
 class Anulacion(models.Model):

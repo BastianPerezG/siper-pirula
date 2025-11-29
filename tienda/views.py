@@ -1,6 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
-from django import forms
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from core.models import Negocio
@@ -14,8 +13,32 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.core.paginator import Paginator
 from django.http import JsonResponse
+from django.conf import settings
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from .forms import CheckoutForm
+from ventas.models import Venta
+# Solo si vas a usar el SDK oficial:
+try:
+    from transbank.webpay.webpay_plus.transaction import Transaction
+    from transbank.common.options import WebpayOptions
+    from transbank.common.integration_type import IntegrationType
+except ImportError:
+    Transaction = None  # para que el proyecto no reviente si aún no instalas el SDK
+
+
 
 CART_SESSION_KEY = "carrito"
+
+
+
+def get_webpay_transaction():
+    options = WebpayOptions(
+        commerce_code=settings.TRANSBANK_COMMERCE_CODE,
+        api_key=settings.TRANSBANK_API_KEY,
+        integration_type=settings.TRANSBANK_ENVIRONMENT,
+    )
+    return Transaction(options)
 
 
 # ------------------------------------------------------------------
@@ -68,6 +91,14 @@ def _build_cart_items(request, negocio):
         total += subtotal
 
     return items, total
+
+def limpiar_carrito_en_session(request):
+    """
+    Elimina el carrito de la sesión.
+    """
+    if CART_SESSION_KEY in request.session:
+        del request.session[CART_SESSION_KEY]
+        request.session.modified = True
 
 
 # ------------------------------------------------------------------
@@ -245,191 +276,119 @@ def carrito_ver(request):
 # Checkout
 # ------------------------------------------------------------------
 
-class CheckoutForm(forms.Form):
-    nombre = forms.CharField(max_length=120)
-
-    rut = forms.CharField(
-        max_length=12,
-        required=False,
-        validators=[validar_rut],
-        help_text="Opcional, pero recomendado para identificar tu pedido.",
-    )
-
-    correo = forms.EmailField(required=False)
-    telefono = forms.CharField(max_length=40, required=False)
-
-    direccion = forms.CharField(
-        max_length=200,
-        required=False,
-        help_text="Opcional, por ahora el retiro es en local.",
-    )
-
-    def __init__(self, *args, **kwargs):
-        # truco para saber si viene de usuario logueado
-        self.es_usuario = kwargs.pop("es_usuario", False)
-        super().__init__(*args, **kwargs)
-
-    def clean(self):
-        cleaned = super().clean()
-        correo = cleaned.get("correo")
-        telefono = cleaned.get("telefono")
-
-        # Si NO es usuario logueado, pedimos al menos algún dato de contacto
-        if not self.es_usuario and not (correo or telefono):
-            raise forms.ValidationError(
-                "Debes ingresar al menos un medio de contacto (correo o teléfono)."
-            )
-        return cleaned
-
 
 def checkout_view(request):
     negocio = get_negocio_actual()
+
+    # Ítems del carrito desde la sesión
     items, total = _build_cart_items(request, negocio)
 
-    # Si el carrito está vacío, no tiene sentido seguir
     if not items:
-        messages.error(request, "Tu carrito está vacío.")
-        return redirect("tienda:carrito_ver")
-
-    # --------- PRELLENAR DATOS SI ESTÁ LOGUEADO ---------
-    initial = {}
-    if request.user.is_authenticated:
-        try:
-            cliente = Cliente.objects.get(user=request.user, negocio=negocio)
-            initial.update(
-                {
-                    "nombre": cliente.nombre,
-                    "rut": cliente.rut,
-                    "correo": cliente.correo,
-                    "telefono": cliente.telefono,
-                    "direccion": cliente.direccion,
-                }
-            )
-        except Cliente.DoesNotExist:
-            # usamos datos del user como base
-            initial.update(
-                {
-                    "nombre": request.user.get_full_name()
-                    or request.user.username
-                }
-            )
+        messages.warning(request, "Tu carrito está vacío.")
+        return redirect("tienda:productos")
 
     if request.method == "POST":
-        form = CheckoutForm(
-            request.POST,
-            es_usuario=request.user.is_authenticated,
-        )
+        form = CheckoutForm(request.POST)
 
         if form.is_valid():
-            nombre = form.cleaned_data["nombre"]
-            rut = form.cleaned_data.get("rut")
-            correo = form.cleaned_data.get("correo")
-            telefono = form.cleaned_data.get("telefono")
-            direccion = form.cleaned_data.get("direccion")
+            datos = form.cleaned_data
+            forma_pago = datos["forma_pago"]  # AHORA desde cleaned_data
 
-            # ------------ VALIDAR STOCK FINAL ANTES DE CREAR PEDIDO ------------
-            for it in items:
-                producto = it["producto"]
-                if it["cantidad"] > producto.stock_actual:
-                    messages.error(
-                        request,
-                        f"Stock insuficiente para {producto.nombre}. "
-                        f"Disponible: {producto.stock_actual}",
-                    )
-                    return redirect("tienda:carrito_ver")
-
-            # ------------ RESOLVER / CREAR CLIENTE ------------
+            rut = datos.get("rut")
             cliente = None
 
-            if request.user.is_authenticated:
-                # Cliente asociado al usuario
-                cliente, created = Cliente.objects.get_or_create(
+            # Si viene RUT, lo usamos para buscar/crear cliente
+            if rut:
+                cliente, _ = Cliente.objects.get_or_create(
                     negocio=negocio,
-                    user=request.user,
+                    rut=rut,
                     defaults={
-                        "nombre": nombre,
-                        "rut": rut,
-                        "correo": correo,
-                        "telefono": telefono,
-                        "direccion": direccion,
+                        "nombre": datos["nombre"],
+                        "correo": datos["correo"],
+                        "telefono": datos.get("telefono", ""),
+                        "activo": True,
                     },
                 )
-                if not created:
-                    cliente.nombre = nombre
-                    cliente.rut = rut
-                    cliente.correo = correo
-                    cliente.telefono = telefono
-                    cliente.direccion = direccion
-                    cliente.save()
-            else:
-                # Invitado: intentamos no duplicar tanto por correo o rut
-                qs = Cliente.objects.filter(negocio=negocio, activo=True)
-                if correo:
-                    qs = qs.filter(correo=correo)
-                elif rut:
-                    qs = qs.filter(rut=rut)
-                else:
-                    qs = qs.none()
 
-                if qs.exists():
-                    cliente = qs.first()
-                    cliente.nombre = nombre
-                    # completamos datos faltantes sin borrar otros
-                    cliente.rut = rut or cliente.rut
-                    cliente.correo = correo or cliente.correo
-                    cliente.telefono = telefono or cliente.telefono
-                    cliente.direccion = direccion or cliente.direccion
-                    cliente.save()
-                else:
-                    cliente = Cliente.objects.create(
-                        negocio=negocio,
-                        nombre=nombre,
-                        rut=rut,
-                        correo=correo,
-                        telefono=telefono,
-                        direccion=direccion,
-                    )
-
-            # ------------ CREAR PEDIDO E ITEMS ------------
+            # Crear Pedido
             pedido = Pedido.objects.create(
                 negocio=negocio,
                 cliente=cliente,
-                nombre=nombre,
-                correo=correo,
-                telefono=telefono,
+                nombre=datos["nombre"],
+                correo=datos["correo"],              # <- corregido
+                telefono=datos.get("telefono", ""),  # <- corregido
+                total_monto=total,
+                forma_pago=forma_pago,
+                estado=Pedido.EST_RECIBIDO,
             )
 
-            for it in items:
+            # Crear ítems de pedido
+            for item in items:
                 PedidoItem.objects.create(
                     pedido=pedido,
-                    producto=it["producto"],
-                    cantidad=it["cantidad"],
-                    precio=it["producto"].precio,
+                    producto=item["producto"],
+                    cantidad=item["cantidad"],
+                    precio=item["producto"].precio,
                 )
 
-            pedido.actualizar_total(guardar=True)
-            enviar_correo_pedido_creado(pedido)
+            # Reservar stock
+            pedido.crear_reservas_inventario()
 
-            # Vaciar carrito
-            _save_cart(request, {})
+            # Flujo según forma de pago
+            if forma_pago == "RETIRO":
+                pedido.marcar_pendiente_retiro()
+                enviar_correo_pedido_creado(pedido)
+                limpiar_carrito_en_session(request)
 
-            messages.success(
-                request,
-                f"Tu pedido {pedido.codigo} fue creado correctamente.",
-            )
-            return redirect("tienda:checkout_exito", pedido_id=pedido.id)
+                messages.success(
+                    request,
+                    f"Tu pedido {pedido.codigo} fue creado correctamente. "
+                    "Pagarás al retirar en la botillería.",
+                )
+                return redirect("tienda:checkout_exito", pedido_id=pedido.id)
 
+            elif forma_pago == "WEBPAY":
+                try:
+                    url_pago, token = iniciar_pago_webpay(pedido, request)
+                except Exception:
+                    messages.error(
+                        request,
+                        "Ocurrió un problema al iniciar el pago con Webpay. "
+                        "Intenta nuevamente o elige pagar al retirar."
+                    )
+                    return redirect("tienda:carrito_ver")
+
+                pedido.webpay_token = token
+                pedido.webpay_status = "iniciado"
+                pedido.save(update_fields=["webpay_token", "webpay_status"])
+
+                limpiar_carrito_en_session(request)
+                return redirect(f"{url_pago}?token_ws={token}")
+
+            else:
+                messages.error(request, "Forma de pago no válida.")
+                return redirect("tienda:carrito_ver")
+
+        # Si el form NO es válido, caes aquí: solo volvemos a mostrar la página
+        # con errores. No redirijas.
     else:
-        form = CheckoutForm(
-            initial=initial,
-            es_usuario=request.user.is_authenticated,
-        )
+        # GET: prellenar con datos del usuario autenticado
+        initial = {}
+        if request.user.is_authenticated:
+            initial["nombre"] = (
+                request.user.get_full_name() or request.user.username
+            )
+            initial["correo"] = request.user.email
 
-    return render(
-        request,
-        "tienda/checkout.html",
-        {"form": form, "items": items, "total": total},
-    )
+        form = CheckoutForm(initial=initial)
+
+    context = {
+        "negocio": negocio,
+        "items": items,
+        "total": total,
+        "form": form,
+    }
+    return render(request, "tienda/checkout.html", context)
 
 
 def checkout_exito_view(request, pedido_id):
@@ -586,3 +545,148 @@ def sugerencias_productos(request):
         ]
 
     return JsonResponse(resultados, safe=False)
+
+
+
+def iniciar_pago_webpay(pedido, request):
+    """
+    Crea la transacción Webpay Plus y devuelve (url, token).
+    Lanza ValueError si el SDK no está instalado.
+    """
+
+    if Transaction is None:
+        raise ValueError(
+            "El SDK de Transbank no está instalado. "
+            "Ejecuta: pip install transbank-sdk"
+        )
+
+    commerce_code = getattr(settings, "WEBPAY_COMMERCE_CODE", "597055555532")
+    api_key = getattr(
+        settings,
+        "WEBPAY_API_KEY",
+        "579B532A7440BB0C9079DED94D31EA1615BACEB56610332264630D42D0A36B1C",
+    )
+    options = WebpayOptions(
+        commerce_code=commerce_code,
+        api_key=api_key,
+        integration_type=IntegrationType.TEST,  # integración (sandbox)
+    )
+
+    tx = Transaction(options)
+
+    # buy_order debe ser único; usamos el código del pedido
+    buy_order = pedido.codigo
+    session_id = request.session.session_key or request.session.cycle_key()
+    return_url = request.build_absolute_uri(reverse("tienda:webpay_retorno"))
+
+    resp = tx.create(
+        buy_order=buy_order,
+        session_id=session_id,
+        amount=float(pedido.total),
+        return_url=return_url,
+    )
+
+    token = resp["token"]
+    url = resp["url"]
+    return url, token
+
+
+def webpay_retorno_view(request):
+    token = request.POST.get("token_ws") or request.GET.get("token_ws")
+    if not token:
+        messages.error(request, "Transacción inválida (falta token).")
+        return redirect("tienda:home")
+
+    tx = get_webpay_transaction()
+    response = tx.commit(token)
+
+    # Puedes imprimir en consola para ver la estructura del response
+    # print(response)
+
+    buy_order = response.get("buy_order")
+    status = response.get("status")
+    amount = response.get("amount")
+
+    pedido = get_object_or_404(Pedido, codigo=buy_order)
+
+    if status == "AUTHORIZED":
+        # marcar pedido como pagado
+        pedido.estado = Pedido.EST_PAGADO
+        pedido.save()
+
+        # generar venta desde pedido (sin tocar stock extra)
+        venta = pedido.generar_venta(medio_pago=Venta.MED_TARJETA)
+
+        # limpiar carrito y sesión
+        request.session.pop("ultimo_pedido_id", None)
+        limpiar_carrito_en_session(request)
+
+        # mostrar página de éxito de pago
+        return render(request, "tienda/webpay_exito.html", {
+            "pedido": pedido,
+            "venta": venta,
+            "response": response,
+        })
+    else:
+        # fallo / rechazo / abortada
+        # aquí tú decides: ¿cancelar pedido y liberar stock?
+        pedido.liberar_reservas_inventario()
+        pedido.estado = Pedido.EST_CANCELADO
+        pedido.save()
+
+        return render(request, "tienda/webpay_error.html", {
+            "pedido": pedido,
+            "response": response,
+        })
+
+
+@csrf_exempt
+def webpay_retorno_view(request):
+    token = request.GET.get("token_ws") or request.POST.get("token_ws")
+    if not token:
+        messages.error(request, "No se recibió el token de Webpay.")
+        return redirect("tienda:productos")
+
+    if Transaction is None:
+        messages.error(request, "El SDK de Transbank no está instalado.")
+        return redirect("tienda:productos")
+
+    # Buscar el pedido asociado a ese token
+    try:
+        pedido = Pedido.objects.get(webpay_token=token)
+    except Pedido.DoesNotExist:
+        messages.error(request, "No se encontró el pedido asociado al pago.")
+        return redirect("tienda:productos")
+
+    commerce_code = getattr(settings, "WEBPAY_COMMERCE_CODE", "597055555532")
+    api_key = getattr(
+        settings,
+        "WEBPAY_API_KEY",
+        "579B532A7440BB0C9079DED94D31EA1615BACEB56610332264630D42D0A36B1C",
+    )
+    options = WebpayOptions(
+        commerce_code=commerce_code,
+        api_key=api_key,
+        integration_type=IntegrationType.TEST,
+    )
+    tx = Transaction(options)
+
+    resp = tx.commit(token)
+    status = resp.get("status")
+
+    if status == "AUTHORIZED":
+        pedido.marcar_pagado_descontar_stock()
+        pedido.webpay_status = "pagado"
+        pedido.save(update_fields=["webpay_status"])
+
+        messages.success(
+            request, f"Pago del pedido {pedido.codigo} autorizado correctamente."
+        )
+        return redirect("tienda:checkout_exito", pedido_id=pedido.id)
+    else:
+        pedido.webpay_status = status or "rechazado"
+        pedido.marcar_cancelado_revertir_reserva()
+        pedido.save(update_fields=["webpay_status"])
+
+        messages.error(request, "El pago fue rechazado o anulado.")
+        return redirect("tienda:productos")
