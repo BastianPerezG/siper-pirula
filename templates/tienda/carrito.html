@@ -1,67 +1,135 @@
-{% extends "core/base.html" %}
+{% extends "tienda/base_public.html" %}
 
-{% block title %}Carrito de compras{% endblock %}
+
+{% block title %}Carrito de compras - SIPER Pirula{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Carrito de compras</h1>
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
 
-{% if items %}
-    <div class="bg-white rounded-lg shadow overflow-hidden mb-4">
-        <table class="min-w-full text-sm">
-            <thead class="bg-slate-100 text-xs uppercase text-slate-600">
-                <tr>
-                    <th class="px-4 py-3 text-left">Producto</th>
-                    <th class="px-4 py-3 text-right">Cantidad</th>
-                    <th class="px-4 py-3 text-right">Subtotal</th>
-                    <th class="px-4 py-3"></th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-                {% for it in items %}
-                    <tr>
-                        <td class="px-4 py-2">{{ it.producto.nombre }}</td>
-                        <td class="px-4 py-2 text-right">{{ it.cantidad }}</td>
-                        <td class="px-4 py-2 text-right">$ {{ it.subtotal|floatformat:0 }}</td>
-                        <td class="px-4 py-2 text-right">
-                            <a href="{% url 'tienda:carrito_eliminar' it.producto.id %}"
-                               class="text-xs text-red-600 hover:underline">
-                                Eliminar
-                            </a>
-                        </td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-            <tfoot class="bg-slate-50">
-                <tr>
-                    <td colspan="2" class="px-4 py-3 text-right font-semibold">
-                        Total
-                    </td>
-                    <td class="px-4 py-3 text-right font-bold text-lg">
-                        $ {{ total|floatformat:0 }}
-                    </td>
-                    <td></td>
-                </tr>
-            </tfoot>
-        </table>
+  <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-6">
+    Carrito de compras
+  </h1>
+
+  {% if items %}
+  <form method="post" action="{% url 'tienda:carrito_actualizar' %}" class="space-y-6">
+    {% csrf_token %}
+
+    <!-- Tabla responsiva -->
+    <div class="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-200">
+      <table class="min-w-full text-left text-xs sm:text-sm">
+        <thead class="bg-slate-50">
+          <tr>
+            <th class="px-3 sm:px-4 py-3 font-semibold text-slate-700 whitespace-nowrap">
+              Producto
+            </th>
+            <th class="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-center whitespace-nowrap">
+              Cantidad
+            </th>
+            <th class="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-right whitespace-nowrap">
+              Subtotal
+            </th>
+            <th class="px-3 sm:px-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for item in items %}
+          <tr>
+            <td class="px-3 sm:px-4 py-3 align-top">
+              <p class="font-medium text-slate-900 text-sm sm:text-base">
+                {{ item.producto.nombre }}
+              </p>
+              {% if item.producto.descripcion_corta %}
+              <p class="mt-1 text-[11px] sm:text-xs text-slate-500 line-clamp-2">
+                {{ item.producto.descripcion_corta }}
+              </p>
+              {% endif %}
+            </td>
+            <td class="px-3 sm:px-4 py-3 text-center align-middle">
+              <input type="number" name="cant_{{ item.producto.id }}" min="0" max="99" value="{{ item.cantidad }}"
+                class="w-16 sm:w-20 rounded-lg border-slate-300 text-center text-sm focus:ring-slate-500 focus:border-slate-500">
+            </td>
+            <td class="px-3 sm:px-4 py-3 text-right align-middle">
+              <span class="text-sm sm:text-base font-semibold text-slate-900">
+                $ {{ item.subtotal|floatformat:0 }}
+              </span>
+            </td>
+            <td class="px-3 sm:px-4 py-3 text-right align-middle">
+              <a href="{% url 'tienda:carrito_eliminar' item.producto.id %}"
+                class="inline-flex items-center text-xs sm:text-sm text-red-600 hover:text-red-700">
+                Eliminar
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="bg-slate-50">
+          <tr>
+            <td colspan="2" class="px-3 sm:px-4 py-3 text-right font-semibold text-slate-700">
+              Total
+            </td>
+            <td class="px-3 sm:px-4 py-3 text-right">
+              <span class="text-base sm:text-lg font-bold text-slate-900">
+                $ {{ total|floatformat:0 }}
+              </span>
+            </td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
 
-    <div class="flex justify-between">
-        <a href="{% url 'tienda:home' %}"
-           class="px-4 py-2 text-sm rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50">
-            Seguir comprando
-        </a>
+    <!-- Botones responsivos -->
+    <div class="flex flex-col sm:flex-row justify-between gap-3 mt-6">
+      <a href="{% url 'tienda:productos' %}"
+        class="px-4 py-2 rounded-full border border-slate-300 text-slate-700 hover:bg-slate-50 text-center">
+        Seguir comprando
+      </a>
+
+      <div class="flex gap-3">
+        <button type="submit" class="px-4 py-2 rounded-full border border-slate-300 text-slate-700 hover:bg-slate-50">
+          Actualizar cantidades
+        </button>
+
         <a href="{% url 'tienda:checkout' %}"
-           class="px-4 py-2 text-sm rounded-md bg-slate-900 text-slate-100 hover:bg-slate-800">
-            Continuar a checkout
+          class="px-5 py-2 rounded-full bg-slate-900 text-white hover:bg-slate-800 text-center">
+          Continuar a checkout
         </a>
+      </div>
     </div>
-{% else %}
-    <p class="text-sm text-slate-500">
-        Tu carrito está vacío.
+
+  </form>
+  {% else %}
+  <div class="bg-white rounded-xl border border-dashed border-slate-300 px-4 sm:px-6 py-6 sm:py-8 text-center">
+    <p class="text-sm sm:text-base text-slate-500 mb-4">
+      Tu carrito está vacío.
     </p>
     <a href="{% url 'tienda:home' %}"
-       class="inline-flex mt-3 px-4 py-2 text-sm rounded-md bg-slate-900 text-slate-100 hover:bg-slate-800">
-        Ir a la tienda
+      class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+      Ir a la tienda
     </a>
-{% endif %}
+  </div>
+  {% endif %}
+</div>
+<script>
+  document.querySelectorAll('.cantidad-input').forEach(input => {
+    input.addEventListener('change', function () {
+      const fila = this.closest('tr');
+      const precio = parseInt(fila.dataset.precio);
+      const cantidad = parseInt(this.value);
+      const subtotal = fila.querySelector('.subtotal');
+      subtotal.textContent = "$ " + (precio * cantidad);
+
+      calcularTotalGeneral();
+    });
+  });
+
+  function calcularTotalGeneral() {
+    let total = 0;
+    document.querySelectorAll('.subtotal').forEach(s => {
+      total += parseInt(s.textContent.replace("$", "").trim());
+    });
+    document.getElementById("total-general").textContent = "$ " + total;
+  }
+</script>
+
 {% endblock %}

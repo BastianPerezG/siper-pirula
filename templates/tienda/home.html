@@ -1,0 +1,128 @@
+{% extends "tienda/base_public.html" %}
+
+{% block title %}¿Qué quieres llevar hoy? - SIPER Pirula{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+  <header class="mb-6 sm:mb-8">
+    <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">
+      ¿Qué quieres llevar hoy?
+    </h1>
+    <p class="mt-2 text-sm sm:text-base text-slate-600">
+      Elige una categoría para explorar los productos disponibles para retiro en local.
+    </p>
+
+    <!-- Barra de búsqueda -->
+<div class="relative w-full sm:w-96 mt-4">
+  <form method="get" action="{% url 'tienda:productos' %}" class="flex gap-2">
+    <input
+      type="text"
+      name="q"
+      placeholder="Buscar producto..."
+      class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+    >
+    <button
+      type="submit"
+      class="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">
+      Buscar
+    </button>
+  </form>
+
+  <!-- Caja de sugerencias (abajo del input) -->
+  <div id="sugerenciasBox"
+    class="absolute left-0 right-0 bg-white border border-slate-200 rounded-lg shadow-sm mt-2 hidden z-50">
+  </div>
+</div>
+
+  </header>
+
+
+  {% if categorias_data %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
+    {% for item in categorias_data %}
+    {% with categoria=item.categoria imagen=item.imagen %}
+    <a href="{% url 'tienda:productos' %}?categoria={{ categoria.slug }}"
+      class="group bg-white rounded-2xl shadow-sm hover:shadow-md border border-slate-100 overflow-hidden flex flex-col transition-all duration-200">
+      {% if imagen %}
+      <img src="{{ imagen.url }}" alt="{{ categoria.nombre }}"
+        class="h-36 sm:h-44 w-full object-cover group-hover:scale-105 transition-transform duration-300">
+      {% else %}
+      <div class="h-36 sm:h-44 w-full bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center">
+        <span class="text-3xl sm:text-4xl font-bold text-slate-100">
+          {{ categoria.nombre|slice:":1" }}
+        </span>
+      </div>
+      {% endif %}
+
+      <div class="flex-1 flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4">
+        <div class="min-w-0">
+          <h2 class="text-base sm:text-lg font-semibold text-slate-900 truncate">
+            {{ categoria.nombre }}
+          </h2>
+          {% if categoria.descripcion %}
+          <p class="mt-1 text-xs sm:text-sm text-slate-500 line-clamp-2">
+            {{ categoria.descripcion }}
+          </p>
+          {% endif %}
+        </div>
+        <span
+          class="ml-3 inline-flex items-center justify-center rounded-full bg-slate-900 text-slate-100 text-xs sm:text-sm px-3 py-1">
+          Ver
+        </span>
+      </div>
+    </a>
+    {% endwith %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="bg-white rounded-xl border border-dashed border-slate-300 px-4 sm:px-6 py-6 sm:py-8 text-center">
+    <p class="text-sm sm:text-base text-slate-500">
+      No hay categorías configuradas aún. Créalas desde el módulo de inventario.
+    </p>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+const input = document.querySelector('input[name="q"]');
+const box = document.getElementById("sugerenciasBox");
+
+let timeout = null;
+
+input.addEventListener("input", function () {
+  const q = this.value.trim();
+  clearTimeout(timeout);
+
+  if (q.length < 2) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+
+  timeout = setTimeout(() => {
+    fetch(`/tienda/ajax/sugerencias/?q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.length === 0) {
+          box.classList.add("hidden");
+          box.innerHTML = "";
+          return;
+        }
+
+        box.innerHTML = "";
+        data.forEach(item => {
+          const div = document.createElement("div");
+          div.className = "px-3 py-2 text-sm hover:bg-slate-50 cursor-pointer";
+          div.textContent = item.nombre;
+          div.onclick = () => {
+            window.location.href = `/tienda/producto/${item.id}/`;
+          };
+          box.appendChild(div);
+        });
+        box.classList.remove("hidden");
+      });
+  }, 250);
+});
+</script>
+
+{% endblock %}

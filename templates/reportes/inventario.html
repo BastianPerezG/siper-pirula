@@ -1,0 +1,104 @@
+{% extends "core/base.html" %}
+{% load humanize %}
+
+{% block title %}Reporte de inventario - SIPER Pirula{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-800">📦 Reporte de inventario</h1>
+        <p class="text-slate-600 mt-1 text-sm">
+            Resumen del stock actual del negocio.
+        </p>
+    </div>
+
+    <!-- Tarjetas resumen -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white rounded-xl shadow p-4">
+            <h2 class="text-sm font-semibold text-slate-500">Productos activos</h2>
+            <p class="mt-2 text-3xl font-bold text-slate-900">{{ total_productos }}</p>
+        </div>
+
+        <div class="bg-white rounded-xl shadow p-4">
+            <h2 class="text-sm font-semibold text-slate-500">Valor total inventario</h2>
+            <p class="mt-2 text-3xl font-bold text-emerald-700">
+                $ {{ valor_total|floatformat:0|intcomma }}
+            </p>
+        </div>
+
+        <div class="bg-white rounded-xl shadow p-4">
+            <h2 class="text-sm font-semibold text-slate-500">Productos en stock crítico</h2>
+            <p class="mt-2 text-3xl font-bold text-red-600">{{ stock_critico|length }}</p>
+        </div>
+    </div>
+
+    <!-- Top productos con mayor stock -->
+    <div class="bg-white rounded-xl shadow p-4">
+        <h2 class="text-lg font-semibold text-slate-800 mb-2">🔝 Top productos con mayor stock</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-slate-100">
+                    <tr>
+                        <th class="px-3 py-2 text-left">Producto</th>
+                        <th class="px-3 py-2 text-left">Categoría</th>
+                        <th class="px-3 py-2 text-right">Stock actual</th>
+                        <th class="px-3 py-2 text-right">Stock mínimo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in top_stock %}
+                    <tr class="border-t">
+                        <td class="px-3 py-2">{{ p.nombre }}</td>
+                        <td class="px-3 py-2 text-xs text-slate-500">{{ p.categoria }}</td>
+                        <td class="px-3 py-2 text-right font-mono">{{ p.stock_actual }}</td>
+                        <td class="px-3 py-2 text-right font-mono">{{ p.stock_min }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-3 py-4 text-center text-slate-500">
+                            No hay productos registrados.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Tabla de stock crítico -->
+    <div class="bg-white rounded-xl shadow p-4">
+        <h2 class="text-lg font-semibold text-slate-800 mb-2">⚠️ Productos en stock crítico</h2>
+        <p class="text-xs text-slate-500 mb-2">
+            Productos cuyo stock actual es menor o igual al stock mínimo definido.
+        </p>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-amber-50">
+                    <tr>
+                        <th class="px-3 py-2 text-left">Producto</th>
+                        <th class="px-3 py-2 text-left">Categoría</th>
+                        <th class="px-3 py-2 text-right">Stock actual</th>
+                        <th class="px-3 py-2 text-right">Stock mínimo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in stock_critico %}
+                    <tr class="border-t {% if p.stock_actual <= 0 %}bg-red-50{% endif %}">
+                        <td class="px-3 py-2">{{ p.nombre }}</td>
+                        <td class="px-3 py-2 text-xs text-slate-500">{{ p.categoria }}</td>
+                        <td class="px-3 py-2 text-right font-mono">{{ p.stock_actual }}</td>
+                        <td class="px-3 py-2 text-right font-mono">{{ p.stock_min }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-3 py-4 text-center text-slate-500">
+                            No hay productos en stock crítico 🎉
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

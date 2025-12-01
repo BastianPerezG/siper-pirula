@@ -1,5 +1,6 @@
 from pathlib import Path
 import environ, os
+from dotenv import load_dotenv
 
 # 1) BASE_DIR primero
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -7,6 +8,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # 2) Cargar .env desde la raíz del proyecto (donde está manage.py)
 env = environ.Env(DEBUG=(bool, True))
 environ.Env.read_env(BASE_DIR / ".env")
+
+# Cargar el .env desde la raíz del proyecto
+load_dotenv(BASE_DIR / ".env")
 
 # 3) Variables
 DEBUG = env("DEBUG")
@@ -29,8 +33,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.humanize",
     # tus apps:
-    "core", "inventario", "pedidos", "ventas", "tienda"
+    "core", "inventario", "pedidos", "ventas", "tienda","reportes"
 ]
 
 
@@ -101,3 +106,27 @@ CSRF_TRUSTED_ORIGINS = env.list(
     "CSRF_TRUSTED_ORIGINS",
     default=["https://*.pythonanywhere.com"]
 )
+
+# Para desarrollo: imprime los correos en la consola
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "no-reply@siperpirula.local"
+SITE_URL = "http://localhost:8000"  # y en producción lo cambias a https://tudominio.cl
+
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+
+DEFAULT_FROM_EMAIL = f"SIPER Pirula <{EMAIL_HOST_USER}>"
+
+
+# settings.py
+WEBPAY_COMMERCE_CODE = "597055555532"
+WEBPAY_API_KEY = "579B532A7440BB0C9079DED94D31EA1615BACEB56610332264630D42D0A36B1C"
+
+TRANSBANK_ENVIRONMENT = os.environ.get("TRANSBANK_ENVIRONMENT", "INTEGRATION")

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Redirigiendo a Webpay...</title>
+</head>
+<body onload="document.forms[0].submit();">
+    <p>Redirigiendo a Webpay, por favor espera...</p>
+    <form action="{{ url }}" method="post">
+        <input type="hidden" name="token_ws" value="{{ token }}">
+        <noscript>
+            <button type="submit">Ir a Webpay</button>
+        </noscript>
+    </form>
+</body>
+</html>

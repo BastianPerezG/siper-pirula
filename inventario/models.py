@@ -3,7 +3,7 @@ from django.db.models import Sum, Case, When, IntegerField, F
 from django.core.exceptions import ValidationError
 from core.models import Negocio 
 from django.contrib.auth.models import User
-
+from django.utils.text import slugify
 
 # Modelo Inventario.
 
@@ -11,8 +11,23 @@ class Categoria(models.Model):
     negocio = models.ForeignKey(Negocio, on_delete=models.PROTECT)
     nombre = models.CharField(max_length=80)
 
+    slug = models.SlugField(max_length=100, blank=True)
+    imagen = models.ImageField(upload_to="categorias/", null=True, blank=True)
+
+    activa = models.BooleanField(default=True)
+    orden = models.PositiveIntegerField(default=0)
+
+    creada = models.DateTimeField(auto_now_add=True)
+    actualizada = models.DateTimeField(auto_now=True)
+
     class Meta:
         db_table = "categoria"
+        ordering = ["orden", "nombre"]
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.nombre)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.nombre
@@ -46,18 +61,24 @@ class Producto(models.Model):
 
     @property
     def stock_actual(self):
-        """
-        Calcula el stock actual a partir de todos los movimientos.
-        ENTRADA y AJUSTE suman, SALIDA y MERMA restan.
-        """
-
         resultado = self.movimientos.aggregate(
             total=Sum(
                 Case(
-                    When(tipo__in=[MovimientoInventario.TIPO_ENTRADA, MovimientoInventario.TIPO_AJUSTE],
-                         then=F("cantidad")),
-                    When(tipo__in=[MovimientoInventario.TIPO_SALIDA, MovimientoInventario.TIPO_MERMA],
-                         then=-F("cantidad")),
+                    When(
+                        tipo__in=[
+                            MovimientoInventario.TIPO_ENTRADA,
+                            MovimientoInventario.TIPO_AJUSTE
+                        ],
+                        then=F("cantidad")
+                    ),
+                    When(
+                        tipo__in=[
+                            MovimientoInventario.TIPO_SALIDA,
+                            MovimientoInventario.TIPO_MERMA,
+                            MovimientoInventario.TIPO_RESERVA,  # 🔹 NUEVO
+                        ],
+                        then=-F("cantidad")
+                    ),
                     default=0,
                     output_field=IntegerField(),
                 )
@@ -71,12 +92,14 @@ class MovimientoInventario(models.Model):
     TIPO_SALIDA = "SALIDA"
     TIPO_AJUSTE = "AJUSTE"
     TIPO_MERMA = "MERMA"
+    TIPO_RESERVA = "RESERVA"  # 🔹 NUEVO
 
     TIPO_CHOICES = [
         (TIPO_ENTRADA, "Entrada (compra, devolución)"),
         (TIPO_SALIDA, "Salida (venta manual, uso interno)"),
         (TIPO_AJUSTE, "Ajuste (conteo inventario)"),
         (TIPO_MERMA, "Merma (rotura, pérdida)"),
+        (TIPO_RESERVA, "Reserva por pedido"),  # 🔹 NUEVO
     ]
 
     producto = models.ForeignKey(
@@ -85,7 +108,6 @@ class MovimientoInventario(models.Model):
         related_name="movimientos",
     )
 
-    # De qué ítem de compra viene este movimiento
     compra_item = models.ForeignKey(
         "CompraItem",
         on_delete=models.CASCADE,
@@ -96,6 +118,15 @@ class MovimientoInventario(models.Model):
 
     venta_item = models.ForeignKey(
         "ventas.VentaItem",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="movimientos",
+    )
+
+    # 🔹 NUEVO: vincular al detalle de pedido
+    pedido_item = models.ForeignKey(
+        "pedidos.PedidoItem",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
@@ -188,13 +219,7 @@ class CompraItem(models.Model):
                 comentario=f"Compra #{self.compra.id} {self.compra.doc_tipo} {self.compra.doc_num or ''}".strip(),
                 compra_item=self,
             )
-#=============================sebastian====================#
 
-# inventario/models.py
-
-# Asumiendo que Producto y Proveedor ya existen:
-# class Producto(models.Model): ...
-# class Proveedor(models.Model): ...
 
 class PlantillaProveedorProducto(models.Model):
     """

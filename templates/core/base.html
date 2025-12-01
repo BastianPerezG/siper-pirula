@@ -31,9 +31,10 @@
                 <a href="{% url 'inventario:producto_lista' %}" class="hover:text-amber-300">Productos</a>
                 <a href="{% url 'inventario:compra_lista' %}" class="hover:text-amber-300">Compras</a>
                 <a href="{% url 'ventas:venta_lista' %}" class="hover:text-amber-300">Ventas</a>
+                <a href="{% url 'reportes:inventario' %}" class="hover:text-amber-300">Reportes</a>
                 <a href="{% url 'inventario:scan_ean' %}" class="hover:text-amber-300">Escanear</a>
                 <a href="{% url 'pedidos:pedido_lista' %}" class="hover:text-amber-300">Pedidos</a>
-                <a href="{% url 'pedidos:pedido_cocina' %}" class="hover:text-amber-300 text-sm">Cocina</a>
+                <a href="{% url 'pedidos:pedidos_monitor' %}" class="hover:text-amber-300 text-sm">Monitor Pedidos</a>
             </nav>
 
             {# Aquí más adelante podemos poner usuario / logout #}
