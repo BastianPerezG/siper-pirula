@@ -1,8 +1,7 @@
-
-# reportes/views.py
 import csv
 import json
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+from decimal import Decimal
 from django.utils import timezone
 from django.db.models.functions import TruncDay
 from datetime import datetime
@@ -10,124 +9,12 @@ from django.http import HttpResponse
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
-from django.db.models import Sum, F, Count
-from django.db.models.functions import TruncDay, TruncWeek, TruncMonth, TruncYear, ExtractYear, ExtractYear,ExtractHour,ExtractWeekDay
+from django.db.models import Sum, F, Count, DecimalField, ExpressionWrapper
+from django.db.models.functions import TruncDay, TruncWeek, TruncMonth, TruncYear, ExtractHour, ExtractWeekDay
 from django.db.models import DecimalField
-from inventario.models import Compra, CompraItem, Categoria, Producto, Proveedor
+from inventario.models import Compra, CompraItem, Categoria, Producto
 from ventas.models import Venta, VentaItem
-
-class ReporteNoRetiraView(LoginRequiredMixin, TemplateView):
-    template_name = "reportes/no_retira.html"
-
-    def get_pedidos_queryset(self, request):
-        """
-        Filtra los pedidos según los parámetros del formulario.
-        Ajusta los nombres de campos si en tu modelo se llaman distinto.
-        """
-        qs = Pedido.objects.filter(negocio=request.user.negocio)
-
-        # --- filtros de fecha ---
-        desde_str = request.GET.get("desde")
-        hasta_str = request.GET.get("hasta")
-
-        if desde_str:
-            qs = qs.filter(fecha_creacion__date__gte=desde_str)
-        if hasta_str:
-            qs = qs.filter(fecha_creacion__date__lte=hasta_str)
-
-        # --- filtro canal ---
-        canal = request.GET.get("canal")
-        if canal and canal != "TODOS":
-            qs = qs.filter(canal=canal)
-
-        # --- filtro monto mínimo ---
-        monto_min = request.GET.get("monto_min")
-        if monto_min:
-            try:
-                qs = qs.filter(total__gte=monto_min)  # cambia "total" si tu campo se llama distinto
-            except ValueError:
-                pass
-
-        # Pedidos “no retirados”: por ejemplo estado = "NO_RETIRADO"
-        # Ajusta el campo/valor dependiendo de tu modelo
-        qs = qs.filter(estado="NO_RETIRADO")
-
-        return qs
-
-    # ---------- EXPORTAR CSV ----------
-    def export_csv(self, pedidos):
-        """
-        Genera el CSV con BOM para que Excel muestre bien los acentos.
-        """
-        response = HttpResponse(
-            content_type="text/csv; charset=utf-8"
-        )
-        filename = f"reporte_no_retira_{timezone.now().date().isoformat()}.csv"
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
-
-        # Escribimos BOM para que Excel detecte UTF-8
-        response.write("\ufeff")
-
-        writer = csv.writer(response, delimiter=";")
-
-        # Cabeceras
-        writer.writerow([
-            "N° pedido",
-            "Fecha creación",
-            "Fecha límite retiro",
-            "Fecha cancelación",
-            "Monto total",
-            "Cliente",
-            "Canal",
-        ])
-
-        for p in pedidos:
-            writer.writerow([
-                p.id,
-                p.fecha_creacion.strftime("%Y-%m-%d %H:%M") if p.fecha_creacion else "",
-                p.fecha_limite_retiro.strftime("%Y-%m-%d %H:%M") if getattr(p, "fecha_limite_retiro", None) else "",
-                p.fecha_cancelacion.strftime("%Y-%m-%d %H:%M") if getattr(p, "fecha_cancelacion", None) else "",
-                float(p.total) if getattr(p, "total", None) is not None else "",
-                getattr(p.cliente, "nombre", "") if getattr(p, "cliente", None) else "",
-                p.get_canal_display() if hasattr(p, "get_canal_display") else getattr(p, "canal", ""),
-            ])
-
-        return response
-
-    # ---------- GET ----------
-    def get(self, request, *args, **kwargs):
-        pedidos_no_retirados = self.get_pedidos_queryset(request)
-
-        # Si viene ?export=csv -> devolvemos archivo
-        if request.GET.get("export") == "csv":
-            return self.export_csv(pedidos_no_retirados)
-
-        # Si es vista normal -> contexto para la plantilla
-        total_pedidos = Pedido.objects.filter(
-            negocio=request.user.negocio
-        ).count()
-
-        total_no_retirados = pedidos_no_retirados.count()
-
-        monto_no_retirado = pedidos_no_retirados.aggregate(
-            total=Sum("total")  # cambia "total" por el campo correcto si es necesario
-        )["total"] or 0
-
-        tasa_no_retira = (
-            (total_no_retirados / total_pedidos * 100)
-            if total_pedidos > 0 else 0
-        )
-
-        context = self.get_context_data(
-            pedidos_no_retirados=pedidos_no_retirados,
-            total_pedidos=total_pedidos,
-            total_no_retirados=total_no_retirados,
-            monto_no_retirado=monto_no_retirado,
-            tasa_no_retira=tasa_no_retira,
-        )
-        return self.render_to_response(context)
-
-
+from inventario.models import Proveedor, Categoria, Producto, CompraItem, MovimientoInventario
 
 
 class ReporteInventarioView(LoginRequiredMixin, TemplateView):
@@ -137,18 +24,15 @@ class ReporteInventarioView(LoginRequiredMixin, TemplateView):
         negocio = request.user.perfilusuario.negocio
         hoy = timezone.now().date()
 
-        # Filtros desde la URL (?desde=YYYY-MM-DD&hasta=YYYY-MM-DD...)
         desde_str = request.GET.get("desde")
         hasta_str = request.GET.get("hasta")
         medio = request.GET.get("medio") or None
         categoria_id = request.GET.get("categoria") or None
 
-        # Si no hay fechas, usamos el mes actual
         if not desde_str or not hasta_str:
             desde = hoy.replace(day=1)
             hasta = hoy
         else:
-            # los <input type="date"> envían el formato YYYY-MM-DD
             desde = datetime.strptime(desde_str, "%Y-%m-%d").date()
             hasta = datetime.strptime(hasta_str, "%Y-%m-%d").date()
 
@@ -168,17 +52,14 @@ class ReporteInventarioView(LoginRequiredMixin, TemplateView):
 
         return ventas_qs.distinct(), desde, hasta, medio, categoria_id, hoy, negocio
 
-    # ---------- GET: si viene ?export=csv, descargamos ----------
     def get(self, request, *args, **kwargs):
         ventas_qs, _, _, _, _, _, _ = self._get_ventas_filtradas(request)
 
         if request.GET.get("export") == "csv":
             return self.export_csv(ventas_qs)
 
-        # si no es export, seguimos con el flujo normal (HTML)
         return super().get(request, *args, **kwargs)
 
-    # ---------- EXPORTACIÓN A CSV ----------
     def export_csv(self, ventas_qs):
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = (
@@ -197,7 +78,6 @@ class ReporteInventarioView(LoginRequiredMixin, TemplateView):
 
         return response
 
-    # ---------- CONTEXTO PARA EL TEMPLATE ----------
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         request = self.request
@@ -205,7 +85,6 @@ class ReporteInventarioView(LoginRequiredMixin, TemplateView):
         ventas_qs, desde, hasta, medio, categoria_id, hoy, negocio = self._get_ventas_filtradas(
             request)
 
-        # --- resumen rango filtrado ---
         total_rango = ventas_qs.aggregate(
             total=Sum(F("items__cantidad") * F("items__precio_unit"))
         )["total"] or 0
@@ -214,7 +93,6 @@ class ReporteInventarioView(LoginRequiredMixin, TemplateView):
             total_rango / cantidad_ventas_rango if cantidad_ventas_rango else 0
         )
 
-        # --- agrupaciones día / semana / mes ---
         ventas_por_dia = (
             ventas_qs
             .annotate(dia=TruncDay("fecha"))
@@ -257,7 +135,6 @@ class ReporteInventarioView(LoginRequiredMixin, TemplateView):
         ticket_semana = ticket_promedio(ventas_por_semana)
         ticket_mes = ticket_promedio(ventas_por_mes)
 
-        # --- ventas hoy y del mes actual (para las tarjetas) ---
         ventas_hoy = Venta.objects.filter(
             negocio=negocio,
             estado=Venta.EST_CERRADA,
@@ -277,7 +154,6 @@ class ReporteInventarioView(LoginRequiredMixin, TemplateView):
             total_mes_actual / cant_ventas_mes_actual if cant_ventas_mes_actual else 0
         )
 
-        # --- ventas por medio de pago y top productos ---
         ventas_por_medio = (
             ventas_qs
             .values("medio_pago")
@@ -299,7 +175,6 @@ class ReporteInventarioView(LoginRequiredMixin, TemplateView):
             .order_by("-unidades")[:10]
         )
 
-        # --- contexto final ---
         context.update({
             "desde": desde,
             "hasta": hasta,
@@ -333,7 +208,6 @@ class ReporteInventarioView(LoginRequiredMixin, TemplateView):
 
     template_name = "reportes/ventas.html"
 
-    # ----------------- Filtros compartidos (formulario + CSV + gráfico) -----------------
     def _get_ventas_filtradas(self, request):
         negocio = request.user.perfilusuario.negocio
         hoy = timezone.now().date()
@@ -343,13 +217,11 @@ class ReporteInventarioView(LoginRequiredMixin, TemplateView):
             estado=Venta.EST_CERRADA,
         )
 
-        # Filtros GET
         desde_str = request.GET.get("desde")
         hasta_str = request.GET.get("hasta")
         medio = request.GET.get("medio") or ""
         categoria_id = request.GET.get("categoria") or ""
 
-        # Si no envían fechas, usamos el mes actual
         if desde_str:
             try:
                 desde = datetime.strptime(desde_str, "%Y-%m-%d").date()
@@ -372,7 +244,6 @@ class ReporteInventarioView(LoginRequiredMixin, TemplateView):
             ventas = ventas.filter(medio_pago=medio)
 
         if categoria_id:
-            # Filtramos por categoría a través de VentaItem
             venta_ids = (
                 VentaItem.objects
                 .filter(producto__categoria_id=categoria_id)
@@ -382,14 +253,12 @@ class ReporteInventarioView(LoginRequiredMixin, TemplateView):
 
         return ventas.distinct(), desde, hasta, medio, categoria_id, negocio, hoy
 
-    # ----------------- GET: CSV o HTML -----------------
     def get(self, request, *args, **kwargs):
         if request.GET.get("export") == "csv":
             ventas_qs, *_ = self._get_ventas_filtradas(request)
             return self.export_csv(ventas_qs)
         return super().get(request, *args, **kwargs)
 
-    # ----------------- Exportar CSV -----------------
     def export_csv(self, ventas_qs):
         response = HttpResponse(content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = (
@@ -606,7 +475,6 @@ class ReporteInventarioView(LoginRequiredMixin, TemplateView):
 class ReporteVentasView(LoginRequiredMixin, TemplateView):
     template_name = "reportes/ventas.html"
 
-
     def _get_ventas_filtradas(self, request):
         negocio = request.user.perfilusuario.negocio
         hoy = timezone.now().date()
@@ -717,7 +585,6 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
             .order_by("medio_pago")
         )
 
-       
         top_productos = (
             VentaItem.objects
             .filter(venta__in=ventas_filtradas)
@@ -930,7 +797,6 @@ class ReporteComprasView(LoginRequiredMixin, TemplateView):
         })
         return context
 
-
     template_name = "reportes/stock.html"
 
     def get_context_data(self, **kwargs):
@@ -949,7 +815,7 @@ class ReporteComprasView(LoginRequiredMixin, TemplateView):
         productos_quiebre = Producto.objects.filter(
             movimientos__stock_actual__lte=0,
             negocio=negocio
-)
+        )
 
         # ======= Historial de quiebres filtrado por fechas =======
         desde = self.request.GET.get("desde")
@@ -972,14 +838,12 @@ class ReporteComprasView(LoginRequiredMixin, TemplateView):
 
         return context
 
-
     template_name = "reportes/stock.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
         productos = Producto.objects.all()
-
 
         # Filtros
         categoria_id = self.request.GET.get("categoria")
@@ -1034,16 +898,18 @@ class ReporteDiaHoraView(LoginRequiredMixin, TemplateView):
         6: "Viernes",
         7: "Sábado",
     }
+
     def get(self, request, *args, **kwargs):
         if request.GET.get("export") == "csv":
             return self.export_csv(request)
         return super().get(request, *args, **kwargs)
 
     def _get_datos_base(self, request):
-       
+
         # Reutilizamos el método ya existente en ReporteVentasView
         ventas_view = ReporteVentasView()
-        (ventas_qs,desde,hasta,medio_seleccionado,categoria_id,hoy,negocio,) = ventas_view._get_ventas_filtradas(request)
+        (ventas_qs, desde, hasta, medio_seleccionado, categoria_id,
+         hoy, negocio,) = ventas_view._get_ventas_filtradas(request)
 
         # Si no hay ventas en el rango, devolvemos todo vacío pero sin romper nada
         if not ventas_qs.exists():
@@ -1076,7 +942,7 @@ class ReporteDiaHoraView(LoginRequiredMixin, TemplateView):
 
         # --- Distribución por HORA (0–23) ---
         ventas_por_hora_qs = (
-            ventas_qs.annotate(hora = ExtractHour("fecha"))
+            ventas_qs.annotate(hora=ExtractHour("fecha"))
             .values("hora")
             .annotate(
                 cantidad=Count("id", distinct=True),
@@ -1095,7 +961,7 @@ class ReporteDiaHoraView(LoginRequiredMixin, TemplateView):
 
         # --- Distribución por DÍA DE LA SEMANA ---
         ventas_por_dia_qs = (
-            ventas_qs.annotate(dia_semana = ExtractWeekDay("fecha"))
+            ventas_qs.annotate(dia_semana=ExtractWeekDay("fecha"))
             .values("dia_semana")
             .annotate(
                 cantidad=Count("id", distinct=True),
@@ -1116,8 +982,8 @@ class ReporteDiaHoraView(LoginRequiredMixin, TemplateView):
         # --- Combinación DÍA + HORA ---
         dia_hora_qs = (
             ventas_qs.annotate(
-                dia_semana = ExtractWeekDay("fecha"),
-                hora = ExtractHour("fecha"),
+                dia_semana=ExtractWeekDay("fecha"),
+                hora=ExtractHour("fecha"),
             )
             .values("dia_semana", "hora")
             .annotate(
@@ -1226,10 +1092,9 @@ class ReporteNoRetiraView(LoginRequiredMixin, TemplateView):
 
         desde_str = request.GET.get("desde")
         hasta_str = request.GET.get("hasta")
-     
+
         canal = request.GET.get("canal")
         monto_min_str = request.GET.get("monto_min")
-
 
         if desde_str:
             try:
@@ -1247,13 +1112,11 @@ class ReporteNoRetiraView(LoginRequiredMixin, TemplateView):
         else:
             hasta = hoy
 
-     
         pedidos = Venta.objects.filter(
             negocio=negocio,
             fecha__date__gte=desde,
             fecha__date__lte=hasta,
         )
-
 
         if monto_min_str:
             try:
@@ -1262,16 +1125,14 @@ class ReporteNoRetiraView(LoginRequiredMixin, TemplateView):
             except ValueError:
                 monto_min = None
 
-
         total_pedidos = pedidos.count()
-
 
         estado_no_retira = getattr(Venta, "EST_NO_RETIRA", None)
 
         if estado_no_retira is not None:
             pedidos_no_retirados = pedidos.filter(estado=estado_no_retira)
         else:
-        
+
             pedidos_no_retirados = pedidos.filter(estado="NO_RETIRA")
 
         total_no_retirados = pedidos_no_retirados.count()
@@ -1307,7 +1168,7 @@ class ReporteNoRetiraView(LoginRequiredMixin, TemplateView):
         return context
 
     def export_csv(self, request):
-        
+
         datos = self._get_pedidos_no_retirados(request)
         pedidos = datos["detalle_no_retirados"]
 
@@ -1338,3 +1199,45 @@ class ReporteNoRetiraView(LoginRequiredMixin, TemplateView):
             ])
 
         return response
+
+
+class ReporteMermasProveedorView(LoginRequiredMixin, TemplateView):
+    template_name = "reportes/mermas_proveedor.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        negocio = self.request.user.perfilusuario.negocio
+
+
+        desde_str = self.request.GET.get("desde")
+        hasta_str = self.request.GET.get("hasta")
+
+        desde = datetime.strptime(
+            desde_str, "%Y-%m-%d").date() if desde_str else None
+        hasta = datetime.strptime(
+            hasta_str, "%Y-%m-%d").date() if hasta_str else None
+
+        compras_qs = CompraItem.objects.filter(
+            compra__negocio = negocio,
+        )
+
+        if desde:
+            compras_qs = compras_qs.filter(compra__fecha__gte=desde)
+        if hasta:
+            compras_qs = compras_qs.filter(compra__fecha__lte=hasta)
+
+        compras_por_proveedor = compras_qs.values(
+            "compra__proveedor_id",
+            "compra__proveedor__nombre",
+        ).annotate(
+            monto_comprado=Sum(
+                ExpressionWrapper(
+                    F("costo_unit") * F("cantidad"),   # <- AQUÍ va costo_unit
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                )
+            )
+        )
+
+        context["compras_por_proveedor"] = compras_por_proveedor
+        return context
