@@ -1,6 +1,5 @@
 {% extends "tienda/base_public.html" %}
 
-
 {% block title %}Carrito de compras - SIPER Pirula{% endblock %}
 
 {% block content %}
@@ -14,8 +13,7 @@
   <form method="post" action="{% url 'tienda:carrito_actualizar' %}" class="space-y-6">
     {% csrf_token %}
 
-    <!-- Tabla responsiva -->
-    <div class="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-200">
+    <div class="overflow-x-auto bg-white rounded-2xl shadow-sm border border-slate-200">
       <table class="min-w-full text-left text-xs sm:text-sm">
         <thead class="bg-slate-50">
           <tr>
@@ -33,29 +31,24 @@
         </thead>
         <tbody class="divide-y divide-slate-100">
           {% for item in items %}
-          <tr>
-            <td class="px-3 sm:px-4 py-3 align-top">
-              <p class="font-medium text-slate-900 text-sm sm:text-base">
-                {{ item.producto.nombre }}
-              </p>
-              {% if item.producto.descripcion_corta %}
-              <p class="mt-1 text-[11px] sm:text-xs text-slate-500 line-clamp-2">
-                {{ item.producto.descripcion_corta }}
-              </p>
+          <tr class="border-b last:border-b-0">
+            <td class="px-3 sm:px-4 py-2 align-middle">
+              {% if item.tipo == "PROMO" %}
+              <span class="text-xs font-semibold text-emerald-600 mr-2">Promo</span>
               {% endif %}
+              {{ item.nombre }}
             </td>
-            <td class="px-3 sm:px-4 py-3 text-center align-middle">
-              <input type="number" name="cant_{{ item.producto.id }}" min="0" max="99" value="{{ item.cantidad }}"
-                class="w-16 sm:w-20 rounded-lg border-slate-300 text-center text-sm focus:ring-slate-500 focus:border-slate-500">
+            <td class="text-center">
+              <input type="number" name="cant_{{ item.key }}" value="{{ item.cantidad }}" min="1" 
+              {% if item.max_cantidad %}max="{{ item.max_cantidad }}" {% endif %}
+                class="cantidad-input w-20 sm:w-24 text-center border rounded-lg px-2 py-1" />
             </td>
-            <td class="px-3 sm:px-4 py-3 text-right align-middle">
-              <span class="text-sm sm:text-base font-semibold text-slate-900">
-                $ {{ item.subtotal|floatformat:0 }}
-              </span>
+            <td class="px-3 sm:px-4 py-2 text-right align-middle">
+              <span class="subtotal">$ {{ item.subtotal|floatformat:0 }}</span>
             </td>
-            <td class="px-3 sm:px-4 py-3 text-right align-middle">
-              <a href="{% url 'tienda:carrito_eliminar' item.producto.id %}"
-                class="inline-flex items-center text-xs sm:text-sm text-red-600 hover:text-red-700">
+            <td class="px-3 sm:px-4 py-2 text-right align-middle">
+              <a href="{% url 'tienda:carrito_eliminar' item.key %}"
+                class="inline-flex items-center text-xs sm:text-sm text-red-600 hover:text-red-800">
                 Eliminar
               </a>
             </td>
@@ -64,13 +57,11 @@
         </tbody>
         <tfoot class="bg-slate-50">
           <tr>
-            <td colspan="2" class="px-3 sm:px-4 py-3 text-right font-semibold text-slate-700">
+            <td colspan="2" class="px-3 sm:px-4 py-3 text-right font-semibold">
               Total
             </td>
-            <td class="px-3 sm:px-4 py-3 text-right">
-              <span class="text-base sm:text-lg font-bold text-slate-900">
-                $ {{ total|floatformat:0 }}
-              </span>
+            <td class="text-right font-bold">
+              <span id="total-general">$ {{ total|floatformat:0 }}</span>
             </td>
             <td></td>
           </tr>
@@ -78,46 +69,56 @@
       </table>
     </div>
 
-    <!-- Botones responsivos -->
     <div class="flex flex-col sm:flex-row justify-between gap-3 mt-6">
-      <a href="{% url 'tienda:productos' %}"
+      <button type="submit" name="go_shop" value="1"
         class="px-4 py-2 rounded-full border border-slate-300 text-slate-700 hover:bg-slate-50 text-center">
         Seguir comprando
-      </a>
+      </button>
 
       <div class="flex gap-3">
         <button type="submit" class="px-4 py-2 rounded-full border border-slate-300 text-slate-700 hover:bg-slate-50">
           Actualizar cantidades
         </button>
 
-        <a href="{% url 'tienda:checkout' %}"
+        <button type="submit" name="go_checkout" value="1"
           class="px-5 py-2 rounded-full bg-slate-900 text-white hover:bg-slate-800 text-center">
           Continuar a checkout
-        </a>
+        </button>
       </div>
     </div>
 
+
   </form>
+
   {% else %}
-  <div class="bg-white rounded-xl border border-dashed border-slate-300 px-4 sm:px-6 py-6 sm:py-8 text-center">
-    <p class="text-sm sm:text-base text-slate-500 mb-4">
-      Tu carrito está vacío.
-    </p>
-    <a href="{% url 'tienda:home' %}"
-      class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
-      Ir a la tienda
-    </a>
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-center text-slate-600">
+    Tu carrito está vacío.
   </div>
   {% endif %}
 </div>
+
 <script>
   document.querySelectorAll('.cantidad-input').forEach(input => {
     input.addEventListener('change', function () {
+      let val = parseInt(this.value || '0');
+      const max = parseInt(this.getAttribute('max') || '0');
+
+      if (isNaN(val) || val <= 0) {
+        val = 1;
+      }
+      if (max > 0 && val > max) {
+        val = max;
+      }
+      this.value = val;
+
       const fila = this.closest('tr');
-      const precio = parseInt(fila.dataset.precio);
-      const cantidad = parseInt(this.value);
+      const precio = parseInt(fila.dataset.precio || '0');
       const subtotal = fila.querySelector('.subtotal');
-      subtotal.textContent = "$ " + (precio * cantidad);
+
+      if (subtotal) {
+        const nuevo = precio * val;
+        subtotal.textContent = "$ " + nuevo;
+      }
 
       calcularTotalGeneral();
     });
@@ -126,10 +127,15 @@
   function calcularTotalGeneral() {
     let total = 0;
     document.querySelectorAll('.subtotal').forEach(s => {
-      total += parseInt(s.textContent.replace("$", "").trim());
+      const num = parseInt(s.textContent.replace("$", "").trim() || '0');
+      if (!isNaN(num)) total += num;
     });
-    document.getElementById("total-general").textContent = "$ " + total;
+    const totalEl = document.getElementById("total-general");
+    if (totalEl) {
+      totalEl.textContent = "$ " + total;
+    }
   }
 </script>
+
 
 {% endblock %}

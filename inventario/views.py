@@ -4,13 +4,29 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.views.generic import DetailView, CreateView, UpdateView, ListView, DeleteView,View
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
 from django.utils.safestring import mark_safe
-from .models import Producto, MovimientoInventario, Compra,Proveedor,PlantillaProveedorProducto, Categoria
-from .forms import ProductoCrearForm, MovimientoCrearForm, CompraItemFormSet, CompraForm,PlantillaProveedorProductoForm,ProveedorForm
-#seba#
-from django.contrib.auth.decorators import login_required, permission_required
+from .models import (
+    Producto, 
+    MovimientoInventario, 
+    Compra,Proveedor,
+    PlantillaProveedorProducto, 
+    Categoria,
+    Promo,
+    PromoItem,
+)
+
+from .forms import (
+    ProductoCrearForm, 
+    MovimientoCrearForm, 
+    CompraItemFormSet, 
+    CompraForm,
+    PlantillaProveedorProductoForm,
+    ProveedorForm,
+    PromoForm,
+    PromoItemFormSet,
+)
 
 import json
 
@@ -500,3 +516,91 @@ class CategoriaToggleActivaView(LoginRequiredMixin, View):
         categoria.activa = not categoria.activa
         categoria.save()
         return redirect("inventario:categoria_lista")
+
+# ================== PROMOCIONES / COMBOS ======================
+
+@login_required
+def promo_lista_view(request):
+    """
+    Lista de promociones del negocio actual.
+    """
+    negocio = request.user.perfilusuario.negocio
+    promos = Promo.objects.filter(negocio=negocio).order_by("-activo", "nombre")
+
+    context = {
+        "promos": promos,
+    }
+    return render(request, "inventario/promociones/promo_lista.html", context)
+
+
+@login_required
+def promo_crear_view(request):
+    """
+    Crear una nueva promo con sus productos (PromoItem).
+    """
+    negocio = request.user.perfilusuario.negocio
+
+    if request.method == "POST":
+        form = PromoForm(request.POST, request.FILES)
+        formset = PromoItemFormSet(request.POST)
+
+        if form.is_valid() and formset.is_valid():
+            promo = form.save(commit=False)
+            promo.negocio = negocio
+            promo.save()
+
+            formset.instance = promo
+            formset.save()
+
+            return redirect("inventario:promo_lista")
+    else:
+        form = PromoForm()
+        formset = PromoItemFormSet()
+
+    context = {
+        "modo": "crear",
+        "form": form,
+        "formset": formset,
+    }
+    return render(request, "inventario/promociones/promo_form.html", context)
+
+
+@login_required
+def promo_editar_view(request, pk):
+    """
+    Editar una promo existente y sus productos asociados.
+    """
+    negocio = request.user.perfilusuario.negocio
+    promo = get_object_or_404(Promo, pk=pk, negocio=negocio)
+
+    if request.method == "POST":
+        form = PromoForm(request.POST, request.FILES, instance=promo)
+        formset = PromoItemFormSet(request.POST, instance=promo)
+
+        if form.is_valid() and formset.is_valid():
+            form.save()
+            formset.save()
+            return redirect("inventario:promo_lista")
+    else:
+        form = PromoForm(instance=promo)
+        formset = PromoItemFormSet(instance=promo)
+
+    context = {
+        "modo": "editar",
+        "form": form,
+        "formset": formset,
+        "promo": promo,
+    }
+    return render(request, "inventario/promociones/promo_form.html", context)
+
+
+@login_required
+def promo_toggle_activa_view(request, pk):
+    """
+    Soft-delete: cambia 'activo' en vez de borrar la promo.
+    """
+    negocio = request.user.perfilusuario.negocio
+    promo = get_object_or_404(Promo, pk=pk, negocio=negocio)
+    promo.activo = not promo.activo
+    promo.save(update_fields=["activo"])
+    return redirect("inventario:promo_lista")

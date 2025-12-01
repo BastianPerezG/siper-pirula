@@ -13,116 +13,207 @@
     </p>
 
     <!-- Barra de búsqueda -->
-<div class="relative w-full sm:w-96 mt-4">
-  <form method="get" action="{% url 'tienda:productos' %}" class="flex gap-2">
-    <input
-      type="text"
-      name="q"
-      placeholder="Buscar producto..."
-      class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm"
-    >
-    <button
-      type="submit"
-      class="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">
-      Buscar
-    </button>
-  </form>
+    <div class="relative w-full sm:w-96 mt-4">
+      <form method="get" action="{% url 'tienda:productos' %}" class="flex gap-2">
+        <input type="text" name="q" placeholder="Buscar producto..."
+          class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm">
+        <button type="submit"
+          class="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">
+          Buscar
+        </button>
+      </form>
 
-  <!-- Caja de sugerencias (abajo del input) -->
-  <div id="sugerenciasBox"
-    class="absolute left-0 right-0 bg-white border border-slate-200 rounded-lg shadow-sm mt-2 hidden z-50">
-  </div>
-</div>
+      <!-- Caja de sugerencias (abajo del input) -->
+      <div id="sugerenciasBox"
+        class="absolute left-0 right-0 bg-white border border-slate-200 rounded-lg shadow-sm mt-2 hidden z-50">
+      </div>
+    </div>
 
   </header>
+  <h2 class="text-xl font-semibold text-slate-800 mb-4">
+    Promos y Combos
+  </h2>
 
-
-  {% if categorias_data %}
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
-    {% for item in categorias_data %}
-    {% with categoria=item.categoria imagen=item.imagen %}
-    <a href="{% url 'tienda:productos' %}?categoria={{ categoria.slug }}"
-      class="group bg-white rounded-2xl shadow-sm hover:shadow-md border border-slate-100 overflow-hidden flex flex-col transition-all duration-200">
-      {% if imagen %}
-      <img src="{{ imagen.url }}" alt="{{ categoria.nombre }}"
-        class="h-36 sm:h-44 w-full object-cover group-hover:scale-105 transition-transform duration-300">
+  {% if promos %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+    {% for promo in promos %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+      {# Imagen de la promo #}
+      {% if promo.imagen %}
+      <div class="h-40 w-full overflow-hidden">
+        <img src="{{ promo.imagen.url }}" alt="{{ promo.nombre }}" class="w-full h-full object-cover">
+      </div>
       {% else %}
-      <div class="h-36 sm:h-44 w-full bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center">
-        <span class="text-3xl sm:text-4xl font-bold text-slate-100">
-          {{ categoria.nombre|slice:":1" }}
-        </span>
+      <div class="h-40 w-full flex items-center justify-center bg-slate-50 text-slate-400 text-sm">
+        Sin imagen
       </div>
       {% endif %}
 
-      <div class="flex-1 flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4">
-        <div class="min-w-0">
-          <h2 class="text-base sm:text-lg font-semibold text-slate-900 truncate">
-            {{ categoria.nombre }}
-          </h2>
-          {% if categoria.descripcion %}
-          <p class="mt-1 text-xs sm:text-sm text-slate-500 line-clamp-2">
-            {{ categoria.descripcion }}
-          </p>
-          {% endif %}
+      <div class="p-4 flex-1 flex flex-col">
+        <h3 class="text-lg font-semibold text-slate-800 mb-1">
+          {{ promo.nombre }}
+        </h3>
+
+        {% if promo.descripcion %}
+        <p class="text-xs text-slate-500 mb-2">
+          {{ promo.descripcion }}
+        </p>
+        {% endif %}
+
+        {# Lista de items de la promo si los muestras aquí, si no puedes quitar esto #}
+        {% if promo.items.all %}
+        <div class="text-xs text-slate-600 mb-3">
+          <span class="font-semibold">Incluye:</span>
+          <ul class="list-disc list-inside mt-1 space-y-0.5">
+            {% for item in promo.items.all %}
+            <li>
+              {{ item.cantidad }} x {{ item.producto.nombre }}
+            </li>
+            {% endfor %}
+          </ul>
         </div>
-        <span
-          class="ml-3 inline-flex items-center justify-center rounded-full bg-slate-900 text-slate-100 text-xs sm:text-sm px-3 py-1">
-          Ver
-        </span>
+        {% endif %}
+
+        <div class="mt-auto flex items-center justify-between">
+          <div>
+            <p class="text-sm font-semibold text-slate-900">
+              ${{ promo.precio_combo|floatformat:0 }}
+            </p>
+            {% if promo.precio_referencial %}
+            {% if promo.precio_normal %}
+            <p class="text-xs text-slate-400 line-through">
+              ${{ promo.precio_normal|floatformat:0 }}
+            </p>
+            {% endif %}
+            {% if promo.ahorro %}
+            <p class="text-[11px] text-emerald-600 font-medium">
+              Ahorro aprox: ${{ promo.ahorro|floatformat:0 }}
+            </p>
+            {% endif %}
+            {% endif %}
+          </div>
+
+          <form method="post" action="{% url 'tienda:promo_agregar_carrito' promo.id %}">
+            {% csrf_token %}
+            <button type="submit"
+              class="px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold">
+              Agregar promo al carro
+            </button>
+          </form>
+        </div>
       </div>
-    </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-sm text-slate-500 mb-10">
+    No hay promos activas en este momento.
+  </p>
+  {% endif %}
+
+
+  <h2 class="text-xl font-semibold text-slate-800 mb-4">
+    Categorías
+  </h2>
+
+  {% if categorias_data %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    {% for grupo in categorias_data %}
+    {% with categoria=grupo.categoria productos=grupo.productos %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+      {# Imagen de la categoría #}
+      {% if categoria.imagen %}
+      <div class="h-40 w-full overflow-hidden">
+        <img src="{{ categoria.imagen.url }}" alt="{{ categoria.nombre }}" class="w-full h-full object-cover">
+      </div>
+      {% else %}
+      <div class="h-40 w-full flex items-center justify-center bg-slate-50 text-slate-400 text-sm">
+        Sin imagen
+      </div>
+      {% endif %}
+
+      <div class="p-4 flex-1 flex flex-col">
+        <h3 class="text-lg font-semibold text-slate-800 mb-1">
+          {{ categoria.nombre }}
+        </h3>
+
+        {% if productos %}
+        <ul class="text-xs text-slate-600 mb-3 space-y-0.5">
+          {% for prod in productos %}
+          <li>
+            {{ prod.nombre }}
+            {% if prod.precio_venta %}
+            <span class="text-[11px] text-slate-400">
+              – ${{ prod.precio_venta|floatformat:0 }}
+            </span>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-xs text-slate-400 mb-3">
+          Sin productos disponibles.
+        </p>
+        {% endif %}
+
+        <div class="mt-auto flex justify-end">
+          <a href="{% url 'tienda:categoria_detalle' categoria.id %}"
+            class="inline-flex items-center px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800">
+            Ver
+          </a>
+        </div>
+      </div>
+    </div>
     {% endwith %}
     {% endfor %}
   </div>
   {% else %}
-  <div class="bg-white rounded-xl border border-dashed border-slate-300 px-4 sm:px-6 py-6 sm:py-8 text-center">
-    <p class="text-sm sm:text-base text-slate-500">
-      No hay categorías configuradas aún. Créalas desde el módulo de inventario.
-    </p>
+  <div
+    class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-slate-500 text-sm">
+    No hay categorías configuradas aún. Créalas desde el módulo de inventario.
   </div>
   {% endif %}
-</div>
+ <script>
+  const input = document.querySelector('input[name="q"]');
+  const box = document.getElementById("sugerenciasBox");
+  let timeout = null;
 
-<script>
-const input = document.querySelector('input[name="q"]');
-const box = document.getElementById("sugerenciasBox");
+  input.addEventListener("input", function () {
+    const q = this.value.trim();
+    clearTimeout(timeout);
 
-let timeout = null;
+    if (q.length < 2) {
+      box.classList.add("hidden");
+      box.innerHTML = "";
+      return;
+    }
 
-input.addEventListener("input", function () {
-  const q = this.value.trim();
-  clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      fetch(`/tienda/ajax/sugerencias/?q=${encodeURIComponent(q)}`)
+        .then(r => r.json())
+        .then(resp => {
+          const data = resp.resultados || [];
 
-  if (q.length < 2) {
-    box.classList.add("hidden");
-    box.innerHTML = "";
-    return;
-  }
+          if (data.length === 0) {
+            box.classList.add("hidden");
+            box.innerHTML = "";
+            return;
+          }
 
-  timeout = setTimeout(() => {
-    fetch(`/tienda/ajax/sugerencias/?q=${encodeURIComponent(q)}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.length === 0) {
-          box.classList.add("hidden");
           box.innerHTML = "";
-          return;
-        }
-
-        box.innerHTML = "";
-        data.forEach(item => {
-          const div = document.createElement("div");
-          div.className = "px-3 py-2 text-sm hover:bg-slate-50 cursor-pointer";
-          div.textContent = item.nombre;
-          div.onclick = () => {
-            window.location.href = `/tienda/producto/${item.id}/`;
-          };
-          box.appendChild(div);
+          data.forEach(item => {
+            const div = document.createElement("div");
+            div.className = "px-3 py-2 text-sm hover:bg-slate-50 cursor-pointer";
+            div.textContent = item.nombre;
+            div.onclick = () => {
+              window.location.href = `/tienda/producto/${item.id}/`;
+            };
+            box.appendChild(div);
+          });
+          box.classList.remove("hidden");
         });
-        box.classList.remove("hidden");
-      });
-  }, 250);
-});
+    }, 250);
+  });
 </script>
 
-{% endblock %}
+  {% endblock %}
