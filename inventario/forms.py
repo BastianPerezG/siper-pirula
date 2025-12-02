@@ -219,3 +219,37 @@ PromoItemFormSet = inlineformset_factory(
     extra=1,
     can_delete=True,
 )
+
+
+
+class MermaForm(forms.ModelForm):
+    class Meta:
+        model = MovimientoInventario
+        fields = ["producto", "cantidad", "comentario"]
+
+    def __init__(self, *args, **kwargs):
+        negocio = kwargs.pop("negocio", None)
+        super().__init__(*args, **kwargs)
+
+        # Sólo productos activos del negocio
+        qs = Producto.objects.filter(activo=True)
+        if negocio is not None:
+            qs = qs.filter(negocio=negocio)
+        self.fields["producto"].queryset = qs.order_by("nombre")
+
+        self.fields["cantidad"].min_value = 1
+        self.fields["cantidad"].widget.attrs["class"] = "w-24"
+
+    def clean(self):
+        cleaned = super().clean()
+        producto = cleaned.get("producto")
+        cantidad = cleaned.get("cantidad")
+
+        if producto and cantidad:
+            stock = producto.stock_actual or 0
+            if cantidad > stock:
+                raise forms.ValidationError(
+                    f"No puedes registrar más merma ({cantidad}) que el stock disponible ({stock})."
+                )
+
+        return cleaned

@@ -1,0 +1,51 @@
+{% extends "core/base.html" %}
+
+{% block title %}Mermas - SIPER Pirula{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-2xl font-semibold text-slate-800">Mermas</h1>
+  <a href="{% url 'inventario:merma_crear' %}"
+     class="px-4 py-2 rounded-full bg-slate-900 text-white text-sm hover:bg-slate-800">
+    Registrar merma
+  </a>
+</div>
+
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+  <table class="min-w-full text-sm">
+    <thead class="bg-slate-50 text-slate-500 uppercase text-xs">
+      <tr>
+        <th class="px-4 py-3 text-left">Fecha</th>
+        <th class="px-4 py-3 text-left">Producto</th>
+        <th class="px-4 py-3 text-right">Cantidad</th>
+        <th class="px-4 py-3 text-left">Comentario</th>
+        <th class="px-4 py-3 text-right">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if mermas %}
+        {% for m in mermas %}
+        <tr class="border-t border-slate-100">
+          <td class="px-4 py-2 text-slate-600">{{ m.fecha|date:"d/m/Y H:i" }}</td>
+          <td class="px-4 py-2">{{ m.producto.nombre }}</td>
+          <td class="px-4 py-2 text-right">{{ m.cantidad }}</td>
+          <td class="px-4 py-2 text-slate-600">{{ m.comentario|default:"-" }}</td>
+          <td class="px-4 py-2 text-right space-x-2">
+            <a href="{% url 'inventario:merma_editar' m.pk %}"
+               class="text-xs text-slate-700 hover:underline">Editar</a>
+            <a href="{% url 'inventario:merma_eliminar' m.pk %}"
+               class="text-xs text-red-600 hover:underline">Eliminar</a>
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="5" class="px-4 py-6 text-center text-slate-400">
+            No hay mermas registradas.
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

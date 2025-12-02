@@ -37,4 +37,9 @@ urlpatterns = [
     path("promos/nueva/", views.promo_crear_view, name="promo_crear"),
     path("promos/<int:pk>/editar/", views.promo_editar_view, name="promo_editar"),
     path("promos/<int:pk>/toggle/", views.promo_toggle_activa_view, name="promo_toggle"),
+    # Mermas
+    path("mermas/", views.merma_lista, name="merma_lista"),
+    path("mermas/nueva/", views.merma_crear, name="merma_crear"),
+    path("mermas/<int:pk>/editar/", views.merma_editar, name="merma_editar"),
+    path("mermas/<int:pk>/eliminar/", views.merma_eliminar, name="merma_eliminar"),
 ]

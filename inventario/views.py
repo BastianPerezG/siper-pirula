@@ -7,6 +7,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
 from django.utils.safestring import mark_safe
+from django.contrib import messages
 from .models import (
     Producto, 
     MovimientoInventario, 
@@ -15,6 +16,7 @@ from .models import (
     Categoria,
     Promo,
     PromoItem,
+    Negocio
 )
 
 from .forms import (
@@ -26,6 +28,7 @@ from .forms import (
     ProveedorForm,
     PromoForm,
     PromoItemFormSet,
+    MermaForm,
 )
 
 import json
@@ -52,6 +55,9 @@ def scan_ean(request):
 
     return render(request, "inventario/scan.html")
 
+def get_negocio_actual(request):
+    # Usa tu propia lógica; aquí un ejemplo simple
+    return Negocio.objects.first()
 
 # --- CBVs para productos ---
 
@@ -604,3 +610,84 @@ def promo_toggle_activa_view(request, pk):
     promo.activo = not promo.activo
     promo.save(update_fields=["activo"])
     return redirect("inventario:promo_lista")
+
+
+# Mermas 
+
+@login_required
+def merma_lista(request):
+    negocio = get_negocio_actual(request)
+    mermas = MovimientoInventario.objects.filter(
+        tipo=MovimientoInventario.TIPO_MERMA,
+        producto__negocio=negocio,
+    ).select_related("producto").order_by("-fecha")
+
+    context = {
+        "mermas": mermas,
+    }
+    return render(request, "inventario/merma/merma_lista.html", context)
+
+
+@login_required
+def merma_crear(request):
+    negocio = get_negocio_actual(request)
+
+    if request.method == "POST":
+        form = MermaForm(request.POST, negocio=negocio)
+        if form.is_valid():
+            merma = form.save(commit=False)
+            merma.tipo = MovimientoInventario.TIPO_MERMA
+            merma.save()
+            messages.success(request, "Merma registrada correctamente.")
+            return redirect("inventario:merma_lista")
+    else:
+        form = MermaForm(negocio=negocio)
+
+    return render(request, "inventario/merma/merma_form.html", {"form": form})
+
+@login_required
+def merma_editar(request, pk):
+    negocio = get_negocio_actual(request)
+    merma = get_object_or_404(
+        MovimientoInventario,
+        pk=pk,
+        tipo=MovimientoInventario.TIPO_MERMA,
+        producto__negocio=negocio,
+    )
+
+    if request.method == "POST":
+        form = MermaForm(request.POST, instance=merma, negocio=negocio)
+        if form.is_valid():
+            form.instance.tipo = MovimientoInventario.TIPO_MERMA
+            form.save()
+            messages.success(request, "Merma actualizada.")
+            return redirect("inventario:merma_lista")
+    else:
+        form = MermaForm(instance=merma, negocio=negocio)
+
+    return render(
+        request,
+        "inventario/merma/merma_form.html",
+        {"form": form, "merma": merma},
+    )
+
+@login_required
+def merma_eliminar(request, pk):
+    negocio = get_negocio_actual(request)
+    merma = get_object_or_404(
+        MovimientoInventario,
+        pk=pk,
+        tipo=MovimientoInventario.TIPO_MERMA,
+        producto__negocio=negocio,
+    )
+
+    if request.method == "POST":
+        merma.delete()
+        messages.info(request, "Merma eliminada.")
+        return redirect("inventario:merma_lista")
+
+    return render(
+        request,
+        "inventario/merma/merma_confirmar_eliminar.html",
+        {"merma": merma},
+    )
