@@ -1,0 +1,112 @@
+{% extends "core/base.html" %}
+{% load humanize %}
+
+{% block title %}Promociones - SIPER Pirula{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-900">Promociones / Combos</h1>
+    <p class="text-sm text-slate-500 mt-1">
+      Administra los packs que verán los clientes en la tienda.
+    </p>
+  </div>
+
+  <a href="{% url 'inventario:promo_crear' %}"
+     class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-600 text-white text-sm font-semibold shadow-sm hover:bg-emerald-700">
+    <span class="text-lg leading-none">＋</span>
+    Nueva promo
+  </a>
+</div>
+
+{% if promos %}
+<div class="overflow-hidden bg-white border border-slate-200 rounded-2xl shadow-sm">
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-left text-sm">
+      <thead class="bg-slate-50 border-b border-slate-200">
+        <tr>
+          <th class="px-4 py-3 font-semibold text-slate-700">Nombre</th>
+          <th class="px-4 py-3 font-semibold text-slate-700 whitespace-nowrap">Precio combo</th>
+          <th class="px-4 py-3 font-semibold text-slate-700">Vigencia</th>
+          <th class="px-4 py-3 font-semibold text-slate-700 text-center">Estado</th>
+          <th class="px-4 py-3 font-semibold text-slate-700 text-right w-40">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for promo in promos %}
+        <tr class="hover:bg-slate-50/60">
+          <td class="px-4 py-3 align-top">
+            <div class="font-medium text-slate-900">{{ promo.nombre }}</div>
+            {% if promo.descripcion %}
+            <p class="text-xs text-slate-500 mt-0.5 line-clamp-2">
+              {{ promo.descripcion }}
+            </p>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 align-top whitespace-nowrap">
+            <span class="font-semibold text-slate-900">
+              ${{ promo.precio_combo|intcomma }}
+            </span>
+          </td>
+          <td class="px-4 py-3 align-top text-sm text-slate-600 whitespace-nowrap">
+            {% if promo.fecha_inicio %}
+              {{ promo.fecha_inicio|date:"d-m-Y" }}
+            {% else %}
+              <span class="text-slate-400">Sin inicio</span>
+            {% endif %}
+            <span class="mx-1 text-slate-400">→</span>
+            {% if promo.fecha_fin %}
+              {{ promo.fecha_fin|date:"d-m-Y" }}
+            {% else %}
+              <span class="text-slate-400">Sin fin</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 align-top text-center">
+            {% if promo.activo %}
+              <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                Activa
+              </span>
+            {% else %}
+              <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+                Inactiva
+              </span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 align-top text-right">
+            <div class="inline-flex gap-2">
+              <a href="{% url 'inventario:promo_editar' promo.pk %}"
+                 class="inline-flex items-center px-3 py-1.5 rounded-full border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                Editar
+              </a>
+              <form method="post"
+                    action="{% url 'inventario:promo_toggle' promo.pk %}">
+                {% csrf_token %}
+                <button type="submit"
+                        class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold
+                               {% if promo.activo %}
+                                  bg-slate-100 text-slate-600 hover:bg-slate-200
+                               {% else %}
+                                  bg-emerald-50 text-emerald-700 hover:bg-emerald-100
+                               {% endif %}">
+                  {% if promo.activo %}Desactivar{% else %}Activar{% endif %}
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="bg-white border border-dashed border-slate-300 rounded-2xl p-8 text-center text-slate-500">
+  <p class="mb-3">Aún no has creado ninguna promoción.</p>
+  <a href="{% url 'inventario:promo_crear' %}"
+     class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-600 text-white text-sm font-semibold shadow-sm hover:bg-emerald-700">
+    <span class="text-lg leading-none">＋</span>
+    Crear la primera promo
+  </a>
+</div>
+{% endif %}
+{% endblock %}

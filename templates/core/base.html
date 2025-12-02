@@ -4,15 +4,17 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}SIPER Pirula{% endblock %}</title>
 
-    <!-- Tailwind Play CDN (simple para desarrollo) -->
+    <!-- Tailwind CDN (desarrollo) -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Aquí podrías cargar un CSS propio si quieres -->
-    {#<link rel="stylesheet" href="{% static 'css/app.css' %}"> #}
+    {# CSS propio opcional #}
+    {# <link rel="stylesheet" href="{% static 'css/app.css' %}"> #}
 
     {% block extra_head %}
+    <!-- Select2 -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     {% endblock %}
 </head>
@@ -21,24 +23,30 @@
 
     <!-- Navbar superior -->
     <header class="bg-slate-900 text-slate-100">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
             <a href="{% url 'core:dashboard' %}" class="font-bold text-lg tracking-wide">
                 SIPER Pirula
             </a>
 
-            <nav class="flex gap-4 text-sm">
+            <nav class="flex flex-wrap gap-4 text-sm">
                 <a href="{% url 'core:dashboard' %}" class="hover:text-amber-300">Inicio</a>
                 <a href="{% url 'inventario:producto_lista' %}" class="hover:text-amber-300">Productos</a>
+                <a href="{% url 'inventario:promo_lista' %}" class="hover:text-amber-300">Promos</a>
                 <a href="{% url 'inventario:compra_lista' %}" class="hover:text-amber-300">Compras</a>
                 <a href="{% url 'ventas:venta_lista' %}" class="hover:text-amber-300">Ventas</a>
                 <a href="{% url 'reportes:inventario' %}" class="hover:text-amber-300">Reportes</a>
                 <a href="{% url 'inventario:scan_ean' %}" class="hover:text-amber-300">Escanear</a>
                 <a href="{% url 'pedidos:pedido_lista' %}" class="hover:text-amber-300">Pedidos</a>
-                <a href="{% url 'pedidos:pedidos_monitor' %}" class="hover:text-amber-300 text-sm">Monitor Pedidos</a>
+                <a href="{% url 'inventario:merma_lista' %}" class="hover:text-amber-300">Mermas</a>
+                <a href="{% url 'pedidos:pedidos_monitor' %}" class="hover:text-amber-300 text-sm">
+                    Monitor Pedidos
+                </a>
             </nav>
 
-            {# Aquí más adelante podemos poner usuario / logout #}
-            {# <div class="text-xs">Usuario: {{ request.user.username }}</div> #}
+            {# Espacio para info de usuario / logout si quieres agregarlo después #}
+            {# <div class="text-xs text-right">
+                {{ request.user.username }}
+            </div> #}
         </div>
     </header>
 
@@ -51,9 +59,15 @@
             <div class="mb-4 space-y-2">
                 {% for message in messages %}
                 <div class="px-4 py-2 rounded text-sm
-                                    {% if message.tags == 'success' %}bg-emerald-100 text-emerald-800
-                                    {% elif message.tags == 'error' %}bg-red-100 text-red-800
-                                    {% else %}bg-slate-200 text-slate-800{% endif %}">
+                    {% if message.tags == 'success' %}
+                        bg-emerald-100 text-emerald-800
+                    {% elif message.tags == 'error' or message.tags == 'danger' %}
+                        bg-red-100 text-red-800
+                    {% elif message.tags == 'warning' %}
+                        bg-amber-100 text-amber-800
+                    {% else %}
+                        bg-slate-200 text-slate-800
+                    {% endif %}">
                     {{ message }}
                 </div>
                 {% endfor %}
@@ -67,15 +81,18 @@
     <!-- Footer simple -->
     <footer class="bg-slate-900 text-slate-400 text-xs">
         <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between">
-            <span>SIPER Pirula &copy; {{ now|date:"Y" }}</span>
+            <span>SIPER Pirula &copy; {% now "Y" %}</span>
             <span>Proyecto de título</span>
         </div>
     </footer>
-<script src="https://code.jquery.com/jquery-3.7.1.min.js" 
-            integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" 
-            crossorigin="anonymous"></script>
+
+    <!-- JS global -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+        crossorigin="anonymous"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
     {% block extra_js %}{% endblock %}
 </body>
 

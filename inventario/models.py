@@ -3,7 +3,15 @@ from django.db.models import Sum, Case, When, IntegerField, F
 from django.core.exceptions import ValidationError
 from core.models import Negocio 
 from django.contrib.auth.models import User
+
+from django.contrib.auth  import get_user_model
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+
+#=======
 from django.utils.text import slugify
+from django.utils import timezone
+
 
 # Modelo Inventario.
 
@@ -14,7 +22,7 @@ class Categoria(models.Model):
     slug = models.SlugField(max_length=100, blank=True)
     imagen = models.ImageField(upload_to="categorias/", null=True, blank=True)
 
-    activa = models.BooleanField(default=True)
+    activo = models.BooleanField(default=True)
     orden = models.PositiveIntegerField(default=0)
 
     creada = models.DateTimeField(auto_now_add=True)
@@ -92,15 +100,18 @@ class MovimientoInventario(models.Model):
     TIPO_SALIDA = "SALIDA"
     TIPO_AJUSTE = "AJUSTE"
     TIPO_MERMA = "MERMA"
-    TIPO_RESERVA = "RESERVA"  # 🔹 NUEVO
-
+    TIPO_RESERVA = "RESERVA" 
+    TIPO_VENTA = "VENTA"
+    
     TIPO_CHOICES = [
         (TIPO_ENTRADA, "Entrada (compra, devolución)"),
         (TIPO_SALIDA, "Salida (venta manual, uso interno)"),
         (TIPO_AJUSTE, "Ajuste (conteo inventario)"),
         (TIPO_MERMA, "Merma (rotura, pérdida)"),
-        (TIPO_RESERVA, "Reserva por pedido"),  # 🔹 NUEVO
+        (TIPO_RESERVA, "Reserva por pedido"),  
+        (TIPO_VENTA, "Venta"),
     ]
+
 
     producto = models.ForeignKey(
         "Producto",
@@ -287,3 +298,160 @@ class PlantillaProveedorProducto(models.Model):
             producto=self.producto
         ).order_by('-compra__fecha').first()
         return ultimo_item.cantidad if ultimo_item else 0
+##############################
+
+
+    
+
+class Promo(models.Model):
+    """
+    Combo/pack de productos con precio especial.
+    Ej: 'Pack Terremoto 18' = pipeño + granadina + helado de piña.
+    """
+    negocio = models.ForeignKey(Negocio, on_delete=models.PROTECT)
+
+    nombre = models.CharField(max_length=120)
+    slug = models.SlugField(max_length=140, blank=True)
+
+    descripcion = models.TextField(blank=True, null=True)
+
+    # Imagen representativa para la web
+    imagen = models.ImageField(
+        upload_to="promos/",
+        blank=True,
+        null=True,
+    )
+
+    # Precio que pagará el cliente por el combo
+    precio_combo = models.PositiveIntegerField(
+        help_text="Precio final del combo en pesos chilenos"
+    )
+
+    # Estado general
+    activo = models.BooleanField(default=True)
+    mostrar_en_portada = models.BooleanField(
+        default=True,
+        help_text="Si está marcado, se mostrará destacados en la tienda",
+    )
+
+    # Vigencia flexible
+    fecha_inicio = models.DateField(blank=True, null=True)
+    fecha_fin = models.DateField(blank=True, null=True)
+
+    creado = models.DateTimeField(auto_now_add=True)
+    actualizado = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "promo"
+        ordering = ["-activo", "nombre"]
+
+    def __str__(self):
+        return self.nombre
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.nombre)
+        super().save(*args, **kwargs)
+
+    # ----- Lógica de negocio -----
+
+    @property
+    def precio_normal(self) -> int:
+        """
+        Suma del precio normal de todos los productos del combo.
+        """
+        total = 0
+        for item in self.items.select_related("producto"):
+            total += (item.producto.precio or 0) * item.cantidad
+        return total
+
+    @property
+    def precio_final(self) -> int:
+        """
+        Precio que usará el carrito.
+        En este modelo, el precio final ES el precio del combo.
+        """
+        return self.precio_combo
+
+    @property
+    def ahorro(self) -> int:
+        """
+        Diferencia entre precio normal y precio combo.
+        """
+        return max(self.precio_normal - self.precio_combo, 0)
+
+    def tiene_stock(self, cantidad_packs: int = 1) -> bool:
+        """
+        Verifica si hay stock suficiente de todos los productos
+        para vender 'cantidad_packs' combos.
+        """
+        for item in self.items.select_related("producto"):
+            necesario = item.cantidad * cantidad_packs
+            if item.producto.stock_actual < necesario:
+                return False
+        return True
+
+    def descontar_stock(self, cantidad: int = 1, pedido=None):
+        """
+        Descuenta el stock de los productos incluidos en la promo.
+        """
+        from inventario.models import MovimientoInventario  # o el path correcto
+
+        for item in self.items.select_related("producto"):
+            total = item.cantidad * cantidad
+
+            # tu lógica de movimiento de inventario
+            MovimientoInventario.objects.create(
+                producto=item.producto,
+                tipo=MovimientoInventario.TIPO_VENTA,
+                cantidad=total,
+                comentario=f"Venta promo {self.nombre}",
+                pedido=pedido,
+            )
+
+            # si además actualizas un campo directo de stock:
+            item.producto.stock_disponible -= total
+            item.producto.save(update_fields=["stock_disponible"])
+
+    # ---------- NUEVO: vigencia de la promo ----------
+    @property
+    def esta_vigente(self) -> bool:
+        """
+        True si la promo está activa y la fecha actual está dentro
+        del rango [fecha_inicio, fecha_fin] (cuando existan).
+        """
+        if not self.activo:
+            return False
+
+        hoy = timezone.now().date()
+
+        if self.fecha_inicio and hoy < self.fecha_inicio:
+            return False
+
+        if self.fecha_fin and hoy > self.fecha_fin:
+            return False
+
+        return True
+
+class PromoItem(models.Model):
+    """
+    Producto que forma parte de una promo/pack.
+    """
+    promo = models.ForeignKey(
+        Promo,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    producto = models.ForeignKey(
+        Producto,
+        on_delete=models.PROTECT,
+        related_name="promos_items",
+    )
+    cantidad = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        db_table = "promo_item"
+        unique_together = ("promo", "producto")
+
+    def __str__(self):
+        return f"{self.cantidad} x {self.producto.nombre} en {self.promo.nombre}"

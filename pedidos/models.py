@@ -168,6 +168,7 @@ class Pedido(models.Model):
         )
         enviar_correo_cambio_estado(self)
 
+
         # --- Integración con inventario (reservas de stock) ---
 
     def crear_reservas_inventario(self):

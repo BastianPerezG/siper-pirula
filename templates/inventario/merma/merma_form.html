@@ -1,0 +1,43 @@
+{% extends "core/base.html" %}
+
+{% block title %}{% if merma %}Editar merma{% else %}Registrar merma{% endif %} - SIPER Pirula{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold text-slate-800 mb-4">
+  {% if merma %}Editar merma{% else %}Registrar merma{% endif %}
+</h1>
+
+<form method="post" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+
+  <div>
+    <label class="block text-sm font-medium text-slate-700 mb-1">Producto</label>
+    {{ form.producto.as_widget }}
+    {{ form.producto.errors }}
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium text-slate-700 mb-1">Cantidad</label>
+    {{ form.cantidad.as_widget }}
+    {{ form.cantidad.errors }}
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium text-slate-700 mb-1">Comentario</label>
+    {{ form.comentario.as_widget }}
+    {{ form.comentario.errors }}
+  </div>
+
+  <div class="flex justify-between mt-6">
+    <a href="{% url 'inventario:merma_lista' %}"
+       class="px-4 py-2 rounded-full border border-slate-300 text-slate-700 text-sm hover:bg-slate-50">
+      Cancelar
+    </a>
+    <button type="submit"
+            class="px-4 py-2 rounded-full bg-slate-900 text-white text-sm hover:bg-slate-800">
+      Guardar
+    </button>
+  </div>
+</form>
+{% endblock %}

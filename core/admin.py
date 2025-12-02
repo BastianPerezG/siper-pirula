@@ -9,7 +9,7 @@ class NegocioAdmin(admin.ModelAdmin):
     list_filter = ("activo",)
     search_fields = ("nombre", "rut")
 
-
+@admin.register(PerfilUsuario)
 class PerfilUsuarioAdmin(admin.ModelAdmin):
     list_display = ("user", "negocio")
     search_fields = ("user__username", "negocio__nombre")

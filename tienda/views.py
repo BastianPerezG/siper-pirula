@@ -1,24 +1,25 @@
+from decimal import Decimal
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from core.models import Negocio
-from inventario.models import Producto, Categoria
+from inventario.models import Producto, Categoria, Promo
 from pedidos.models import Pedido, PedidoItem, Cliente
 from pedidos.emails import enviar_correo_pedido_creado
-from pedidos.validators import validar_rut
 from django.contrib.auth.models import User  # para crear el usuario
 from pedidos.forms import RegistroClienteForm
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import login, logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.conf import settings
-from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+
 from .forms import CheckoutForm
-from ventas.models import Venta
-# Solo si vas a usar el SDK oficial:
+
+# SDK Webpay (Transbank)
 try:
     from transbank.webpay.webpay_plus.transaction import Transaction
     from transbank.common.options import WebpayOptions
@@ -27,23 +28,13 @@ except ImportError:
     Transaction = None  # para que el proyecto no reviente si aún no instalas el SDK
 
 
-
 CART_SESSION_KEY = "carrito"
-
-
-
-def get_webpay_transaction():
-    options = WebpayOptions(
-        commerce_code=settings.TRANSBANK_COMMERCE_CODE,
-        api_key=settings.TRANSBANK_API_KEY,
-        integration_type=settings.TRANSBANK_ENVIRONMENT,
-    )
-    return Transaction(options)
 
 
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
+
 
 def get_negocio_actual():
     # Para este proyecto asumimos una sola botillería
@@ -51,129 +42,207 @@ def get_negocio_actual():
 
 
 def _get_cart(request):
+    """Obtiene el carrito desde la sesión."""
     return request.session.get(CART_SESSION_KEY, {})
 
 
 def _save_cart(request, cart):
+    """Guarda el carrito en la sesión y marca la sesión como modificada."""
     request.session[CART_SESSION_KEY] = cart
     request.session.modified = True
 
 
-def _build_cart_items(request, negocio):
+def _build_cart_items(cart_dict):
     """
-    Convierte la sesión 'cart' en una lista uniforme de items.
-    """
-    cart = _get_cart(request)
-    items = []
-    total = 0
+    Convierte el dict de sesión en una lista de ítems amigable para el template.
 
-    for pid_str, cant in cart.items():
+    Formato del carrito en sesión:
+    {
+        "PROD-5": {"cantidad": 2},
+        "PROMO-1": {"cantidad": 1},
+    }
+    """
+    items = []
+    total = Decimal("0")
+
+    for key, data in cart_dict.items():
+        # key -> "PROD-5" o "PROMO-1"
         try:
-            producto = Producto.objects.get(
-                pk=int(pid_str),
-                negocio=negocio,
-                activo=True,
-            )
-        except Producto.DoesNotExist:
+            tipo, raw_id = key.split("-", 1)
+            item_id = int(raw_id)
+        except ValueError:
+            # Clave malformada, la ignoramos
             continue
 
-        cant = int(cant)
-        subtotal = producto.precio * cant
+        cantidad = int(data.get("cantidad", 0) or 0)
+        if cantidad <= 0:
+            continue
 
-        items.append(
-            {
+        # ---------------- Productos normales ----------------
+        if tipo == "PROD":
+            try:
+                producto = Producto.objects.get(pk=item_id, activo=True)
+            except Producto.DoesNotExist:
+                continue
+
+            stock_disp = max(producto.stock_actual, 0)
+
+            # No sobrepasar stock
+            if cantidad > stock_disp:
+                cantidad = stock_disp
+
+            if cantidad <= 0:
+                continue
+
+            precio_unit = Decimal(producto.precio)
+            subtotal = precio_unit * cantidad
+            total += subtotal
+
+            items.append({
+                "key": key,                     # clave del carrito
+                "tipo": "PROD",
+                "id": producto.id,
                 "producto": producto,
-                "cantidad": cant,
+                "nombre": producto.nombre,
+                "cantidad": cantidad,
+                "precio": precio_unit,
+                "precio_unit": precio_unit,
                 "subtotal": subtotal,
-            }
-        )
+                "max_cantidad": stock_disp,     # límite para el input
+            })
 
-        total += subtotal
+        # ---------------- Promos / Combos ----------------
+        elif tipo == "PROMO":
+            try:
+                promo = Promo.objects.get(pk=item_id, activo=True)
+            except Promo.DoesNotExist:
+                continue
+
+            # Calculamos cuántos packs se pueden armar según stock
+            max_packs = None
+            for promo_item in promo.items.select_related("producto"):
+                p = promo_item.producto
+                stock_p = max(p.stock_actual, 0)
+                posible = stock_p // promo_item.cantidad if promo_item.cantidad > 0 else 0
+                if max_packs is None:
+                    max_packs = posible
+                else:
+                    max_packs = min(max_packs, posible)
+
+            if max_packs is None:
+                max_packs = 0
+
+            if cantidad > max_packs:
+                cantidad = max_packs
+            if cantidad <= 0:
+                continue
+
+            precio_unit = Decimal(promo.precio_combo)
+            subtotal = precio_unit * cantidad
+            total += subtotal
+
+            items.append({
+                "key": key,
+                "tipo": "PROMO",
+                "id": promo.id,
+                "promo": promo,
+                "nombre": promo.nombre,
+                "cantidad": cantidad,
+                "precio": precio_unit,
+                "precio_unit": precio_unit,
+                "subtotal": subtotal,
+                "max_cantidad": max_packs,      # límite para input
+            })
 
     return items, total
 
+
+
+
 def limpiar_carrito_en_session(request):
-    """
-    Elimina el carrito de la sesión.
-    """
+    """Elimina el carrito de la sesión."""
     if CART_SESSION_KEY in request.session:
         del request.session[CART_SESSION_KEY]
         request.session.modified = True
 
 
 # ------------------------------------------------------------------
-# Vistas públicas
+# Vistas de la tienda pública
 # ------------------------------------------------------------------
 
+
 def tienda_home(request):
-    """
-    Portada de la tienda:
-    muestra tarjetas grandes por categoría.
-    Usa la Categoria del inventario.
-    """
     negocio = get_negocio_actual()
 
-    categorias = Categoria.objects.filter(
-        negocio=negocio
+    categorias_qs = Categoria.objects.filter(
+        activo=True,
+        negocio=negocio,
     ).order_by("nombre")
 
-    # Para cada categoría buscamos una imagen representativa:
+    # Promos activas
+    promos = Promo.objects.filter(
+        activo=True,
+        negocio=negocio,
+    ).order_by("-id")[:6]
+
+    # Armamos la estructura que el template espera: categoria + algunos productos
     categorias_data = []
-    for cat in categorias:
-        producto_con_imagen = (
-            Producto.objects
-            .filter(
+    for cat in categorias_qs:
+        productos = (
+            Producto.objects.filter(
                 negocio=negocio,
-                categoria=cat,
                 activo=True,
-                imagen__isnull=False,
+                categoria=cat,
             )
-            .first()
+            .order_by("nombre")[:4]  # por ejemplo, 4 productos de muestra
         )
         categorias_data.append(
             {
                 "categoria": cat,
-                "imagen": producto_con_imagen.imagen if producto_con_imagen else None,
+                "productos": productos,
             }
         )
 
+    # (si más adelante quieres usar productos_destacados, lo agregas aquí)
     context = {
+        "negocio": negocio,
+        "promos": promos,
         "categorias_data": categorias_data,
     }
     return render(request, "tienda/home.html", context)
 
 
-
 def categoria_detalle(request, categoria_id):
-    """
-    Listado de productos filtrado por categoría,
-    accesible desde las tarjetas del home.
-    """
     negocio = get_negocio_actual()
-
     categoria = get_object_or_404(
         Categoria,
         pk=categoria_id,
+        activo=True,
         negocio=negocio,
     )
 
     productos = Producto.objects.filter(
         negocio=negocio,
-        categoria=categoria,
         activo=True,
-    ).order_by("nombre")  # puedes cambiar a "precio" si quieres
+        categoria=categoria,
+    ).order_by("nombre")
 
     context = {
+        "negocio": negocio,
         "categoria": categoria,
         "productos": productos,
     }
     return render(request, "tienda/producto_lista.html", context)
 
 
+# ------------------------------------------------------------------
+# Carrito
+# ------------------------------------------------------------------
+
+
 @require_POST
 def carrito_agregar(request, producto_id):
     negocio = get_negocio_actual()
-
     producto = get_object_or_404(
         Producto,
         pk=producto_id,
@@ -181,54 +250,53 @@ def carrito_agregar(request, producto_id):
         activo=True,
     )
 
-    # Validación real de stock
-    if producto.stock_actual <= 0:
-        messages.error(request, "Este producto no tiene stock disponible.")
-        if producto.categoria and producto.categoria.slug:
-            return redirect(f"{reverse('tienda:productos')}?categoria={producto.categoria.slug}")
-        return redirect("tienda:productos")
-
-
     cart = _get_cart(request)
-    pid = str(producto.id)
-    cantidad_actual = int(cart.get(pid, 0))
+    key = f"PROD-{producto.id}"
 
-    if cantidad_actual + 1 > producto.stock_actual:
-        messages.error(request, "No hay más stock disponible para este producto.")
-        return redirect("tienda:carrito_ver")
+    entrada = cart.get(key, {"cantidad": 0})
+    entrada["cantidad"] = int(entrada["cantidad"]) + 1
+    cart[key] = entrada
 
-    cart[pid] = cantidad_actual + 1
     _save_cart(request, cart)
-
     messages.success(request, f"{producto.nombre} agregado al carrito.")
 
-    return redirect("tienda:carrito_ver")
+    next_url = request.META.get("HTTP_REFERER")
+    if next_url:
+        return redirect(next_url)
+    return redirect("tienda:home")
 
 
-def carrito_eliminar(request, producto_id):
+def carrito_eliminar_view(request, item_id):
     cart = _get_cart(request)
-    pid = str(producto_id)
 
-    if pid in cart:
-        del cart[pid]
+    if item_id in cart:
+        del cart[item_id]
         _save_cart(request, cart)
+        messages.info(request, "Ítem eliminado del carrito.")
 
     return redirect("tienda:carrito_ver")
 
 
+@require_POST
 def carrito_actualizar(request):
-    if request.method != "POST":
-        return redirect("tienda:carrito_ver")
+    """
+    Actualiza cantidades del carrito.
 
-    negocio = get_negocio_actual()
+    Espera inputs con nombre:  cant_<KEY>
+    donde KEY es la clave del carrito, ej. "PROD-5" o "PROMO-1".
+    """
+    cart = _get_cart(request)
     nuevo_cart = {}
 
     for key, value in request.POST.items():
         if not key.startswith("cant_"):
             continue
 
-        pid = key.replace("cant_", "").strip()
+        item_key = key.replace("cant_", "", 1).strip()
+        if not item_key:
+            continue
 
+        # cantidad enviada
         try:
             cantidad = int(value)
         except (ValueError, TypeError):
@@ -237,39 +305,83 @@ def carrito_actualizar(request):
         if cantidad <= 0:
             continue
 
-        # Validar producto y stock real
+        # clave del carrito -> tipo + id
         try:
-            producto = Producto.objects.get(
-                pk=int(pid),
-                negocio=negocio,
-                activo=True
-            )
-        except Producto.DoesNotExist:
+            tipo, raw_id = item_key.split("-", 1)
+            item_id = int(raw_id)
+        except ValueError:
             continue
 
-        if cantidad > producto.stock_actual:
-            cantidad = producto.stock_actual
+        # --- Productos normales ---
+        if tipo == "PROD":
+            try:
+                producto = Producto.objects.get(pk=item_id, activo=True)
+            except Producto.DoesNotExist:
+                continue
 
-        nuevo_cart[pid] = cantidad
+            stock_disp = max(producto.stock_actual, 0)
+            if stock_disp <= 0:
+                continue
+
+            if cantidad > stock_disp:
+                cantidad = stock_disp
+
+            nuevo_cart[item_key] = {"cantidad": cantidad}
+
+        # --- Promos / combos ---
+        elif tipo == "PROMO":
+            try:
+                promo = Promo.objects.get(pk=item_id, activo=True)
+            except Promo.DoesNotExist:
+                continue
+
+            # calculamos packs máximos
+            max_packs = None
+            for promo_item in promo.items.select_related("producto"):
+                p = promo_item.producto
+                stock_p = max(p.stock_actual, 0)
+                posible = stock_p // promo_item.cantidad if promo_item.cantidad > 0 else 0
+                if max_packs is None:
+                    max_packs = posible
+                else:
+                    max_packs = min(max_packs, posible)
+
+            if not max_packs:
+                continue
+
+            if cantidad > max_packs:
+                cantidad = max_packs
+
+            nuevo_cart[item_key] = {"cantidad": cantidad}
 
     _save_cart(request, nuevo_cart)
 
+    # ¿Hacia dónde vamos?
     if "go_checkout" in request.POST:
         return redirect("tienda:checkout")
+    if "go_shop" in request.POST:
+        return redirect("tienda:productos")
 
     return redirect("tienda:carrito_ver")
 
 
-
 def carrito_ver(request):
     negocio = get_negocio_actual()
-    items, total = _build_cart_items(request, negocio)
+    cart = _get_cart(request)
+    items, total = _build_cart_items(cart)
 
-    return render(
-        request,
-        "tienda/carrito.html",
-        {"items": items, "total": total},
-    )
+    context = {
+        "negocio": negocio,
+        "items": items,
+        "total": total,
+    }
+    return render(request, "tienda/carrito.html", context)
+
+
+def carrito_vaciar(request):
+    limpiar_carrito_en_session(request)
+    messages.info(request, "Carrito vaciado.")
+    return redirect("tienda:carrito_ver")
 
 
 # ------------------------------------------------------------------
@@ -279,9 +391,8 @@ def carrito_ver(request):
 
 def checkout_view(request):
     negocio = get_negocio_actual()
-
-    # Ítems del carrito desde la sesión
-    items, total = _build_cart_items(request, negocio)
+    cart = _get_cart(request)
+    items, total = _build_cart_items(cart)
 
     if not items:
         messages.warning(request, "Tu carrito está vacío.")
@@ -292,12 +403,11 @@ def checkout_view(request):
 
         if form.is_valid():
             datos = form.cleaned_data
-            forma_pago = datos["forma_pago"]  # AHORA desde cleaned_data
+            forma_pago = datos["forma_pago"]
 
             rut = datos.get("rut")
             cliente = None
 
-            # Si viene RUT, lo usamos para buscar/crear cliente
             if rut:
                 cliente, _ = Cliente.objects.get_or_create(
                     negocio=negocio,
@@ -306,17 +416,21 @@ def checkout_view(request):
                         "nombre": datos["nombre"],
                         "correo": datos["correo"],
                         "telefono": datos.get("telefono", ""),
-                        "activo": True,
                     },
                 )
+            else:
+                if request.user.is_authenticated:
+                    cliente = Cliente.objects.filter(
+                        negocio=negocio, user=request.user
+                    ).first()
 
             # Crear Pedido
             pedido = Pedido.objects.create(
                 negocio=negocio,
                 cliente=cliente,
                 nombre=datos["nombre"],
-                correo=datos["correo"],              # <- corregido
-                telefono=datos.get("telefono", ""),  # <- corregido
+                correo=datos["correo"],
+                telefono=datos.get("telefono", ""),
                 total_monto=total,
                 forma_pago=forma_pago,
                 estado=Pedido.EST_RECIBIDO,
@@ -324,12 +438,27 @@ def checkout_view(request):
 
             # Crear ítems de pedido
             for item in items:
-                PedidoItem.objects.create(
-                    pedido=pedido,
-                    producto=item["producto"],
-                    cantidad=item["cantidad"],
-                    precio=item["producto"].precio,
-                )
+                if item["tipo"] == "PROD":
+                    producto = item.get("producto") or Producto.objects.get(
+                        pk=item["id"]
+                    )
+                    PedidoItem.objects.create(
+                        pedido=pedido,
+                        producto=producto,
+                        cantidad=item["cantidad"],
+                        precio=item["precio_unit"],
+                    )
+                elif item["tipo"] == "PROMO":
+                    promo = Promo.objects.get(pk=item["id"])
+                    for promo_item in promo.items.select_related("producto"):
+                        producto = promo_item.producto
+                        cantidad_total = promo_item.cantidad * item["cantidad"]
+                        PedidoItem.objects.create(
+                            pedido=pedido,
+                            producto=producto,
+                            cantidad=cantidad_total,
+                            precio=producto.precio,
+                        )
 
             # Reservar stock
             pedido.crear_reservas_inventario()
@@ -342,43 +471,47 @@ def checkout_view(request):
 
                 messages.success(
                     request,
-                    f"Tu pedido {pedido.codigo} fue creado correctamente. "
-                    "Pagarás al retirar en la botillería.",
+                    (
+                        "Tu pedido ha sido enviado a la botillería. "
+                        "Por favor acércate a retirar y pagar en caja."
+                    ),
                 )
                 return redirect("tienda:checkout_exito", pedido_id=pedido.id)
 
             elif forma_pago == "WEBPAY":
                 try:
                     url_pago, token = iniciar_pago_webpay(pedido, request)
-                except Exception:
-                    messages.error(
-                        request,
-                        "Ocurrió un problema al iniciar el pago con Webpay. "
-                        "Intenta nuevamente o elige pagar al retirar."
-                    )
+                except ValueError as e:
+                    messages.error(request, str(e))
                     return redirect("tienda:carrito_ver")
 
                 pedido.webpay_token = token
-                pedido.webpay_status = "iniciado"
+                pedido.webpay_status = "INICIADO"
                 pedido.save(update_fields=["webpay_token", "webpay_status"])
 
                 limpiar_carrito_en_session(request)
                 return redirect(f"{url_pago}?token_ws={token}")
-
             else:
                 messages.error(request, "Forma de pago no válida.")
                 return redirect("tienda:carrito_ver")
-
-        # Si el form NO es válido, caes aquí: solo volvemos a mostrar la página
-        # con errores. No redirijas.
+        # Si el form NO es válido: seguimos abajo y volvemos a renderizar
     else:
         # GET: prellenar con datos del usuario autenticado
         initial = {}
         if request.user.is_authenticated:
-            initial["nombre"] = (
-                request.user.get_full_name() or request.user.username
-            )
-            initial["correo"] = request.user.email
+            cliente = Cliente.objects.filter(
+                user=request.user, negocio=negocio
+            ).first()
+
+            if cliente:
+                initial = {
+                    "nombre": cliente.nombre
+                    or request.user.get_full_name()
+                    or request.user.username,
+                    "rut": cliente.rut,
+                    "correo": cliente.correo or request.user.email,
+                    "telefono": cliente.telefono,
+                }
 
         form = CheckoutForm(initial=initial)
 
@@ -398,17 +531,13 @@ def checkout_exito_view(request, pedido_id):
         pk=pedido_id,
         negocio=negocio,
     )
-
-    return render(
-        request,
-        "tienda/checkout_exito.html",
-        {"pedido": pedido},
-    )
+    return render(request, "tienda/checkout_exito.html", {"pedido": pedido})
 
 
 # ------------------------------------------------------------------
-# Autenticación de clientes
+# Registro / login clientes
 # ------------------------------------------------------------------
+
 
 def registro_cliente_view(request):
     negocio = get_negocio_actual()
@@ -418,23 +547,23 @@ def registro_cliente_view(request):
         if form.is_valid():
             username = form.cleaned_data["username"]
             password = form.cleaned_data["password1"]
+            email = form.cleaned_data["email"]
 
-            # Crear usuario Django
             user = User.objects.create_user(
                 username=username,
-                email=form.cleaned_data.get("correo"),
                 password=password,
+                email=email,
             )
 
-            # Crear cliente asociado
             cliente = form.save(commit=False)
             cliente.negocio = negocio
             cliente.user = user
             cliente.save()
 
-            # Loguear inmediatamente
             login(request, user)
-            messages.success(request, "Cuenta creada y sesión iniciada correctamente.")
+            messages.success(
+                request, "Cuenta creada y sesión iniciada correctamente."
+            )
             return redirect("tienda:home")
     else:
         form = RegistroClienteForm()
@@ -449,7 +578,6 @@ def login_cliente_view(request):
             user = form.get_user()
             login(request, user)
             messages.success(request, "Sesión iniciada correctamente.")
-
             next_url = request.GET.get("next") or "tienda:home"
             return redirect(next_url)
     else:
@@ -460,52 +588,32 @@ def login_cliente_view(request):
 
 def logout_cliente_view(request):
     logout(request)
-    messages.info(request, "Has cerrado sesión.")
+    messages.info(request, "Sesión cerrada.")
     return redirect("tienda:home")
+
+
+# ------------------------------------------------------------------
+# Listado y detalle de productos
+# ------------------------------------------------------------------
 
 
 def productos_list_view(request):
     negocio = get_negocio_actual()
-
-    categorias = Categoria.objects.filter(
-        negocio=negocio,
-        activa=True,
-    ).order_by("orden", "nombre")
-
-    categoria_slug = request.GET.get("categoria", "").strip()
-    q = request.GET.get("q", "").strip()
-
     productos_qs = Producto.objects.filter(
         negocio=negocio,
         activo=True,
-    ).select_related("categoria").order_by("nombre")
+    ).order_by("nombre")
 
-    categoria_activa = None
-    if categoria_slug:
-        categoria_activa = get_object_or_404(
-            Categoria,
-            slug=categoria_slug,
-            negocio=negocio,
-            activa=True,
-        )
-        productos_qs = productos_qs.filter(categoria=categoria_activa)
-
-    if q:
-        productos_qs = productos_qs.filter(nombre__icontains=q)
-
-    paginator = Paginator(productos_qs, 24)  # 24 productos por página
+    paginator = Paginator(productos_qs, 12)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
     context = {
-        "categorias": categorias,
-        "categoria_activa": categoria_activa,
-        "categoria": categoria_activa,   # alias para el template
-        "q": q,
+        "negocio": negocio,
         "page_obj": page_obj,
-        "productos": page_obj,           # el template iterará sobre 'productos'
     }
     return render(request, "tienda/producto_lista.html", context)
+
 
 def producto_detalle(request, producto_id):
     negocio = get_negocio_actual()
@@ -518,7 +626,8 @@ def producto_detalle(request, producto_id):
     )
 
     cart = _get_cart(request)
-    cantidad_en_carrito = int(cart.get(str(producto.id), 0))
+    key = f"PROD-{producto.id}"
+    cantidad_en_carrito = int(cart.get(key, {}).get("cantidad", 0))
 
     context = {
         "producto": producto,
@@ -536,16 +645,24 @@ def sugerencias_productos(request):
         productos = Producto.objects.filter(
             negocio=negocio,
             activo=True,
-            nombre__icontains=q
-        ).only("id", "nombre")[:10]
+            nombre__icontains=q,
+        ).order_by("nombre")[:8]
 
-        resultados = [
-            {"id": p.id, "nombre": p.nombre}
-            for p in productos
-        ]
+        for p in productos:
+            resultados.append(
+                {
+                    "id": p.id,
+                    "nombre": p.nombre,
+                    "precio": int(p.precio),
+                }
+            )
 
-    return JsonResponse(resultados, safe=False)
+    return JsonResponse({"resultados": resultados})
 
+
+# ------------------------------------------------------------------
+# Webpay
+# ------------------------------------------------------------------
 
 
 def iniciar_pago_webpay(pedido, request):
@@ -553,7 +670,6 @@ def iniciar_pago_webpay(pedido, request):
     Crea la transacción Webpay Plus y devuelve (url, token).
     Lanza ValueError si el SDK no está instalado.
     """
-
     if Transaction is None:
         raise ValueError(
             "El SDK de Transbank no está instalado. "
@@ -566,78 +682,25 @@ def iniciar_pago_webpay(pedido, request):
         "WEBPAY_API_KEY",
         "579B532A7440BB0C9079DED94D31EA1615BACEB56610332264630D42D0A36B1C",
     )
+
     options = WebpayOptions(
         commerce_code=commerce_code,
         api_key=api_key,
-        integration_type=IntegrationType.TEST,  # integración (sandbox)
+        integration_type=IntegrationType.TEST,
     )
-
     tx = Transaction(options)
 
-    # buy_order debe ser único; usamos el código del pedido
     buy_order = pedido.codigo
-    session_id = request.session.session_key or request.session.cycle_key()
-    return_url = request.build_absolute_uri(reverse("tienda:webpay_retorno"))
-
-    resp = tx.create(
-        buy_order=buy_order,
-        session_id=session_id,
-        amount=float(pedido.total),
-        return_url=return_url,
+    session_id = str(request.user.id or "anon")
+    amount = float(pedido.total_monto or pedido.total)
+    return_url = request.build_absolute_uri(
+        reverse("tienda:webpay_retorno")
     )
 
+    resp = tx.create(buy_order, session_id, amount, return_url)
     token = resp["token"]
     url = resp["url"]
     return url, token
-
-
-def webpay_retorno_view(request):
-    token = request.POST.get("token_ws") or request.GET.get("token_ws")
-    if not token:
-        messages.error(request, "Transacción inválida (falta token).")
-        return redirect("tienda:home")
-
-    tx = get_webpay_transaction()
-    response = tx.commit(token)
-
-    # Puedes imprimir en consola para ver la estructura del response
-    # print(response)
-
-    buy_order = response.get("buy_order")
-    status = response.get("status")
-    amount = response.get("amount")
-
-    pedido = get_object_or_404(Pedido, codigo=buy_order)
-
-    if status == "AUTHORIZED":
-        # marcar pedido como pagado
-        pedido.estado = Pedido.EST_PAGADO
-        pedido.save()
-
-        # generar venta desde pedido (sin tocar stock extra)
-        venta = pedido.generar_venta(medio_pago=Venta.MED_TARJETA)
-
-        # limpiar carrito y sesión
-        request.session.pop("ultimo_pedido_id", None)
-        limpiar_carrito_en_session(request)
-
-        # mostrar página de éxito de pago
-        return render(request, "tienda/webpay_exito.html", {
-            "pedido": pedido,
-            "venta": venta,
-            "response": response,
-        })
-    else:
-        # fallo / rechazo / abortada
-        # aquí tú decides: ¿cancelar pedido y liberar stock?
-        pedido.liberar_reservas_inventario()
-        pedido.estado = Pedido.EST_CANCELADO
-        pedido.save()
-
-        return render(request, "tienda/webpay_error.html", {
-            "pedido": pedido,
-            "response": response,
-        })
 
 
 @csrf_exempt
@@ -651,7 +714,7 @@ def webpay_retorno_view(request):
         messages.error(request, "El SDK de Transbank no está instalado.")
         return redirect("tienda:productos")
 
-    # Buscar el pedido asociado a ese token
+    # Buscar el pedido asociado
     try:
         pedido = Pedido.objects.get(webpay_token=token)
     except Pedido.DoesNotExist:
@@ -675,18 +738,51 @@ def webpay_retorno_view(request):
     status = resp.get("status")
 
     if status == "AUTHORIZED":
-        pedido.marcar_pagado_descontar_stock()
-        pedido.webpay_status = "pagado"
-        pedido.save(update_fields=["webpay_status"])
+        pedido.webpay_status = "AUTHORIZED"
+        pedido.estado = Pedido.EST_PAGADO
+        pedido.save(update_fields=["webpay_status", "estado"])
 
-        messages.success(
-            request, f"Pago del pedido {pedido.codigo} autorizado correctamente."
-        )
+        enviar_correo_pedido_creado(pedido)
+        messages.success(request, "Pago realizado con éxito.")
         return redirect("tienda:checkout_exito", pedido_id=pedido.id)
-    else:
-        pedido.webpay_status = status or "rechazado"
-        pedido.marcar_cancelado_revertir_reserva()
-        pedido.save(update_fields=["webpay_status"])
 
-        messages.error(request, "El pago fue rechazado o anulado.")
+    else:
+        pedido.webpay_status = status or "FAILED"
+        pedido.estado = Pedido.EST_CANCELADO
+        pedido.liberar_reservas_inventario()
+        pedido.save(update_fields=["webpay_status", "estado"])
+
+        messages.error(
+            request,
+            "El pago fue rechazado o cancelado. Tu pedido ha sido anulado.",
+        )
         return redirect("tienda:productos")
+
+
+# ------------------------------------------------------------------
+# Promos / packs
+# ------------------------------------------------------------------
+
+
+def promo_agregar_carrito_view(request, promo_id):
+    negocio = get_negocio_actual()
+    promo = get_object_or_404(
+        Promo,
+        pk=promo_id,
+        negocio=negocio,
+        activo=True,
+    )
+
+    cart = _get_cart(request)
+    key = f"PROMO-{promo.id}"
+    entrada = cart.get(key, {"cantidad": 0})
+    entrada["cantidad"] = int(entrada["cantidad"]) + 1
+    cart[key] = entrada
+    _save_cart(request, cart)
+
+    messages.success(request, f"{promo.nombre} agregado al carrito.")
+
+    next_url = request.META.get("HTTP_REFERER")
+    if next_url:
+        return redirect(next_url)
+    return redirect("tienda:home")

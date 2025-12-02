@@ -4,13 +4,32 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.views.generic import DetailView, CreateView, UpdateView, ListView, DeleteView,View
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
 from django.utils.safestring import mark_safe
-from .models import Producto, MovimientoInventario, Compra,Proveedor,PlantillaProveedorProducto, Categoria
-from .forms import ProductoCrearForm, MovimientoCrearForm, CompraItemFormSet, CompraForm,PlantillaProveedorProductoForm,ProveedorForm
-#seba#
-from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib import messages
+from .models import (
+    Producto, 
+    MovimientoInventario, 
+    Compra,Proveedor,
+    PlantillaProveedorProducto, 
+    Categoria,
+    Promo,
+    PromoItem,
+    Negocio
+)
+
+from .forms import (
+    ProductoCrearForm, 
+    MovimientoCrearForm, 
+    CompraItemFormSet, 
+    CompraForm,
+    PlantillaProveedorProductoForm,
+    ProveedorForm,
+    PromoForm,
+    PromoItemFormSet,
+    MermaForm,
+)
 
 import json
 
@@ -36,6 +55,9 @@ def scan_ean(request):
 
     return render(request, "inventario/scan.html")
 
+def get_negocio_actual(request):
+    # Usa tu propia lógica; aquí un ejemplo simple
+    return Negocio.objects.first()
 
 # --- CBVs para productos ---
 
@@ -500,3 +522,172 @@ class CategoriaToggleActivaView(LoginRequiredMixin, View):
         categoria.activa = not categoria.activa
         categoria.save()
         return redirect("inventario:categoria_lista")
+
+# ================== PROMOCIONES / COMBOS ======================
+
+@login_required
+def promo_lista_view(request):
+    """
+    Lista de promociones del negocio actual.
+    """
+    negocio = request.user.perfilusuario.negocio
+    promos = Promo.objects.filter(negocio=negocio).order_by("-activo", "nombre")
+
+    context = {
+        "promos": promos,
+    }
+    return render(request, "inventario/promociones/promo_lista.html", context)
+
+
+@login_required
+def promo_crear_view(request):
+    """
+    Crear una nueva promo con sus productos (PromoItem).
+    """
+    negocio = request.user.perfilusuario.negocio
+
+    if request.method == "POST":
+        form = PromoForm(request.POST, request.FILES)
+        formset = PromoItemFormSet(request.POST)
+
+        if form.is_valid() and formset.is_valid():
+            promo = form.save(commit=False)
+            promo.negocio = negocio
+            promo.save()
+
+            formset.instance = promo
+            formset.save()
+
+            return redirect("inventario:promo_lista")
+    else:
+        form = PromoForm()
+        formset = PromoItemFormSet()
+
+    context = {
+        "modo": "crear",
+        "form": form,
+        "formset": formset,
+    }
+    return render(request, "inventario/promociones/promo_form.html", context)
+
+
+@login_required
+def promo_editar_view(request, pk):
+    """
+    Editar una promo existente y sus productos asociados.
+    """
+    negocio = request.user.perfilusuario.negocio
+    promo = get_object_or_404(Promo, pk=pk, negocio=negocio)
+
+    if request.method == "POST":
+        form = PromoForm(request.POST, request.FILES, instance=promo)
+        formset = PromoItemFormSet(request.POST, instance=promo)
+
+        if form.is_valid() and formset.is_valid():
+            form.save()
+            formset.save()
+            return redirect("inventario:promo_lista")
+    else:
+        form = PromoForm(instance=promo)
+        formset = PromoItemFormSet(instance=promo)
+
+    context = {
+        "modo": "editar",
+        "form": form,
+        "formset": formset,
+        "promo": promo,
+    }
+    return render(request, "inventario/promociones/promo_form.html", context)
+
+
+@login_required
+def promo_toggle_activa_view(request, pk):
+    """
+    Soft-delete: cambia 'activo' en vez de borrar la promo.
+    """
+    negocio = request.user.perfilusuario.negocio
+    promo = get_object_or_404(Promo, pk=pk, negocio=negocio)
+    promo.activo = not promo.activo
+    promo.save(update_fields=["activo"])
+    return redirect("inventario:promo_lista")
+
+
+# Mermas 
+
+@login_required
+def merma_lista(request):
+    negocio = get_negocio_actual(request)
+    mermas = MovimientoInventario.objects.filter(
+        tipo=MovimientoInventario.TIPO_MERMA,
+        producto__negocio=negocio,
+    ).select_related("producto").order_by("-fecha")
+
+    context = {
+        "mermas": mermas,
+    }
+    return render(request, "inventario/merma/merma_lista.html", context)
+
+
+@login_required
+def merma_crear(request):
+    negocio = get_negocio_actual(request)
+
+    if request.method == "POST":
+        form = MermaForm(request.POST, negocio=negocio)
+        if form.is_valid():
+            merma = form.save(commit=False)
+            merma.tipo = MovimientoInventario.TIPO_MERMA
+            merma.save()
+            messages.success(request, "Merma registrada correctamente.")
+            return redirect("inventario:merma_lista")
+    else:
+        form = MermaForm(negocio=negocio)
+
+    return render(request, "inventario/merma/merma_form.html", {"form": form})
+
+@login_required
+def merma_editar(request, pk):
+    negocio = get_negocio_actual(request)
+    merma = get_object_or_404(
+        MovimientoInventario,
+        pk=pk,
+        tipo=MovimientoInventario.TIPO_MERMA,
+        producto__negocio=negocio,
+    )
+
+    if request.method == "POST":
+        form = MermaForm(request.POST, instance=merma, negocio=negocio)
+        if form.is_valid():
+            form.instance.tipo = MovimientoInventario.TIPO_MERMA
+            form.save()
+            messages.success(request, "Merma actualizada.")
+            return redirect("inventario:merma_lista")
+    else:
+        form = MermaForm(instance=merma, negocio=negocio)
+
+    return render(
+        request,
+        "inventario/merma/merma_form.html",
+        {"form": form, "merma": merma},
+    )
+
+@login_required
+def merma_eliminar(request, pk):
+    negocio = get_negocio_actual(request)
+    merma = get_object_or_404(
+        MovimientoInventario,
+        pk=pk,
+        tipo=MovimientoInventario.TIPO_MERMA,
+        producto__negocio=negocio,
+    )
+
+    if request.method == "POST":
+        merma.delete()
+        messages.info(request, "Merma eliminada.")
+        return redirect("inventario:merma_lista")
+
+    return render(
+        request,
+        "inventario/merma/merma_confirmar_eliminar.html",
+        {"merma": merma},
+    )

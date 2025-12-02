@@ -1,0 +1,39 @@
+{% extends "core/base.html" %}
+
+{% block title %}Eliminar merma - SIPER Pirula{% endblock %}
+
+{% block content %}
+<h1 class="text-xl sm:text-2xl font-semibold text-slate-800 mb-4">
+  Eliminar merma
+</h1>
+
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4 max-w-xl">
+  <p class="text-sm sm:text-base text-slate-700">
+    ¿Seguro que quieres eliminar la merma de
+    <strong>{{ merma.cantidad }}</strong> unidad(es) de
+    <strong>{{ merma.producto.nombre }}</strong> registrada el
+    {{ merma.fecha|date:"d/m/Y H:i" }}?
+  </p>
+
+  {% if merma.comentario %}
+    <p class="text-sm text-slate-500">
+      <span class="font-medium">Comentario:</span>
+      {{ merma.comentario }}
+    </p>
+  {% endif %}
+
+  <form method="post" class="flex flex-col sm:flex-row gap-3 mt-4">
+    {% csrf_token %}
+    <a href="{% url 'inventario:merma_lista' %}"
+       class="inline-flex justify-center px-4 py-2 rounded-full border border-slate-300
+              text-sm text-slate-700 hover:bg-slate-50">
+      Cancelar
+    </a>
+    <button type="submit"
+            class="inline-flex justify-center px-4 py-2 rounded-full bg-red-600 text-white
+                   text-sm hover:bg-red-700">
+      Eliminar definitivamente
+    </button>
+  </form>
+</div>
+{% endblock %}

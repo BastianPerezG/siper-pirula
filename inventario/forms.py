@@ -1,8 +1,17 @@
 from django import forms
 from django.forms import inlineformset_factory
 
-from .models import Producto, MovimientoInventario, Compra, CompraItem, Proveedor,PlantillaProveedorProducto
-#hola
+from .models import (
+    Producto, 
+    MovimientoInventario, 
+    Compra, 
+    CompraItem, 
+    Proveedor,
+    PlantillaProveedorProducto, 
+    Promo, 
+    PromoItem,
+)
+
 # -------------------------
 #  Productos
 # -------------------------
@@ -176,3 +185,71 @@ class PlantillaProveedorProductoForm(forms.ModelForm):
         # Si estamos editando (instance existe), el campo 'producto' no debería ser editable
         if self.instance.pk:
             self.fields['producto'].disabled = True
+
+
+# -------------------------
+#  Promociones / Combos
+# -------------------------
+
+class PromoForm(forms.ModelForm):
+    class Meta:
+        model = Promo
+        # negocio no se edita aquí, se asigna en la vista
+        fields = [
+            "nombre",
+            "descripcion",
+            "imagen",
+            "precio_combo",
+            "activo",
+            "mostrar_en_portada",
+            "fecha_inicio",
+            "fecha_fin",
+        ]
+        widgets = {
+            "descripcion": forms.Textarea(attrs={"rows": 3}),
+            "fecha_inicio": forms.DateInput(attrs={"type": "date"}),
+            "fecha_fin": forms.DateInput(attrs={"type": "date"}),
+        }
+
+
+PromoItemFormSet = inlineformset_factory(
+    Promo,
+    PromoItem,
+    fields=["producto", "cantidad"],
+    extra=1,
+    can_delete=True,
+)
+
+
+
+class MermaForm(forms.ModelForm):
+    class Meta:
+        model = MovimientoInventario
+        fields = ["producto", "cantidad", "comentario"]
+
+    def __init__(self, *args, **kwargs):
+        negocio = kwargs.pop("negocio", None)
+        super().__init__(*args, **kwargs)
+
+        # Sólo productos activos del negocio
+        qs = Producto.objects.filter(activo=True)
+        if negocio is not None:
+            qs = qs.filter(negocio=negocio)
+        self.fields["producto"].queryset = qs.order_by("nombre")
+
+        self.fields["cantidad"].min_value = 1
+        self.fields["cantidad"].widget.attrs["class"] = "w-24"
+
+    def clean(self):
+        cleaned = super().clean()
+        producto = cleaned.get("producto")
+        cantidad = cleaned.get("cantidad")
+
+        if producto and cantidad:
+            stock = producto.stock_actual or 0
+            if cantidad > stock:
+                raise forms.ValidationError(
+                    f"No puedes registrar más merma ({cantidad}) que el stock disponible ({stock})."
+                )
+
+        return cleaned

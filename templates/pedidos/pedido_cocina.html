@@ -89,7 +89,7 @@
                         bg-amber-100 text-amber-700
                     {% endif %}
                 ">
-                {% if pedido.est_pagado %}Pagado{% else %}Por pagar{% endif %}
+                {% if pedido.estado == "PAGADO" %}Pagado{% else %}Por pagar{% endif %}
             </span>
         </div>
 
