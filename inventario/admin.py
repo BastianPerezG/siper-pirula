@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Categoria, Producto, MovimientoInventario, Proveedor, Compra, CompraItem
+from .models import Categoria, Producto, MovimientoInventario, Promo, PromoItem, Proveedor, Compra, CompraItem
 # Register your models here.
 
 
@@ -42,3 +42,37 @@ class CompraAdmin(admin.ModelAdmin):
     list_filter = ("doc_tipo", "proveedor", "fecha")
     search_fields = ("doc_num", "proveedor__nombre")
     inlines = [CompraItemInline]
+
+class PromoItemInline(admin.TabularInline):
+    model = PromoItem
+    extra = 1
+
+
+@admin.register(Promo)
+class PromoAdmin(admin.ModelAdmin):
+    list_display = (
+        "nombre",
+        "negocio",
+        "precio_combo",
+        "precio_normal_display",
+        "ahorro_display",
+        "activo",
+        "vigente_hoy",
+        "mostrar_en_portada",
+    )
+    list_filter = ("negocio", "activo", "mostrar_en_portada")
+    search_fields = ("nombre", "descripcion")
+    inlines = [PromoItemInline]
+
+    def precio_normal_display(self, obj):
+        return obj.precio_normal
+    precio_normal_display.short_description = "Precio normal"
+
+    def ahorro_display(self, obj):
+        return obj.ahorro_estimado
+    ahorro_display.short_description = "Ahorro"
+
+    def vigente_hoy(self, obj):
+        return obj.esta_vigente()
+    vigente_hoy.boolean = True
+    vigente_hoy.short_description = "Vigente hoy"

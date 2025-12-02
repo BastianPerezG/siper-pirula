@@ -1,0 +1,65 @@
+{% extends "core/base.html" %}
+
+{% block title %}Categorías · SIPER Pirula{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-2xl font-bold text-slate-900">Categorías</h1>
+  <a href="{% url 'inventario:categoria_crear' %}"
+     class="inline-flex items-center rounded-lg bg-slate-900 text-white text-sm font-semibold px-4 py-2 hover:bg-slate-800">
+    + Nueva categoría
+  </a>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+  <table class="min-w-full text-sm">
+    <thead class="bg-slate-50 text-left">
+      <tr>
+        <th class="px-4 py-2">Nombre</th>
+        <th class="px-4 py-2">Orden</th>
+        <th class="px-4 py-2">Activa</th>
+        <th class="px-4 py-2 text-right">Acciones</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for cat in categorias %}
+      <tr>
+        <td class="px-4 py-2">{{ cat.nombre }}</td>
+        <td class="px-4 py-2">{{ cat.orden }}</td>
+        <td class="px-4 py-2">
+          {% if cat.activa %}
+            <span class="inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-xs">
+              Activa
+            </span>
+          {% else %}
+            <span class="inline-flex items-center rounded-full bg-slate-200 text-slate-700 px-2 py-0.5 text-xs">
+              Oculta
+            </span>
+          {% endif %}
+        </td>
+        <td class="px-4 py-2 text-right space-x-2">
+          <a href="{% url 'inventario:categoria_editar' cat.pk %}"
+             class="text-xs text-slate-700 hover:underline">Editar</a>
+
+          <form method="post"
+                action="{% url 'inventario:categoria_toggle' cat.pk %}"
+                class="inline">
+            {% csrf_token %}
+            <button type="submit"
+                    class="text-xs text-red-600 hover:underline">
+              {% if cat.activa %}Ocultar{% else %}Mostrar{% endif %}
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="4" class="px-4 py-4 text-sm text-slate-500">
+          No hay categorías creadas aún.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

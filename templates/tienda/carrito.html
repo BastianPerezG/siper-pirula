@@ -1,119 +1,141 @@
-{% extends "core/base.html" %}
+{% extends "tienda/base_public.html" %}
 
-{% block title %}Carrito de compras{% endblock %}
+{% block title %}Carrito de compras - SIPER Pirula{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Carrito de compras</h1>
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
 
-{% if items %}
-<form method="post" action="{% url 'tienda:carrito_actualizar' %}">
+  <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-6">
+    Carrito de compras
+  </h1>
+
+  {% if items %}
+  <form method="post" action="{% url 'tienda:carrito_actualizar' %}" class="space-y-6">
     {% csrf_token %}
 
-    <div class="bg-white rounded-lg shadow overflow-hidden mb-4">
-        <table class="min-w-full text-sm">
-            <thead class="bg-slate-100 text-xs uppercase text-slate-600">
-                <tr>
-                    <th class="px-4 py-3 text-left">Producto</th>
-                    <th class="px-4 py-3 text-right">Cantidad</th>
-                    <th class="px-4 py-3 text-right">Subtotal</th>
-                    <th class="px-4 py-3"></th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-                {% for it in items %}
-                <tr>
-                    <td class="px-4 py-2">{{ it.producto.nombre }}</td>
-                    <td class="px-4 py-2 text-right">
-                        <input type="number" name="cant_{{ it.producto.id }}" value="{{ it.cantidad }}" min="0"
-                            class="w-16 text-right border border-slate-300 rounded px-1 py-0.5 text-xs cantidad-input"
-                            data-precio="{{ it.producto.precio }}">
-                    </td>
-                    <td class="px-4 py-2 text-right subtotal">
-                        $ {{ it.subtotal|floatformat:0 }}
-                    </td>
-
-                    <td class="px-4 py-2 text-right">
-                        <a href="{% url 'tienda:carrito_eliminar' it.producto.id %}"
-                            class="text-xs text-red-600 hover:underline">
-                            Eliminar
-                        </a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-            <tfoot class="bg-slate-50">
-                <tr>
-                    <td colspan="2" class="px-4 py-3 text-right font-semibold">
-                        Total
-                    </td>
-                    <td class="px-4 py-3 text-right font-bold text-lg" id="total-carrito">
-                        $ {{ total|floatformat:0 }}
-                    </td>
-                    <td></td>
-                </tr>
-            </tfoot>
-        </table>
+    <div class="overflow-x-auto bg-white rounded-2xl shadow-sm border border-slate-200">
+      <table class="min-w-full text-left text-xs sm:text-sm">
+        <thead class="bg-slate-50">
+          <tr>
+            <th class="px-3 sm:px-4 py-3 font-semibold text-slate-700 whitespace-nowrap">
+              Producto
+            </th>
+            <th class="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-center whitespace-nowrap">
+              Cantidad
+            </th>
+            <th class="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-right whitespace-nowrap">
+              Subtotal
+            </th>
+            <th class="px-3 sm:px-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for item in items %}
+          <tr class="border-b last:border-b-0">
+            <td class="px-3 sm:px-4 py-2 align-middle">
+              {% if item.tipo == "PROMO" %}
+              <span class="text-xs font-semibold text-emerald-600 mr-2">Promo</span>
+              {% endif %}
+              {{ item.nombre }}
+            </td>
+            <td class="text-center">
+              <input type="number" name="cant_{{ item.key }}" value="{{ item.cantidad }}" min="1" 
+              {% if item.max_cantidad %}max="{{ item.max_cantidad }}" {% endif %}
+                class="cantidad-input w-20 sm:w-24 text-center border rounded-lg px-2 py-1" />
+            </td>
+            <td class="px-3 sm:px-4 py-2 text-right align-middle">
+              <span class="subtotal">$ {{ item.subtotal|floatformat:0 }}</span>
+            </td>
+            <td class="px-3 sm:px-4 py-2 text-right align-middle">
+              <a href="{% url 'tienda:carrito_eliminar' item.key %}"
+                class="inline-flex items-center text-xs sm:text-sm text-red-600 hover:text-red-800">
+                Eliminar
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="bg-slate-50">
+          <tr>
+            <td colspan="2" class="px-3 sm:px-4 py-3 text-right font-semibold">
+              Total
+            </td>
+            <td class="text-right font-bold">
+              <span id="total-general">$ {{ total|floatformat:0 }}</span>
+            </td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
 
-<div class="flex justify-between">
-    <button type="submit"
-            name="go_home"
-            value="1"
-            class="px-4 py-2 text-sm rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50">
+    <div class="flex flex-col sm:flex-row justify-between gap-3 mt-6">
+      <button type="submit" name="go_shop" value="1"
+        class="px-4 py-2 rounded-full border border-slate-300 text-slate-700 hover:bg-slate-50 text-center">
         Seguir comprando
-    </button>
+      </button>
 
-    <button type="submit"
-            name="go_checkout"
-            value="1"
-            class="px-4 py-2 text-sm rounded-md bg-slate-900 text-slate-100 hover:bg-slate-800">
-        Continuar a checkout
-    </button>
+      <div class="flex gap-3">
+        <button type="submit" class="px-4 py-2 rounded-full border border-slate-300 text-slate-700 hover:bg-slate-50">
+          Actualizar cantidades
+        </button>
+
+        <button type="submit" name="go_checkout" value="1"
+          class="px-5 py-2 rounded-full bg-slate-900 text-white hover:bg-slate-800 text-center">
+          Continuar a checkout
+        </button>
+      </div>
+    </div>
+
+
+  </form>
+
+  {% else %}
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-center text-slate-600">
+    Tu carrito está vacío.
+  </div>
+  {% endif %}
 </div>
 
-</form>
-{% else %}
-<p class="text-sm text-slate-500">
-    Tu carrito está vacío.
-</p>
-<a href="{% url 'tienda:home' %}"
-    class="inline-flex mt-3 px-4 py-2 text-sm rounded-md bg-slate-900 text-slate-100 hover:bg-slate-800">
-    Ir a la tienda
-</a>
-{% endif %}
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll('.cantidad-input').forEach(input => {
+    input.addEventListener('change', function () {
+      let val = parseInt(this.value || '0');
+      const max = parseInt(this.getAttribute('max') || '0');
 
-        function recalcular() {
-            let total = 0;
+      if (isNaN(val) || val <= 0) {
+        val = 1;
+      }
+      if (max > 0 && val > max) {
+        val = max;
+      }
+      this.value = val;
 
-            document.querySelectorAll("tr").forEach(function (row) {
-                const input = row.querySelector(".cantidad-input");
-                const subtotalCell = row.querySelector(".subtotal");
+      const fila = this.closest('tr');
+      const precio = parseInt(fila.dataset.precio || '0');
+      const subtotal = fila.querySelector('.subtotal');
 
-                if (!input || !subtotalCell) return;
+      if (subtotal) {
+        const nuevo = precio * val;
+        subtotal.textContent = "$ " + nuevo;
+      }
 
-                const precio = parseInt(input.dataset.precio || "0");
-                const cantidad = parseInt(input.value || "0");
-
-                const subtotal = precio * cantidad;
-                subtotalCell.innerText = "$ " + subtotal.toLocaleString("es-CL");
-
-                total += subtotal;
-            });
-
-            const totalElem = document.getElementById("total-carrito");
-            if (totalElem) {
-                totalElem.innerText = "$ " + total.toLocaleString("es-CL");
-            }
-        }
-
-        document.querySelectorAll(".cantidad-input").forEach(function (input) {
-            input.addEventListener("input", recalcular);
-        });
-
-        recalcular();
+      calcularTotalGeneral();
     });
+  });
+
+  function calcularTotalGeneral() {
+    let total = 0;
+    document.querySelectorAll('.subtotal').forEach(s => {
+      const num = parseInt(s.textContent.replace("$", "").trim() || '0');
+      if (!isNaN(num)) total += num;
+    });
+    const totalEl = document.getElementById("total-general");
+    if (totalEl) {
+      totalEl.textContent = "$ " + total;
+    }
+  }
 </script>
+
 
 {% endblock %}
