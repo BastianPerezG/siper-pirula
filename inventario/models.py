@@ -3,6 +3,9 @@ from django.db.models import Sum, Case, When, IntegerField, F
 from django.core.exceptions import ValidationError
 from core.models import Negocio 
 from django.contrib.auth.models import User
+from django.contrib.auth  import get_user_model
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 
 
 # Modelo Inventario.
@@ -262,3 +265,28 @@ class PlantillaProveedorProducto(models.Model):
             producto=self.producto
         ).order_by('-compra__fecha').first()
         return ultimo_item.cantidad if ultimo_item else 0
+    ##############################
+
+User = get_user_model()
+
+class RegistroDeBitacora(models.Model):
+
+    fecha_registro = models.DateTimeField(auto_now_add=True, verbose_name="Fecha y Hora")
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name="Usuario")
+    categoria = models.CharField(max_length=30, verbose_name="Categoria")
+    accion_tipo = models.CharField(max_length=50, verbose_name="Tipo de acción")
+    mensaje_resumen = models.CharField(max_length=255,verbose_name="Resumen de la acción")
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.SET_NULL, null=True, blank=True)
+    object_id = models.PositiveIntegerField(null=True, blank=True)
+    objeto_afectado = GenericForeignKey('content_type', 'object_id')
+
+    detalles_json = models.JSONField(null=True, blank=True, verbose_name="Detalles Expandidos")
+
+    class Meta:
+        verbose_name = "Registro de Bitácora"
+        verbose_name_plural = "Bitácora de Acciones"
+        ordering = ['-fecha_registro']
+        
+    def __str__(self):
+        return f"[{self.categoria}:{self.accion_tipo}] por {self.usuario} en {self.fecha_registro.strftime('%Y-%m-%d %H:%M')}"
