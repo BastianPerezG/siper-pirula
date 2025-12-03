@@ -897,7 +897,7 @@ class ReporteNoRetiraView(LoginRequiredMixin, TemplateView):
 class ReporteMermasProveedorView(LoginRequiredMixin, TemplateView):
     template_name = "reportes\mermas_proveedor.html"
 
-    # --------- 1) Filtros base ---------
+    # --------- Filtros base ---------
     def _get_filtros(self):
         request = self.request
         hoy = timezone.now().date()
