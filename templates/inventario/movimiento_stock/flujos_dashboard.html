@@ -1,0 +1,62 @@
+{% extends "../../core/base.html" %}
+
+{% block title %}Flujos de inventario - SIPER Pirula{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Gestión de flujos de inventario</h1>
+<p class="text-slate-600 mb-6">
+    Desde aquí puedes registrar entradas y salidas que afectan el stock.
+</p>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+  <a href="{% url 'inventario:compra_crear' %}"
+     class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+    <h2 class="font-semibold text-lg">🧾 Registrar compra</h2>
+    <p class="text-sm text-slate-600 mt-2">
+      Entrada de productos al inventario desde un proveedor.
+    </p>
+  </a>
+
+  <a href="{% url 'inventario:merma_crear' %}"
+     class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+    <h2 class="font-semibold text-lg">🗑️ Registrar merma</h2>
+    <p class="text-sm text-slate-600 mt-2">
+      Pérdidas por rotura, vencimiento u otros motivos.
+    </p>
+  </a>
+
+  <a href="{% url 'inventario:producto_stock_critico' %}"
+     class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+    <h2 class="font-semibold text-lg">⚠️ Stock crítico</h2>
+    <p class="text-sm text-slate-600 mt-2">
+      Productos con stock bajo su mínimo definido.
+    </p>
+  </a>
+
+  <a href="{% url 'inventario:producto_lista' %}"
+     class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+    <h2 class="font-semibold text-lg">📦 Movimientos por producto</h2>
+    <p class="text-sm text-slate-600 mt-2">
+      Elige un producto para ver/registrar movimientos individuales.
+    </p>
+  </a>
+
+  <a href="{% url 'inventario:compra_lista' %}"
+     class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+    <h2 class="font-semibold text-lg">📚 Historial de compras</h2>
+    <p class="text-sm text-slate-600 mt-2">
+      Lista de todas las compras registradas.
+    </p>
+  </a>
+
+  <a href="{% url 'inventario:merma_lista' %}"
+     class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+    <h2 class="font-semibold text-lg">📉 Historial de mermas</h2>
+    <p class="text-sm text-slate-600 mt-2">
+      Revisión de mermas registradas en el sistema.
+    </p>
+  </a>
+
+</div>
+{% endblock %}
