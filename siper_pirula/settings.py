@@ -1,5 +1,6 @@
 from pathlib import Path
-import environ, os
+import environ
+import os
 from dotenv import load_dotenv
 
 # 1) BASE_DIR primero
@@ -15,7 +16,7 @@ load_dotenv(BASE_DIR / ".env")
 # 3) Variables
 DEBUG = env("DEBUG")
 SECRET_KEY = env("SECRET_KEY")
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["127.0.0.1","localhost"])
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["127.0.0.1", "localhost"])
 
 # Config regional
 LANGUAGE_CODE = "es-cl"
@@ -35,7 +36,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.humanize",
     # tus apps:
-    "core", "inventario", "pedidos", "ventas", "tienda","reportes"
+    "core", "inventario", "pedidos", "ventas", "tienda", "reportes"
 ]
 
 
@@ -61,6 +62,7 @@ TEMPLATES = [{
             "django.template.context_processors.request",
             "django.contrib.auth.context_processors.auth",
             "django.contrib.messages.context_processors.messages",
+            "inventario.context_processors.stock_critico_context",
         ],
     },
 }]
@@ -75,23 +77,23 @@ DATABASES = {
     }
 }
 # 4) DB: MySQL via mysqlclient (usa variables del .env)
-#DATABASES = {
-    #"default": {
-        #"ENGINE": "django.db.backends.mysql",
-        #"NAME": env("DB_NAME"),
-        #"USER": env("DB_USER"),
-        #"PASSWORD": env("DB_PASSWORD"),
-        #"HOST": env("DB_HOST", default="127.0.0.1"),
-        #"PORT": env("DB_PORT", default="3306"),
-        #"OPTIONS": {
-                #"charset": "utf8mb4",
-                # en Windows a veces ayuda:
-                # "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-            #},
-            #"CONN_MAX_AGE": 60,   # pooling básico (60 s)
-        #}
-        
-#}
+# DATABASES = {
+# "default": {
+# "ENGINE": "django.db.backends.mysql",
+# "NAME": env("DB_NAME"),
+# "USER": env("DB_USER"),
+# "PASSWORD": env("DB_PASSWORD"),
+# "HOST": env("DB_HOST", default="127.0.0.1"),
+# "PORT": env("DB_PORT", default="3306"),
+# "OPTIONS": {
+# "charset": "utf8mb4",
+# en Windows a veces ayuda:
+# "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+# },
+# "CONN_MAX_AGE": 60,   # pooling básico (60 s)
+# }
+
+# }
 
 # 5) Static/Media (útil para despliegue)
 STATIC_URL = "static/"
@@ -110,7 +112,8 @@ CSRF_TRUSTED_ORIGINS = env.list(
 # Para desarrollo: imprime los correos en la consola
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = "no-reply@siperpirula.local"
-SITE_URL = "http://localhost:8000"  # y en producción lo cambias a https://tudominio.cl
+# y en producción lo cambias a https://tudominio.cl
+SITE_URL = "http://localhost:8000"
 
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

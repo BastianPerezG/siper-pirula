@@ -34,7 +34,34 @@
                 <a href="{% url 'inventario:promo_lista' %}" class="hover:text-amber-300">Promos</a>
                 <a href="{% url 'inventario:compra_lista' %}" class="hover:text-amber-300">Compras</a>
                 <a href="{% url 'ventas:venta_lista' %}" class="hover:text-amber-300">Ventas</a>
-                <a href="{% url 'reportes:inventario' %}" class="hover:text-amber-300">Reportes</a>
+                <div class="relative group">
+                    <button class="hover:text-amber-300 flex items-center gap-1">
+                        Reportes
+                        <span>▾</span>
+                    </button>
+                
+                    <div class="absolute hidden group-hover:block pt-2 w-40 z-50">
+                
+                        <div class="bg-slate-800 text-slate-100 shadow-lg rounded overflow-hidden">
+                            <a href="{% url 'reportes:ventas' %}" class="block px-4 py-2 hover:bg-slate-700">
+                                Ventas
+                            </a>
+                            <a href="{% url 'reportes:dia-hora' %}" class="block px-4 py-2 hover:bg-slate-700">
+                                Día x Hora
+                            </a>
+                            <a href="{% url 'reportes:no-retira' %}" class="block px-4 py-2 hover:bg-slate-700">
+                                Tasa no retira
+                            </a>
+                            <a href="{% url 'reportes:mermas-proveedor' %}" class="block px-4 py-2 hover:bg-slate-700">
+                                Mermas por proveedor
+                            </a>
+                            <a href="{% url 'reportes:reporte_quiebres' %}" class="block px-4 py-2 hover:bg-slate-700">
+                                Stock/Quiebres
+                            </a>
+                
+                        </div>
+                    </div>
+                </div>
                 <a href="{% url 'inventario:scan_ean' %}" class="hover:text-amber-300">Escanear</a>
                 <a href="{% url 'pedidos:pedido_lista' %}" class="hover:text-amber-300">Pedidos</a>
                 <a href="{% url 'inventario:merma_lista' %}" class="hover:text-amber-300">Mermas</a>

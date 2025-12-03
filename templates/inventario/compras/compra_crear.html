@@ -4,9 +4,15 @@
 {% block title %}Registrar compra - SIPER Pirula{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Registrar compra</h1>
+<h1 class="text-2xl font-bold mb-4">
+    {% if modo == "editar" %}
+    Editar compra #{{ compra.id }}
+    {% else %}
+    Registrar compra
+    {% endif %}
+</h1>
 
-<form method="post" class="space-y-6">
+<form method="post" enctype="multipart/form-data" class="space-y-6">
     {% csrf_token %}
 
     <!-- DATOS DE LA COMPRA -->
@@ -41,6 +47,12 @@
                 </label>
                 {{ form.comentario }}
             </div>
+            <div>
+                <label class="block text-slate-600 font-medium mb-1">
+                    Archivo (boleta/factura)
+                </label>
+                {{ form.archivo }}
+            </div>
         </div>
     </section>
 
@@ -51,14 +63,10 @@
 
             <div class="flex items-center gap-2 text-sm">
                 <label for="ean-input" class="text-slate-600">Escanear EAN</label>
-                <input id="ean-input"
-                       type="text"
-                       autocomplete="off"
-                       placeholder="EAN..."
-                       class="border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring focus:ring-amber-300 focus:border-amber-400">
-                <button type="button"
-                        id="btn-agregar-fila"
-                        class="ml-2 px-3 py-1.5 rounded bg-slate-900 text-white text-xs font-medium hover:bg-slate-800">
+                <input id="ean-input" type="text" autocomplete="off" placeholder="EAN..."
+                    class="border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring focus:ring-amber-300 focus:border-amber-400">
+                <button type="button" id="btn-agregar-fila"
+                    class="ml-2 px-3 py-1.5 rounded bg-slate-900 text-white text-xs font-medium hover:bg-slate-800">
                     + Agregar fila
                 </button>
             </div>
@@ -79,35 +87,34 @@
                 </thead>
                 <tbody>
                     {% for f in formset %}
-                        <tr class="item-row border-b border-slate-100">
-                            <!-- IMPORTANTE: hidden_fields para no romper el formset -->
-                            {% for hidden in f.hidden_fields %}
-                                {{ hidden }}
-                            {% endfor %}
+                    <tr class="item-row border-b border-slate-100">
+                        <!-- IMPORTANTE: hidden_fields para no romper el formset -->
+                        {% for hidden in f.hidden_fields %}
+                        {{ hidden }}
+                        {% endfor %}
 
-                            <td class="px-3 py-2">
-                                {{ f.producto }}
-                            </td>
-                            <td class="px-3 py-2 text-center">
-                                {{ f.cantidad }}
-                            </td>
-                            <td class="px-3 py-2 text-center">
-                                {{ f.costo_unit }}
-                            </td>
-                            <td class="px-3 py-2 text-center">
-                                <span data-subtotal>—</span>
-                            </td>
-                            <td class="px-3 py-2 text-center">
-                                <span class="hidden">
-                                    {{ f.DELETE }}
-                                </span>
-                                <button type="button"
-                                        class="btn-eliminar text-red-600 font-semibold hover:text-red-800"
-                                        title="Eliminar fila">
-                                    ✕
-                                </button>
-                            </td>
-                        </tr>
+                        <td class="px-3 py-2">
+                            {{ f.producto }}
+                        </td>
+                        <td class="px-3 py-2 text-center">
+                            {{ f.cantidad }}
+                        </td>
+                        <td class="px-3 py-2 text-center">
+                            {{ f.costo_unit }}
+                        </td>
+                        <td class="px-3 py-2 text-center">
+                            <span data-subtotal>—</span>
+                        </td>
+                        <td class="px-3 py-2 text-center">
+                            <span class="hidden">
+                                {{ f.DELETE }}
+                            </span>
+                            <button type="button" class="btn-eliminar text-red-600 font-semibold hover:text-red-800"
+                                title="Eliminar fila">
+                                ✕
+                            </button>
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -121,17 +128,18 @@
     <!-- BOTONES -->
     <div class="flex flex-wrap gap-3">
         <button type="submit"
-                class="px-4 py-2 rounded bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">
-            Guardar compra
+            class="px-4 py-2 rounded bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">
+            {% if modo == "editar" %}Guardar cambios{% else %}Guardar compra{% endif %}
         </button>
 
+
         <a href="{% url 'inventario:compra_lista' %}"
-           class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+            class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
             Volver a la lista
         </a>
 
         <a href="{% url 'core:dashboard' %}"
-           class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+            class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
             Volver al inicio
         </a>
     </div>
@@ -142,7 +150,7 @@
     <tbody>
         <tr id="empty-form-row" class="item-row border-b border-slate-100">
             {% for hidden in formset.empty_form.hidden_fields %}
-                {{ hidden }}
+            {{ hidden }}
             {% endfor %}
 
             <td class="px-3 py-2">
@@ -161,9 +169,8 @@
                 <span class="hidden">
                     {{ formset.empty_form.DELETE }}
                 </span>
-                <button type="button"
-                        class="btn-eliminar text-red-600 font-semibold hover:text-red-800"
-                        title="Eliminar fila">
+                <button type="button" class="btn-eliminar text-red-600 font-semibold hover:text-red-800"
+                    title="Eliminar fila">
                     ✕
                 </button>
             </td>
@@ -178,17 +185,18 @@
     // Mapas que manda la view:
     // - COSTOS: { id_producto: costo_unitario }
     // - EAN_MAP: { ean: id_producto }
-    const COSTOS = {{ costos_json|safe }};
-    const EAN_MAP = {{ ean_map_json|safe }};
+    const COSTOS = JSON.parse('{{ costos_json|escapejs }}');
+    const EAN_MAP = JSON.parse('{{ ean_map_json|escapejs }}');
+
 
     function recalcularSubtotalFila(row) {
-        const qtyInput   = row.querySelector("input[name$='-cantidad']");
-        const costInput  = row.querySelector("input[name$='-costo_unit']");
+        const qtyInput = row.querySelector("input[name$='-cantidad']");
+        const costInput = row.querySelector("input[name$='-costo_unit']");
         const subtotalEl = row.querySelector("[data-subtotal]");
 
         if (!qtyInput || !costInput || !subtotalEl) return;
 
-        const qty  = parseFloat(qtyInput.value)  || 0;
+        const qty = parseFloat(qtyInput.value) || 0;
         const cost = parseFloat(costInput.value) || 0;
         const subtotal = qty * cost;
 
@@ -197,9 +205,9 @@
 
     function attachRowEvents(row) {
         const selectProd = row.querySelector("select[name$='-producto']");
-        const qtyInput   = row.querySelector("input[name$='-cantidad']");
-        const costInput  = row.querySelector("input[name$='-costo_unit']");
-        const chkDelete  = row.querySelector("input[type='checkbox'][name$='-DELETE']");
+        const qtyInput = row.querySelector("input[name$='-cantidad']");
+        const costInput = row.querySelector("input[name$='-costo_unit']");
+        const chkDelete = row.querySelector("input[type='checkbox'][name$='-DELETE']");
         const btnEliminar = row.querySelector(".btn-eliminar");
 
         if (selectProd) {
@@ -268,7 +276,7 @@
         // Si nos pasaron un producto (por la pistola)
         if (prodId) {
             const selectProd = newRow.querySelector("select[name$='-producto']");
-            const qtyInput   = newRow.querySelector("input[name$='-cantidad']");
+            const qtyInput = newRow.querySelector("input[name$='-cantidad']");
             if (selectProd) {
                 selectProd.value = prodId;
                 selectProd.dispatchEvent(new Event("change"));
@@ -309,7 +317,7 @@
         if (!row) return;
 
         const selectProd = row.querySelector("select[name$='-producto']");
-        const qtyInput   = row.querySelector("input[name$='-cantidad']");
+        const qtyInput = row.querySelector("input[name$='-cantidad']");
 
         if (selectProd) {
             selectProd.value = prodId;

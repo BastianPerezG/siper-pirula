@@ -27,60 +27,79 @@
                 <dd>{{ compra.comentario|default:"(sin comentario)" }}</dd>
             </div>
         </dl>
+        <div>
+            <dt class="font-semibold text-slate-500">Documento</dt>
+            <dd>{{ compra.doc_tipo }} {{ compra.doc_num }}</dd>
+        </div>
+
+        <div>
+            <dt class="font-semibold text-slate-500">Archivo adjunto</dt>
+            <dd>
+                {% if compra.archivo %}
+                <a href="{{ compra.archivo.url }}" target="_blank" class="text-emerald-700 hover:underline">
+                    Ver archivo
+                </a>
+                {% else %}
+                <span class="text-slate-500">(sin archivo)</span>
+                {% endif %}
+            </dd>
+        </div>
     </div>
 
     <!-- Ítems -->
     <h2 class="text-lg font-semibold mb-3">Ítems</h2>
 
     {% if compra.items.all %}
-        <div class="overflow-x-auto bg-white rounded-lg shadow-sm border border-slate-200">
-            <table class="min-w-full text-sm">
-                <thead class="bg-slate-50">
-                    <tr>
-                        <th class="px-3 py-2 text-left border-b">Producto</th>
-                        <th class="px-3 py-2 text-right border-b">Cantidad</th>
-                        <th class="px-3 py-2 text-right border-b">Costo unitario</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in compra.items.all %}
-                        <tr class="odd:bg-white even:bg-slate-50">
-                            <td class="px-3 py-2 border-b">
-                                {{ item.producto.nombre }}
-                            </td>
-                            <td class="px-3 py-2 border-b text-right">
-                                {{ item.cantidad }}
-                            </td>
-                            <td class="px-3 py-2 border-b text-right">
-                                ${{ item.costo_unit }}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    <div class="overflow-x-auto bg-white rounded-lg shadow-sm border border-slate-200">
+        <table class="min-w-full text-sm">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="px-3 py-2 text-left border-b">Producto</th>
+                    <th class="px-3 py-2 text-right border-b">Cantidad</th>
+                    <th class="px-3 py-2 text-right border-b">Costo unitario</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in compra.items.all %}
+                <tr class="odd:bg-white even:bg-slate-50">
+                    <td class="px-3 py-2 border-b">
+                        {{ item.producto.nombre }}
+                    </td>
+                    <td class="px-3 py-2 border-b text-right">
+                        {{ item.cantidad }}
+                    </td>
+                    <td class="px-3 py-2 border-b text-right">
+                        ${{ item.costo_unit }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% else %}
-        <div class="bg-white rounded-lg shadow-sm p-4 text-sm text-slate-600">
-            No hay ítems en esta compra.
-        </div>
+    <div class="bg-white rounded-lg shadow-sm p-4 text-sm text-slate-600">
+        No hay ítems en esta compra.
+    </div>
     {% endif %}
 
     <!-- Acciones -->
+    <!-- Acciones -->
     <div class="mt-6 flex flex-wrap gap-3">
         <a href="{% url 'inventario:compra_lista' %}"
-           class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+            class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
             Volver a la lista
         </a>
 
         <a href="{% url 'core:dashboard' %}"
-           class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+            class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
             Volver al inicio
         </a>
 
         <a href="{% url 'inventario:compra_eliminar' compra.pk %}"
-           class="px-4 py-2 rounded bg-red-600 text-white text-sm hover:bg-red-700">
+            class="px-4 py-2 rounded bg-red-600 text-white text-sm hover:bg-red-700">
             Eliminar compra
         </a>
     </div>
+
 </div>
 {% endblock %}

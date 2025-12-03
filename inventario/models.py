@@ -1,14 +1,14 @@
 from django.db import models
 from django.db.models import Sum, Case, When, IntegerField, F
 from django.core.exceptions import ValidationError
-from core.models import Negocio 
+from core.models import Negocio
 from django.contrib.auth.models import User
-
-from django.contrib.auth  import get_user_model
+from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
-#=======
+# =======
 from django.utils.text import slugify
 from django.utils import timezone
 
@@ -40,21 +40,27 @@ class Categoria(models.Model):
     def __str__(self):
         return self.nombre
 
-#Producto con mas de un proveedor, many to many*
+
 class Producto(models.Model):
     negocio = models.ForeignKey(Negocio, on_delete=models.PROTECT)
     proveedor = models.ForeignKey("Proveedor", on_delete=models.PROTECT)
-    sku = models.CharField(max_length=40, blank=True, null=True)
+    sku = models.CharField(max_length=40, unique=True, blank=True, null=True)
     ean = models.CharField("Código de barras", max_length=40, unique=True)
     nombre = models.CharField(max_length=120)
     categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT)
-    precio = models.PositiveIntegerField(default=0, help_text="Precio de venta en pesos chilenos")
-    costo = models.PositiveIntegerField(default=0, help_text="Costo en pesos chilenos")
+    precio = models.PositiveIntegerField(
+        default=0, help_text="Precio de venta en pesos chilenos")
+    costo = models.PositiveIntegerField(
+        default=0, help_text="Costo en pesos chilenos")
     unidad_de_venta = models.CharField(max_length=120, blank=True, null=False)
-    formato = models.CharField(max_length=120,blank=True, null=False)
+    formato = models.CharField(max_length=120, blank=True, null=False)
     stock_min = models.IntegerField(default=0)
     ubicacion = models.CharField(max_length=60, blank=True, null=True)
     activo = models.BooleanField(default=True)
+    contiene_alcohol = models.BooleanField(
+        default=False,
+        verbose_name="¿Contiene alcohol?"
+    )
     imagen = models.ImageField(
         upload_to="productos/",
         blank=True,
@@ -66,6 +72,31 @@ class Producto(models.Model):
 
     def __str__(self):
         return f"{self.nombre} ({self.ean})"
+
+    def save(self, *args, **kwargs):
+        creando = self.pk is None
+        # Primero guardamos normalmente
+        super().save(*args, **kwargs)
+
+        # Si es nuevo y aún no tiene SKU, lo generamos
+        if creando and not self.sku:
+            if self.categoria_id:
+                prefijo = slugify(self.categoria.nombre)[:3].upper() or "SKU"
+            else:
+                prefijo = "SKU"
+            # Ej: CER-00001, VIN-00023, etc.
+            self.sku = f"{prefijo}-{self.pk:05d}"
+            # Guardamos solo el campo sku para evitar bucle
+            super().save(update_fields=["sku"])
+
+    def clean(self):
+        errors = {}
+        if self.precio is not None and self.precio <= 0:
+            errors["precio"] = "El precio de venta debe ser mayor que 0"
+        if self.costo is not None and self.costo <= 0:
+            errors["costo"] = "El costo unitario debe ser mayor que 0"
+        if errors:
+            raise ValidationError(errors)
 
     @property
     def stock_actual(self):
@@ -83,7 +114,7 @@ class Producto(models.Model):
                         tipo__in=[
                             MovimientoInventario.TIPO_SALIDA,
                             MovimientoInventario.TIPO_MERMA,
-                            MovimientoInventario.TIPO_RESERVA,  # 🔹 NUEVO
+                            MovimientoInventario.TIPO_RESERVA,
                         ],
                         then=-F("cantidad")
                     ),
@@ -93,25 +124,24 @@ class Producto(models.Model):
             )
         )
         return resultado["total"] or 0
-      
+
 
 class MovimientoInventario(models.Model):
     TIPO_ENTRADA = "ENTRADA"
     TIPO_SALIDA = "SALIDA"
     TIPO_AJUSTE = "AJUSTE"
     TIPO_MERMA = "MERMA"
-    TIPO_RESERVA = "RESERVA" 
+    TIPO_RESERVA = "RESERVA"
     TIPO_VENTA = "VENTA"
-    
+
     TIPO_CHOICES = [
         (TIPO_ENTRADA, "Entrada (compra, devolución)"),
         (TIPO_SALIDA, "Salida (venta manual, uso interno)"),
         (TIPO_AJUSTE, "Ajuste (conteo inventario)"),
         (TIPO_MERMA, "Merma (rotura, pérdida)"),
-        (TIPO_RESERVA, "Reserva por pedido"),  
+        (TIPO_RESERVA, "Reserva por pedido"),
         (TIPO_VENTA, "Venta"),
     ]
-
 
     producto = models.ForeignKey(
         "Producto",
@@ -135,7 +165,6 @@ class MovimientoInventario(models.Model):
         related_name="movimientos",
     )
 
-    # 🔹 NUEVO: vincular al detalle de pedido
     pedido_item = models.ForeignKey(
         "pedidos.PedidoItem",
         on_delete=models.CASCADE,
@@ -148,6 +177,13 @@ class MovimientoInventario(models.Model):
     tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
     cantidad = models.PositiveIntegerField()
     comentario = models.CharField(max_length=200, blank=True, null=True)
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="movimientos_inventario",
+    )
 
     class Meta:
         db_table = "movimiento_inventario"
@@ -155,7 +191,37 @@ class MovimientoInventario(models.Model):
 
     def __str__(self):
         return f"{self.tipo} {self.cantidad} de {self.producto.nombre} [{self.fecha}]"
-        
+
+    def clean(self):
+        """
+        Evita que un movimiento deje el stock en negativo.
+        """
+        super().clean()
+
+        # Sólo tiene sentido validar si hay producto y cantidad
+        if not self.producto_id or not self.cantidad:
+            return
+
+        tipos_salida = {
+            self.TIPO_SALIDA,
+            self.TIPO_MERMA,
+            self.TIPO_RESERVA,
+            self.TIPO_VENTA,
+        }
+
+        if self.tipo in tipos_salida:
+            stock_actual = self.producto.stock_actual  # incluye TODOS los movs previos
+            # Si el movimiento ya existe, restamos su propia cantidad anterior
+            if self.pk:
+                anterior = MovimientoInventario.objects.get(pk=self.pk)
+                if anterior.producto_id == self.producto_id:
+                    stock_actual -= anterior.cantidad
+
+            if self.cantidad > stock_actual:
+                raise ValidationError(
+                    {"cantidad": f"No hay stock suficiente. Stock actual: {stock_actual}"}
+                )
+
 
 class Proveedor(models.Model):
     negocio = models.ForeignKey(Negocio, on_delete=models.PROTECT)
@@ -190,6 +256,19 @@ class Compra(models.Model):
     doc_num = models.CharField(max_length=40, blank=True, null=True)
     fecha = models.DateTimeField(auto_now_add=True)
     comentario = models.CharField(max_length=200, blank=True, null=True)
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="compras_registradas",
+    )
+    archivo = models.FileField(
+        upload_to="compras_docs/",
+        null=True,
+        blank=True,
+        help_text="Sube la factura, boleta o respaldo de esta compra (PDF, imagen, etc.)",
+    )
 
     class Meta:
         db_table = "ingreso_compra"
@@ -227,8 +306,10 @@ class CompraItem(models.Model):
                 producto=self.producto,
                 tipo=MovimientoInventario.TIPO_ENTRADA,
                 cantidad=self.cantidad,
-                comentario=f"Compra #{self.compra.id} {self.compra.doc_tipo} {self.compra.doc_num or ''}".strip(),
+                comentario=f"Compra #{self.compra.id} {self.compra.doc_tipo} {self.compra.doc_num or ''}".strip(
+                ),
                 compra_item=self,
+                usuario=getattr(self.compra, "usuario", None),
             )
 
 
@@ -279,14 +360,15 @@ class PlantillaProveedorProducto(models.Model):
         verbose_name_plural = "Plantillas Proveedor-Producto"
         # Asegura que un proveedor solo pueda listar un producto una vez
         unique_together = ('proveedor', 'producto')
-        
+
     def __str__(self):
         return f"{self.proveedor.nombre} - {self.producto.nombre}"
     # Propiedad para obtener la última fecha de compra para este par proveedor/producto
+
     @property
     def ultima_fecha_compra(self):
         return Compra.objects.filter(
-            items__producto=self.producto, # Filtra las compras del producto
+            items__producto=self.producto,  # Filtra las compras del producto
             proveedor=self.proveedor       # Y que fueron a este proveedor
         ).order_by('-fecha').values_list('fecha', flat=True).first()
 
@@ -300,8 +382,6 @@ class PlantillaProveedorProducto(models.Model):
         return ultimo_item.cantidad if ultimo_item else 0
 ##############################
 
-
-    
 
 class Promo(models.Model):
     """
@@ -432,6 +512,7 @@ class Promo(models.Model):
             return False
 
         return True
+
 
 class PromoItem(models.Model):
     """

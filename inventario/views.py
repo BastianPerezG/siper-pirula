@@ -2,17 +2,19 @@
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
-from django.views.generic import DetailView, CreateView, UpdateView, ListView, DeleteView,View
+from django.views.generic import DetailView, CreateView, UpdateView, ListView, DeleteView, View, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
 from django.utils.safestring import mark_safe
 from django.contrib import messages
+from django.db.models import Q
+
 from .models import (
-    Producto, 
-    MovimientoInventario, 
-    Compra,Proveedor,
-    PlantillaProveedorProducto, 
+    Producto,
+    MovimientoInventario,
+    Compra, Proveedor,
+    PlantillaProveedorProducto,
     Categoria,
     Promo,
     PromoItem,
@@ -20,9 +22,9 @@ from .models import (
 )
 
 from .forms import (
-    ProductoCrearForm, 
-    MovimientoCrearForm, 
-    CompraItemFormSet, 
+    ProductoCrearForm,
+    MovimientoCrearForm,
+    CompraItemFormSet,
     CompraForm,
     PlantillaProveedorProductoForm,
     ProveedorForm,
@@ -34,6 +36,7 @@ from .forms import (
 import json
 
 # --- SCAN EAN ---
+
 
 @login_required
 def scan_ean(request):
@@ -55,26 +58,73 @@ def scan_ean(request):
 
     return render(request, "inventario/scan.html")
 
+
 def get_negocio_actual(request):
     # Usa tu propia lógica; aquí un ejemplo simple
     return Negocio.objects.first()
 
 # --- CBVs para productos ---
 
+
 class ProductoListaView(LoginRequiredMixin, ListView):
     model = Producto
     template_name = "inventario/productos/producto_lista.html"
     context_object_name = "productos"
-    ordering = ["nombre"]
     paginate_by = 25
 
     def get_queryset(self):
         negocio = self.request.user.perfilusuario.negocio
-        return (
-            Producto.objects
-            .filter(negocio=negocio, activo=True)
-            .order_by("nombre")
-        )
+        qs = Producto.objects.filter(negocio=negocio)
+
+        categoria_id = self.request.GET.get("categoria")
+        proveedor_id = self.request.GET.get("proveedor")
+        estado = self.request.GET.get("estado", "activos")
+        q = (self.request.GET.get("q") or "").strip()
+
+        # Estado: activos / inactivos / todos
+        if estado == "activos":
+            qs = qs.filter(activo=True)
+        elif estado == "inactivos":
+            qs = qs.filter(activo=False)
+        # "todos" -> no filtramos por activo
+
+        if categoria_id:
+            qs = qs.filter(categoria_id=categoria_id)
+
+        if proveedor_id:
+            qs = qs.filter(proveedor_id=proveedor_id)
+
+        if q:
+            qs = qs.filter(
+                Q(nombre__icontains=q)
+                | Q(ean__icontains=q)
+                | Q(sku__icontains=q)
+            )
+
+        return qs.order_by("nombre")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        negocio = self.request.user.perfilusuario.negocio
+
+        ctx["categorias"] = Categoria.objects.filter(
+            negocio=negocio, activo=True
+        ).order_by("nombre")
+
+        ctx["proveedores"] = Proveedor.objects.filter(
+            negocio=negocio, activo=True
+        ).order_by("nombre")
+
+        categoria_get = self.request.GET.get("categoria")
+        proveedor_get = self.request.GET.get("proveedor")
+
+        ctx["filtros"] = {
+            "categoria": int(categoria_get) if categoria_get else None,
+            "proveedor": int(proveedor_get) if proveedor_get else None,
+            "estado": self.request.GET.get("estado", "activos"),
+            "q": (self.request.GET.get("q") or "").strip(),
+        }
+        return ctx
 
 
 class ProductoDetalleView(LoginRequiredMixin, DetailView):
@@ -111,14 +161,48 @@ class ProductoActualizarView(LoginRequiredMixin, UpdateView):
     model = Producto
     form_class = ProductoCrearForm
     template_name = "inventario/productos/producto_editar.html"
-    success_url = reverse_lazy("inventario:scan_ean")
+    context_object_name = "producto"
 
     def get_queryset(self):
+        # Seguridad: solo productos del negocio del usuario
         negocio = self.request.user.perfilusuario.negocio
         return Producto.objects.filter(negocio=negocio)
 
+    def form_valid(self, form):
+        # Deja que el UpdateView haga el save
+        response = super().form_valid(form)
+        messages.success(self.request, "Producto actualizado correctamente.")
+        return response
+
+    def get_success_url(self):
+        # Volver al detalle del producto editado
+        return reverse("inventario:producto_detalle", args=[self.object.pk])
+
+
+@login_required
+def producto_toggle_activo(request, pk):
+    if request.method != "POST":
+        return redirect("inventario:producto_lista")
+
+    producto = get_object_or_404(
+        Producto,
+        pk=pk,
+        negocio=request.user.perfilusuario.negocio,
+    )
+    producto.activo = not producto.activo
+    producto.save(update_fields=["activo"])
+
+    estado = "activado" if producto.activo else "desactivado"
+    messages.success(request, f"Producto {estado} correctamente.")
+
+    return redirect("inventario:producto_lista")
 
 # --- Movimientos de stock ---
+
+
+class FlujosInventarioView(LoginRequiredMixin, TemplateView):
+    template_name = "inventario/movimiento_stock/flujos_dashboard.html"
+
 
 class MovimientoCrearView(LoginRequiredMixin, CreateView):
     model = MovimientoInventario
@@ -136,6 +220,7 @@ class MovimientoCrearView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.producto = self.producto
+        form.instance.usuario = self.request.user
         return super().form_valid(form)
 
     def get_success_url(self):
@@ -191,7 +276,45 @@ class CompraListaView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         negocio = self.request.user.perfilusuario.negocio
-        return Compra.objects.filter(negocio=negocio).order_by("-fecha")
+        qs = Compra.objects.filter(negocio=negocio)
+
+        proveedor_id = self.request.GET.get("proveedor")
+        fecha_desde = self.request.GET.get("desde")
+        fecha_hasta = self.request.GET.get("hasta")
+        q = (self.request.GET.get("q") or "").strip()
+
+        if proveedor_id:
+            qs = qs.filter(proveedor_id=proveedor_id)
+
+        if fecha_desde:
+            qs = qs.filter(fecha__date__gte=fecha_desde)
+
+        if fecha_hasta:
+            qs = qs.filter(fecha__date__lte=fecha_hasta)
+
+        if q:
+            filtro = Q(doc_num__icontains=q) | Q(comentario__icontains=q)
+            if q.isdigit():
+                filtro |= Q(id=int(q))
+            qs = qs.filter(filtro)
+
+        return qs.order_by("-fecha")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        negocio = self.request.user.perfilusuario.negocio
+
+        ctx["proveedores"] = Proveedor.objects.filter(
+            negocio=negocio, activo=True
+        ).order_by("nombre")
+
+        ctx["filtros"] = {
+            "proveedor": self.request.GET.get("proveedor", ""),
+            "desde": self.request.GET.get("desde", ""),
+            "hasta": self.request.GET.get("hasta", ""),
+            "q": (self.request.GET.get("q") or "").strip(),
+        }
+        return ctx
 
 
 class CompraDetalleView(LoginRequiredMixin, DetailView):
@@ -210,32 +333,30 @@ def compra_crear_view(request):
 
     # Mapa de costos y EAN -> id producto
     productos = Producto.objects.filter(negocio=negocio, activo=True)
-    costos_map = {str(p.id): p.costo for p in productos}   # ajusta el campo si se llama distinto
-    ean_map    = {str(p.ean): str(p.id) for p in productos}
+    costos_map = {str(p.id): p.costo for p in productos}
+    ean_map = {str(p.ean): str(p.id) for p in productos}
 
     if request.method == "POST":
-        form = CompraForm(request.POST)
-        if form.is_valid():
+        form = CompraForm(request.POST, request.FILES, negocio=negocio)
+        formset = CompraItemFormSet(
+            request.POST,
+            form_kwargs={"negocio": negocio},
+        )
+
+        if form.is_valid() and formset.is_valid():
             with transaction.atomic():
                 compra = form.save(commit=False)
                 compra.negocio = negocio
+                compra.usuario = request.user
                 compra.save()
 
-                formset = CompraItemFormSet(
-                    request.POST,
-                    instance=compra,
-                    form_kwargs={"negocio": negocio},
-                )
-                if formset.is_valid():
-                    formset.save()
-                    return redirect("inventario:compra_detalle", pk=compra.pk)
-        else:
-            formset = CompraItemFormSet(
-                request.POST,
-                form_kwargs={"negocio": negocio},
-            )
+                formset.instance = compra
+                formset.save()
+
+            messages.success(request, "Compra registrada correctamente.")
+            return redirect("inventario:compra_detalle", pk=compra.pk)
     else:
-        form = CompraForm()
+        form = CompraForm(negocio=negocio)
         formset = CompraItemFormSet(form_kwargs={"negocio": negocio})
 
     context = {
@@ -243,6 +364,46 @@ def compra_crear_view(request):
         "formset": formset,
         "costos_json": json.dumps(costos_map),
         "ean_map_json": json.dumps(ean_map),
+    }
+    return render(request, "inventario/compras/compra_crear.html", context)
+
+
+@login_required
+def compra_editar_view(request, pk):
+    negocio = request.user.perfilusuario.negocio
+    compra = get_object_or_404(Compra, pk=pk, negocio=negocio)
+
+    productos = Producto.objects.filter(negocio=negocio, activo=True)
+    costos_map = {str(p.id): p.costo for p in productos}
+    ean_map = {str(p.ean): str(p.id) for p in productos}
+
+    if request.method == "POST":
+        form = CompraForm(request.POST, request.FILES,
+                          instance=compra, negocio=negocio)
+        formset = CompraItemFormSet(
+            request.POST,
+            instance=compra,
+            form_kwargs={"negocio": negocio},
+        )
+
+        if form.is_valid() and formset.is_valid():
+            with transaction.atomic():
+                form.save()
+                formset.save()
+            messages.success(request, "Compra actualizada correctamente.")
+            return redirect("inventario:compra_detalle", pk=compra.pk)
+    else:
+        form = CompraForm(instance=compra, negocio=negocio)
+        formset = CompraItemFormSet(
+            instance=compra, form_kwargs={"negocio": negocio})
+
+    context = {
+        "form": form,
+        "formset": formset,
+        "costos_json": json.dumps(costos_map),
+        "ean_map_json": json.dumps(ean_map),
+        "modo": "editar",
+        "compra": compra,
     }
     return render(request, "inventario/compras/compra_crear.html", context)
 
@@ -255,50 +416,69 @@ class CompraEliminarView(LoginRequiredMixin, DeleteView):
     def get_queryset(self):
         negocio = self.request.user.perfilusuario.negocio
         return Compra.objects.filter(negocio=negocio)
-#==================sebastian-proveedores======================#
-#=============================================================#
+
+
+# ==================sebastian-proveedores======================#
+# =============================================================#
 class ProveedorListView(LoginRequiredMixin, ListView):
-    """Muestra la lista de proveedores activos, filtrados por el negocio del usuario."""
+    """Lista de proveedores del negocio, con buscador y filtro por estado."""
     model = Proveedor
     template_name = "inventario/proveedores/proveedor_lista.html"
-    context_object_name = 'proveedores'
-    ordering = ["nombre"]
+    context_object_name = "proveedores"
     paginate_by = 25
+
     def get_queryset(self):
-        # 1. Obtener el negocio del usuario actual
         negocio = self.request.user.perfilusuario.negocio
-        
-        # 2. Filtrar por el negocio Y por el estado activo
-        return (
-            Proveedor.objects
-            .filter(negocio=negocio, activo=True)
-            .order_by("nombre")
-        )
-    
+
+        qs = Proveedor.objects.filter(negocio=negocio)
+
+        estado = self.request.GET.get("estado", "activos")
+        q = (self.request.GET.get("q") or "").strip()
+
+        # filtro por estado
+        if estado == "activos":
+            qs = qs.filter(activo=True)
+        elif estado == "inactivos":
+            qs = qs.filter(activo=False)
+        # "todos" => no filtramos
+
+        # buscador por nombre / contacto / correo
+        if q:
+            qs = qs.filter(
+                Q(nombre__icontains=q)
+                | Q(contacto__icontains=q)
+                | Q(correo__icontains=q)
+            )
+
+        return qs.order_by("nombre")
+
     def get_context_data(self, **kwargs):
-        # Mantiene la adición de la URL de creación para el template
-        context = super().get_context_data(**kwargs)
-        context["url_crear_proveedor"] = reverse_lazy("inventario:proveedor_crear")
-        return context
-    
+        ctx = super().get_context_data(**kwargs)
+        ctx["filtros"] = {
+            "q": (self.request.GET.get("q") or "").strip(),
+            "estado": self.request.GET.get("estado", "activos"),
+        }
+        ctx["url_crear_proveedor"] = reverse_lazy("inventario:proveedor_crear")
+        return ctx
 
 # ----------------------------------------------------
 # B. CREAR PROVEEDOR (CREATE)
 # ----------------------------------------------------
+
+
 class ProveedorCreateView(LoginRequiredMixin, CreateView):
     """Permite crear un nuevo proveedor."""
     model = Proveedor
     form_class = ProveedorForm
-    template_name = "inventario/proveedores/proveedor_crear.html" # Template único para crear/editar
-    success_url = reverse_lazy("inventario:proveedor_lista") # Redirigir a la lista al éxito
+    # Template único para crear/editar
+    template_name = "inventario/proveedores/proveedor_crear.html"
+    # Redirigir a la lista al éxito
+    success_url = reverse_lazy("inventario:proveedor_lista")
 
-   
     def form_valid(self, form):
         # Asigna automáticamente el negocio del usuario (asumiendo que tu perfil lo tiene)
-        form.instance.negocio = self.request.user.perfilusuario.negocio 
+        form.instance.negocio = self.request.user.perfilusuario.negocio
         return super().form_valid(form)
-
-
 
 
 # ----------------------------------------------------
@@ -316,23 +496,24 @@ class ProveedorUpdateView(LoginRequiredMixin, UpdateView):
 # D. DETALLE DE PROVEEDOR (DETAIL)
 # ----------------------------------------------------
 
+
 class ProveedorDetailView(LoginRequiredMixin, DetailView):
     """Muestra el detalle de un proveedor específico y su plantilla asociada."""
     model = Proveedor
-    template_name = "inventario/proveedores/proveedor_detalle.html" # Nuevo template
-    context_object_name = 'proveedor' # El objeto se pasará al template como 'proveedor'
+    template_name = "inventario/proveedores/proveedor_detalle.html"  # Nuevo template
+    # El objeto se pasará al template como 'proveedor'
+    context_object_name = 'proveedor'
 
     # Opcional: Sobrescribir get_queryset para asegurar la seguridad por negocio
     def get_queryset(self):
         # Asegura que solo se puedan ver proveedores que pertenezcan al negocio del usuario
         negocio = self.request.user.perfilusuario.negocio
         return Proveedor.objects.filter(negocio=negocio, activo=True)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
-        proveedor = self.object # El proveedor actual
 
-        
+        proveedor = self.object  # El proveedor actual
 
         # 2. Obtener TODOS los productos del inventario que utilizan este proveedor.
         # Asumiendo que el modelo Producto tiene un ForeignKey a Proveedor llamado 'proveedor'
@@ -340,52 +521,48 @@ class ProveedorDetailView(LoginRequiredMixin, DetailView):
             proveedor=proveedor,
             negocio=self.request.user.perfilusuario.negocio
         ).order_by('nombre')
-        
+
         return context
-# ----------------------------------------------------
-# E. OCULTAR PROVEEDOR (SOFT DELETE / HIDE)
-# ----------------------------------------------------
-class ProveedorHideView(LoginRequiredMixin, DeleteView):
-    """Cambia el estado del proveedor a inactivo (is_active=False) en lugar de eliminarlo."""
-    
-    # Redirige a la lista de proveedores
-    url = reverse_lazy("inventario:proveedor_lista") 
 
-    def get(self, request, *args, **kwargs):
-        try:
-            # Obtiene el proveedor a ocultar
-            proveedor = Proveedor.objects.get(pk=self.kwargs['pk'])
-            
-            # Realiza la operación de "ocultar" (Soft Delete)
-            proveedor.is_active = False
-            proveedor.save()
-            
-            # Puedes agregar un mensaje de éxito si usas el sistema de mensajes de Django
-            # messages.success(request, f"Proveedor '{proveedor.nombre}' ocultado correctamente.")
-            
-        except Proveedor.DoesNotExist:
-            # Puedes agregar un mensaje de error
-            # messages.error(request, "El proveedor no existe.")
-            pass # Continúa la redirección
-            
-        return super().get(request, *args, **kwargs)
 
-#=============sebastian-plantilla de proveedores================#
+class ProveedorToggleActivoView(LoginRequiredMixin, View):
+    """
+    Soft delete: alterna proveedor.activo en lugar de borrar.
+    Se llama siempre por POST.
+    """
+
+    def post(self, request, pk):
+        negocio = request.user.perfilusuario.negocio
+        proveedor = get_object_or_404(
+            Proveedor,
+            pk=pk,
+            negocio=negocio,
+        )
+        proveedor.activo = not proveedor.activo
+        proveedor.save(update_fields=["activo"])
+        messages.success(
+            request,
+            f"Proveedor {'activado' if proveedor.activo else 'desactivado'} correctamente."
+        )
+        return redirect("inventario:proveedor_lista")
+
+# =============sebastian-plantilla de proveedores================#
+
 
 class PlantillaProveedorProductoListView(LoginRequiredMixin, ListView):
     # Modelo CORREGIDO
-    model = PlantillaProveedorProducto 
-    template_name = "inventario/proveedores/plantilla_lista.html" # Nuevo template
+    model = PlantillaProveedorProducto
+    template_name = "inventario/proveedores/plantilla_lista.html"  # Nuevo template
     context_object_name = "plantillas"
 
     def get_queryset(self):
         # Filtra por proveedor_id de la URL y por negocio del usuario
         proveedor_id = self.kwargs["proveedor_id"]
         negocio = self.request.user.perfilusuario.negocio
-        
+
         return PlantillaProveedorProducto.objects.filter(
             proveedor_id=proveedor_id,
-            proveedor__negocio=negocio, # Filtro de seguridad por negocio
+            proveedor__negocio=negocio,  # Filtro de seguridad por negocio
             is_active=True
         ).select_related('producto')
 
@@ -393,24 +570,25 @@ class PlantillaProveedorProductoListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         # Filtra el proveedor por su negocio para evitar acceso a proveedores de otros negocios
         context["proveedor"] = get_object_or_404(
-            Proveedor, 
-            id=self.kwargs["proveedor_id"], 
+            Proveedor,
+            id=self.kwargs["proveedor_id"],
             negocio=self.request.user.perfilusuario.negocio
         )
         return context
 
 
-class PlantillaProveedorProductoCreateView(LoginRequiredMixin, CreateView): # USANDO MIXIN CORREGIDO
+# USANDO MIXIN CORREGIDO
+class PlantillaProveedorProductoCreateView(LoginRequiredMixin, CreateView):
     # Modelo CORREGIDO
-    model = PlantillaProveedorProducto 
-    form_class = PlantillaProveedorProductoForm # Formulario CORREGIDO
-    template_name = "inventario/proveedores/form_proveedores.html" # Nuevo template
+    model = PlantillaProveedorProducto
+    form_class = PlantillaProveedorProductoForm  # Formulario CORREGIDO
+    template_name = "inventario/proveedores/form_proveedores.html"  # Nuevo template
 
     def form_valid(self, form):
         # Asegurar que la plantilla se asocia al proveedor correcto de la URL
         proveedor = get_object_or_404(
-            Proveedor, 
-            id=self.kwargs["proveedor_id"], 
+            Proveedor,
+            id=self.kwargs["proveedor_id"],
             negocio=self.request.user.perfilusuario.negocio
         )
         form.instance.proveedor = proveedor
@@ -418,16 +596,17 @@ class PlantillaProveedorProductoCreateView(LoginRequiredMixin, CreateView): # US
 
     def get_success_url(self):
         return reverse(
-            "inventario:proveedor_lista", # Ajustar URL
+            "inventario:proveedor_lista",  # Ajustar URL
             kwargs={"proveedor_id": self.kwargs["proveedor_id"]}
         )
 
 
-class PlantillaProveedorProductoUpdateView(LoginRequiredMixin, UpdateView): # USANDO MIXIN CORREGIDO
+# USANDO MIXIN CORREGIDO
+class PlantillaProveedorProductoUpdateView(LoginRequiredMixin, UpdateView):
     # Modelo CORREGIDO
     model = PlantillaProveedorProducto
-    form_class = PlantillaProveedorProductoForm # Formulario CORREGIDO
-    template_name = "inventario/proveedores/form_productos_proveedor.html" # Nuevo template
+    form_class = PlantillaProveedorProductoForm  # Formulario CORREGIDO
+    template_name = "inventario/proveedores/form_productos_proveedor.html"  # Nuevo template
 
     def get_queryset(self):
         # Asegurar que solo se pueda editar la plantilla de su negocio
@@ -442,34 +621,76 @@ class PlantillaProveedorProductoUpdateView(LoginRequiredMixin, UpdateView): # US
         )
 
 
-class PlantillaProveedorProductoHideView(LoginRequiredMixin, View): # USANDO MIXIN CORREGIDO
+# USANDO MIXIN CORREGIDO
+class PlantillaProveedorProductoHideView(LoginRequiredMixin, View):
     def get(self, request, pk):
         negocio = request.user.perfilusuario.negocio
-        
+
         plantilla = get_object_or_404(
-            PlantillaProveedorProducto, 
-            pk=pk, 
-            proveedor__negocio=negocio # Filtro de seguridad
+            PlantillaProveedorProducto,
+            pk=pk,
+            proveedor__negocio=negocio  # Filtro de seguridad
         )
         plantilla.is_active = False
         plantilla.save()
-        
+
         return redirect("inventario:lista_proveedores", proveedor_id=plantilla.proveedor.id)
-    
 
     # En tu views.py para la vista que renderiza esto
-class ProveedorProductosView(DetailView): 
+
+
+class ProveedorProductosView(DetailView):
     model = Proveedor
-    template_name = 'inventario/proveedores/proveedor_detalle.html' # Nuevo template
+    template_name = 'inventario/proveedores/proveedor_detalle.html'  # Nuevo template
     context_object_name = 'proveedor'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         # Asumiendo que 'producto_set' es el related_name del ForeignKey Producto a Proveedor
-        context['productos_del_proveedor'] = self.object.producto_set.all() 
+        context['productos_del_proveedor'] = self.object.producto_set.all()
         return context
-    
+
+
+class ProveedorPlantillaView(LoginRequiredMixin, TemplateView):
+    template_name = "inventario/proveedores/proveedor_plantilla.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        negocio = self.request.user.perfilusuario.negocio
+
+        proveedor = get_object_or_404(
+            Proveedor,
+            pk=self.kwargs["proveedor_id"],  # o "pk" según tu URL
+            negocio=negocio,
+        )
+
+        productos = (
+            Producto.objects
+            .filter(negocio=negocio, proveedor=proveedor, activo=True)
+            .order_by("nombre")
+        )
+
+        # sugerir cantidad a pedir según stock crítico
+        for p in productos:
+            falta = max((p.stock_min or 0) - (p.stock_actual or 0), 0)
+            p.cantidad_sugerida = falta
+
+        ultima_compra = (
+            Compra.objects
+            .filter(negocio=negocio, proveedor=proveedor)
+            .order_by("-fecha")
+            .first()
+        )
+
+        context.update(
+            proveedor=proveedor,
+            productos=productos,
+            ultima_compra=ultima_compra,
+        )
+        return context
+
 # ================== CATEGORÍAS (CRUD INTERNO) ======================
+
 
 class CategoriaListaView(LoginRequiredMixin, ListView):
     model = Categoria
@@ -488,7 +709,7 @@ class CategoriaListaView(LoginRequiredMixin, ListView):
 
 class CategoriaCrearView(LoginRequiredMixin, CreateView):
     model = Categoria
-    fields = ["nombre", "imagen", "activa", "orden"]
+    fields = ["nombre", "imagen", "activo", "orden"]
     template_name = "inventario/categorias/categoria_form.html"
     success_url = reverse_lazy("inventario:categoria_lista")
 
@@ -499,7 +720,7 @@ class CategoriaCrearView(LoginRequiredMixin, CreateView):
 
 class CategoriaActualizarView(LoginRequiredMixin, UpdateView):
     model = Categoria
-    fields = ["nombre", "imagen", "activa", "orden"]
+    fields = ["nombre", "imagen", "activo", "orden"]
     template_name = "inventario/categorias/categoria_form.html"
     success_url = reverse_lazy("inventario:categoria_lista")
 
@@ -512,6 +733,7 @@ class CategoriaToggleActivaView(LoginRequiredMixin, View):
     """
     Soft-delete: sólo cambia 'activa' en vez de borrar.
     """
+
     def post(self, request, pk):
         negocio = request.user.perfilusuario.negocio
         categoria = get_object_or_404(
@@ -519,11 +741,12 @@ class CategoriaToggleActivaView(LoginRequiredMixin, View):
             pk=pk,
             negocio=negocio,
         )
-        categoria.activa = not categoria.activa
+        categoria.activo = not categoria.activo
         categoria.save()
         return redirect("inventario:categoria_lista")
 
 # ================== PROMOCIONES / COMBOS ======================
+
 
 @login_required
 def promo_lista_view(request):
@@ -531,7 +754,8 @@ def promo_lista_view(request):
     Lista de promociones del negocio actual.
     """
     negocio = request.user.perfilusuario.negocio
-    promos = Promo.objects.filter(negocio=negocio).order_by("-activo", "nombre")
+    promos = Promo.objects.filter(
+        negocio=negocio).order_by("-activo", "nombre")
 
     context = {
         "promos": promos,
@@ -612,18 +836,41 @@ def promo_toggle_activa_view(request, pk):
     return redirect("inventario:promo_lista")
 
 
-# Mermas 
+# Mermas
 
 @login_required
 def merma_lista(request):
     negocio = get_negocio_actual(request)
-    mermas = MovimientoInventario.objects.filter(
+
+    qs = MovimientoInventario.objects.filter(
         tipo=MovimientoInventario.TIPO_MERMA,
         producto__negocio=negocio,
-    ).select_related("producto").order_by("-fecha")
+    ).select_related("producto", "producto__categoria").order_by("-fecha")
+
+    categoria_id = request.GET.get("categoria")
+    q = (request.GET.get("q") or "").strip()
+
+    if categoria_id:
+        qs = qs.filter(producto__categoria_id=categoria_id)
+
+    if q:
+        qs = qs.filter(
+            Q(producto__nombre__icontains=q)
+            | Q(producto__ean__icontains=q)
+            | Q(producto__sku__icontains=q)
+        )
+
+    categorias = Categoria.objects.filter(
+        negocio=negocio, activo=True
+    ).order_by("nombre")
 
     context = {
-        "mermas": mermas,
+        "mermas": qs,
+        "categorias": categorias,
+        "filtros": {
+            "categoria": categoria_id or "",
+            "q": q,
+        },
     }
     return render(request, "inventario/merma/merma_lista.html", context)
 
@@ -637,6 +884,7 @@ def merma_crear(request):
         if form.is_valid():
             merma = form.save(commit=False)
             merma.tipo = MovimientoInventario.TIPO_MERMA
+            merma.usuario = request.user
             merma.save()
             messages.success(request, "Merma registrada correctamente.")
             return redirect("inventario:merma_lista")
@@ -644,6 +892,7 @@ def merma_crear(request):
         form = MermaForm(negocio=negocio)
 
     return render(request, "inventario/merma/merma_form.html", {"form": form})
+
 
 @login_required
 def merma_editar(request, pk):
@@ -670,6 +919,7 @@ def merma_editar(request, pk):
         "inventario/merma/merma_form.html",
         {"form": form, "merma": merma},
     )
+
 
 @login_required
 def merma_eliminar(request, pk):

@@ -9,59 +9,122 @@
 
         <div class="flex gap-2">
             <a href="{% url 'inventario:compra_crear' %}"
-               class="px-4 py-2 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700">
+                class="px-4 py-2 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700">
                 + Nueva compra
             </a>
 
             <a href="{% url 'core:dashboard' %}"
-               class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+                class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
                 Volver al inicio
             </a>
         </div>
     </div>
+    <form method="get"
+        class="bg-white shadow-sm border border-slate-200 rounded-lg p-4 mb-4 grid gap-3 md:grid-cols-4 items-end text-sm">
+        <div>
+            <label for="q" class="block text-xs font-semibold text-slate-600 mb-1">
+                Buscar (ID, documento o comentario)
+            </label>
+            <input type="text" id="q" name="q" value="{{ filtros.q }}" placeholder="Ej: 15, 12345, devolución cajas"
+                class="w-full border border-slate-300 rounded px-2 py-1.5 text-sm">
+        </div>
 
+        <div>
+            <label for="proveedor" class="block text-xs font-semibold text-slate-600 mb-1">
+                Proveedor
+            </label>
+            <select id="proveedor" name="proveedor" class="w-full border border-slate-300 rounded px-2 py-1.5 text-sm">
+                <option value="">Todos</option>
+                {% for p in proveedores %}
+                <option value="{{ p.id }}" {% if filtros.proveedor==p.id|stringformat:"s" %}selected{% endif %}>
+                    {{ p.nombre }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="desde" class="block text-xs font-semibold text-slate-600 mb-1">
+                Desde
+            </label>
+            <input type="date" id="desde" name="desde" value="{{ filtros.desde }}"
+                class="w-full border border-slate-300 rounded px-2 py-1.5 text-sm">
+        </div>
+
+        <div>
+            <label for="hasta" class="block text-xs font-semibold text-slate-600 mb-1">
+                Hasta
+            </label>
+            <div class="flex gap-2">
+                <input type="date" id="hasta" name="hasta" value="{{ filtros.hasta }}"
+                    class="w-full border border-slate-300 rounded px-2 py-1.5 text-sm">
+                <button type="submit"
+                    class="px-4 py-2 rounded bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">
+                    Aplicar
+                </button>
+            </div>
+        </div>
+    </form>
     {% if compras %}
-        <div class="overflow-x-auto bg-white rounded-lg shadow-sm border border-slate-200">
-            <table class="min-w-full text-sm">
-                <thead class="bg-slate-50">
-                    <tr>
-                        <th class="px-3 py-2 text-left border-b">ID</th>
-                        <th class="px-3 py-2 text-left border-b">Fecha</th>
-                        <th class="px-3 py-2 text-left border-b">Proveedor</th>
-                        <th class="px-3 py-2 text-left border-b">Documento</th>
-                        <th class="px-3 py-2 text-left border-b">Comentario</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for compra in compras %}
-                        <tr class="odd:bg-white even:bg-slate-50 hover:bg-amber-50 transition">
-                            <td class="px-3 py-2 border-b font-semibold">
-                                <a href="{% url 'inventario:compra_detalle' compra.pk %}"
-                                   class="text-emerald-700 hover:underline">
-                                    {{ compra.id }}
-                                </a>
-                            </td>
-                            <td class="px-3 py-2 border-b">
-                                {{ compra.fecha }}
-                            </td>
-                            <td class="px-3 py-2 border-b">
-                                {{ compra.proveedor }}
-                            </td>
-                            <td class="px-3 py-2 border-b">
-                                {{ compra.doc_tipo }} {{ compra.doc_num }}
-                            </td>
-                            <td class="px-3 py-2 border-b text-slate-600">
-                                {{ compra.comentario|default:"–" }}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    <div class="overflow-x-auto bg-white rounded-lg shadow-sm border border-slate-200">
+        <table class="min-w-full text-sm">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="px-3 py-2 text-left border-b">ID</th>
+                    <th class="px-3 py-2 text-left border-b">Fecha</th>
+                    <th class="px-3 py-2 text-left border-b">Proveedor</th>
+                    <th class="px-3 py-2 text-left border-b">Documento</th>
+                    <th class="px-3 py-2 text-left border-b">Comentario</th>
+                    <th class="px-3 py-2 text-center border-b">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for compra in compras %}
+                <tr class="odd:bg-white even:bg-slate-50 hover:bg-amber-50 transition">
+                    <td class="px-3 py-2 border-b font-semibold">
+                        <a href="{% url 'inventario:compra_detalle' compra.pk %}"
+                            class="text-emerald-700 hover:underline">
+                            {{ compra.id }}
+                        </a>
+                    </td>
+                    <td class="px-3 py-2 border-b">
+                        {{ compra.fecha }}
+                    </td>
+                    <td class="px-3 py-2 border-b">
+                        {{ compra.proveedor }}
+                    </td>
+                    <td class="px-3 py-2 border-b">
+                        {{ compra.doc_tipo }} {{ compra.doc_num }}
+                    </td>
+                    <td class="px-3 py-2 border-b text-slate-600">
+                        {{ compra.comentario|default:"–" }}
+                    </td>
+                    <td class="px-3 py-2 border-b text-center">
+                        <div class="inline-flex gap-2 text-sm">
+                            <a href="{% url 'inventario:compra_detalle' compra.pk %}"
+                                class="text-emerald-700 hover:underline">
+                                Ver
+                            </a>
+                            <a href="{% url 'inventario:compra_editar' compra.pk %}"
+                                class="text-slate-700 hover:underline">
+                                Editar
+                            </a>
+                            <a href="{% url 'inventario:compra_eliminar' compra.pk %}"
+                                class="text-red-600 hover:underline">
+                                Eliminar
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+
+            </tbody>
+        </table>
+    </div>
     {% else %}
-        <div class="bg-white rounded-lg shadow-sm p-4 text-sm text-slate-600">
-            No hay compras registradas.
-        </div>
+    <div class="bg-white rounded-lg shadow-sm p-4 text-sm text-slate-600">
+        No hay compras registradas.
+    </div>
     {% endif %}
 </div>
 {% endblock %}
