@@ -17,8 +17,24 @@ from django.http import JsonResponse
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 
-from .forms import CheckoutForm
 
+from .forms import CheckoutForm
+import requests
+import urllib3
+# 1. Suprimimos las advertencias de "InsecureRequest" para no ensuciar la consola
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# 2. Guardamos la función original por seguridad
+_original_session_request = requests.Session.request
+
+# 3. Creamos una función parcheada que fuerza verify=False
+def _patched_request(self, method, url, *args, **kwargs):
+    # Forzamos la no verificación del certificado SSL
+    kwargs['verify'] = False 
+    return _original_session_request(self, method, url, *args, **kwargs)
+
+# 4. Aplicamos el parche globalmente a la librería requests
+requests.Session.request = _patched_request
 # SDK Webpay (Transbank)
 try:
     from transbank.webpay.webpay_plus.transaction import Transaction

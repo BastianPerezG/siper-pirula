@@ -69,10 +69,10 @@ class PromoAdmin(admin.ModelAdmin):
     precio_normal_display.short_description = "Precio normal"
 
     def ahorro_display(self, obj):
-        return obj.ahorro_estimado
+        return obj.ahorro
     ahorro_display.short_description = "Ahorro"
 
     def vigente_hoy(self, obj):
-        return obj.esta_vigente()
+        return obj.esta_vigente
     vigente_hoy.boolean = True
     vigente_hoy.short_description = "Vigente hoy"

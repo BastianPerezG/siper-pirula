@@ -1,7 +1,7 @@
 from pathlib import Path
 import environ, os
 from dotenv import load_dotenv
-
+import ssl
 # 1) BASE_DIR primero
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -123,7 +123,6 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
 DEFAULT_FROM_EMAIL = f"SIPER Pirula <{EMAIL_HOST_USER}>"
-
 
 # settings.py
 WEBPAY_COMMERCE_CODE = "597055555532"
