@@ -11,7 +11,7 @@ class VentaItemInline(admin.TabularInline):
 
 @admin.register(Venta)
 class VentaAdmin(admin.ModelAdmin):
-    list_display = ("id", "fecha", "negocio", "doc_tipo", "doc_num", "medio_pago", "total")
+    list_display = ("id", "fecha", "negocio", "doc_tipo", "doc_num", "medio_pago", "monto_total")
     list_filter = ("negocio", "doc_tipo", "medio_pago")
     date_hierarchy = "fecha"
     inlines = [VentaItemInline]

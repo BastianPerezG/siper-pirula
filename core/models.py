@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth import get_user_model
 from django.conf import settings
 
 # Modelo Core 
@@ -68,3 +69,36 @@ class PerfilUsuario(models.Model):
     @property
     def es_meson(self):
         return self.rol == self.ROL_MESON
+
+User = get_user_model()
+
+class BitacoraAccion(models.Model):
+    """Modelo para registrar automáticamente todas las acciones relevantes de los usuarios."""
+    fecha_hora = models.DateTimeField(
+        auto_now_add = True,
+        verbose_name= "Fecha y Hora"
+    )
+    usuario = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL,
+        null=True, 
+        verbose_name= "Usuario"     
+    )
+    accion = models.CharField(
+        max_length=150,
+        verbose_name="Tipo de Acción"
+    )
+    entidad_id = models.CharField(
+        max_length=50,
+        verbose_name="ID de monitor."
+    )
+    detalles = models.JSONField(
+        default=dict,
+        verbose_name="Detalles en Json"
+    )
+    class Meta:
+        verbose_name = "Registro de Bitácora Simple"
+        verbose_name_plural = "Bitácora de Acciones Simples"
+        ordering = ['-fecha_hora']
+    def __str__(self):
+        return f"[{self.fecha_hora.strftime('%Y-%m-%d %H:%M')}] {self.accion} por {self.usuario}"    
