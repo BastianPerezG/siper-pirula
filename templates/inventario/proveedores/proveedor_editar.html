@@ -1,26 +1,51 @@
-<h1>Productos del proveedor {{ proveedor.nombre }}</h1>
+{% extends "../../core/base.html" %}
 
-<a href="{% url 'producto_create' proveedor.id %}">Agregar producto</a>
+{% block title %}Editar proveedor - {{ proveedor.nombre }}{% endblock %}
 
-<table border="1">
-    <tr>
-        <th>Producto</th>
-        <th>SKU</th>
-        <th>Stock</th>
-        <th>Costo</th>
-        <th>Acciones</th>
-    </tr>
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
 
-    {% for prod in productos %}
-    <tr {% if prod.bajo_stock %}style="background-color:#ffcccc"{% endif %}>
-        <td>{{ prod.nombre_producto }}</td>
-        <td>{{ prod.sku_interno }}</td>
-        <td>{{ prod.stock_actual }}</td>
-        <td>{{ prod.precio_costo }}</td>
-        <td>
-            <a href="{% url 'producto_edit' prod.id %}">Editar</a> |
-            <a href="{% url 'producto_ocultar' prod.id %}">Ocultar</a>
-        </td>
-    </tr>
-    {% endfor %}
-</table>
+  <!-- Encabezado -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">
+        Editar proveedor
+      </h1>
+      <p class="text-sm text-slate-600 mt-1">
+        Actualiza los datos de contacto y la información principal del distribuidor.
+      </p>
+      <p class="text-xs text-slate-500 mt-1">
+        Proveedor actual:
+        <span class="font-semibold">{{ proveedor.nombre }}</span>
+      </p>
+    </div>
+
+    <a href="{% url 'inventario:proveedor_lista' %}"
+       class="px-4 py-2 rounded border border-slate-300 text-sm text-slate-700 hover:bg-slate-50">
+      ← Volver a proveedores
+    </a>
+  </div>
+
+  <!-- Formulario -->
+  <form method="post" class="space-y-6">
+    {% csrf_token %}
+
+    <div class="bg-white shadow-sm rounded-lg border border-slate-200 p-6 grid gap-4 text-sm">
+      {{ form.as_p }}
+    </div>
+
+    <div class="flex gap-3">
+      <button type="submit"
+              class="px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
+        Guardar cambios
+      </button>
+
+      <a href="{% url 'inventario:proveedor_lista' %}"
+         class="px-4 py-2 rounded border border-slate-300 text-sm text-slate-700 hover:bg-slate-50">
+        Cancelar
+      </a>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

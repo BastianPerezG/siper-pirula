@@ -10,9 +10,6 @@
     <!-- Tailwind CDN (desarrollo) -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    {# CSS propio opcional #}
-    {# <link rel="stylesheet" href="{% static 'css/app.css' %}"> #}
-
     {% block extra_head %}
     <!-- Select2 -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -30,7 +27,10 @@
 
             <nav class="flex flex-wrap gap-4 text-sm">
                 <a href="{% url 'core:dashboard' %}" class="hover:text-amber-300">Inicio</a>
-                <a href="{% url 'inventario:producto_lista' %}" class="hover:text-amber-300">Productos</a>
+
+                <a href="{% url 'inventario:producto_lista' %}" class="hover:text-amber-300">
+                    Productos
+                </a>
                 <a href="{% url 'inventario:promo_lista' %}" class="hover:text-amber-300">Promos</a>
                 <a href="{% url 'inventario:compra_lista' %}" class="hover:text-amber-300">Compras</a>
                 <a href="{% url 'ventas:venta_lista' %}" class="hover:text-amber-300">Ventas</a>
@@ -40,6 +40,19 @@
                 <a href="{% url 'inventario:merma_lista' %}" class="hover:text-amber-300">Mermas</a>
                 <a href="{% url 'pedidos:pedidos_monitor' %}" class="hover:text-amber-300 text-sm">
                     Monitor Pedidos
+                </a>
+                         <!-- Nuevo link de stock crítico con badge -->
+                <a href="{% url 'inventario:producto_stock_critico' %}"
+                    class="hover:text-amber-300 flex items-center gap-1">
+                    <span>Stock crítico</span>
+                    <span class="inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold
+                 {% if stock_critico_count %}
+                    bg-red-500 text-white
+                 {% else %}
+                    bg-slate-500 text-white
+                 {% endif %}">
+                        {{ stock_critico_count|default:"0" }}
+                    </span>
                 </a>
             </nav>
 
@@ -88,8 +101,7 @@
 
     <!-- JS global -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"
-        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
-        crossorigin="anonymous"></script>
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 

@@ -72,7 +72,12 @@ class Venta(models.Model):
         blank=True,
         related_name="ventas",
     )
-
+    monto_total = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=0, 
+        help_text="Monto total final de la venta (suma de subtotales de ítems)."
+    )
     class Meta:
         db_table = "venta"
         ordering = ["-fecha"]
@@ -221,3 +226,19 @@ class Anulacion(models.Model):
 
     class Meta:
         db_table = "anulacion"
+    def clean(self):
+        super().clean()
+        
+        # 1. Forzar que siempre haya una Venta asociada.
+        if self.venta is None:
+            raise ValidationError({'venta': "La anulación debe estar siempre ligada a una Venta principal."})
+
+        # 2. Forzar que venta_item sea NULL (Regla de Anulación Completa)
+        if self.venta_item is not None:
+            raise ValidationError({
+                'venta_item': "Este registro de Anulación solo permite la anulación completa de la Venta. El campo VentaItem debe estar vacío."
+            })
+    
+    def __str__(self):
+        # El __str__ ahora confirma que siempre es una anulación total.
+        return f"Anulación Total de Venta #{self.venta_id}"

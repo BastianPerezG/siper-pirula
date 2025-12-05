@@ -1,14 +1,47 @@
 {% extends "../../core/base.html" %}
-{% load static %}
+
+{% block title %}Nuevo proveedor - SIPER Pirula{% endblock %}
 
 {% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
 
-<h2>Formulario Proveedor</h2>
+  <!-- Encabezado -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">
+        Nuevo proveedor
+      </h1>
+      <p class="text-sm text-slate-600 mt-1">
+        Registra los datos básicos del distribuidor para usarlo en compras y plantillas de pedido.
+      </p>
+    </div>
 
-<form method="POST">
+    <a href="{% url 'inventario:proveedor_lista' %}"
+       class="px-4 py-2 rounded border border-slate-300 text-sm text-slate-700 hover:bg-slate-50">
+      ← Volver a proveedores
+    </a>
+  </div>
+
+  <!-- Formulario -->
+  <form method="post" class="space-y-6">
     {% csrf_token %}
-    {{ form.as_p }}
 
-    <button type="submit" class="px-4 py-2 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700">Guardar</button>
-</form>
-{% endblock%}
+    <div class="bg-white shadow-sm rounded-lg border border-slate-200 p-6 grid gap-4 text-sm">
+      {{ form.as_p }}
+    </div>
+
+    <div class="flex gap-3">
+      <button type="submit"
+              class="px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
+        Guardar proveedor
+      </button>
+
+      <a href="{% url 'inventario:proveedor_lista' %}"
+         class="px-4 py-2 rounded border border-slate-300 text-sm text-slate-700 hover:bg-slate-50">
+        Cancelar
+      </a>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

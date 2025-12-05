@@ -21,16 +21,33 @@
             </span>
         </div>
 
-        <form method="post" class="flex justify-end gap-3">
+        <form method="post" class="space-y-4">
             {% csrf_token %}
-            <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
-               class="px-4 py-2 text-sm rounded border border-slate-300 text-slate-700 hover:bg-slate-50">
-                Cancelar
-            </a>
-            <button type="submit"
+
+            {# --- 💡 CAMPO DE COMENTARIO PARA LA BITÁCORA --- #}
+            <div class="pt-4 border-t border-slate-200">
+                <label for="comentario_bitacora" class="block text-sm font-medium text-slate-700 mb-2">
+                    Comentario para la Bitácora (Obligatorio para CANCELAR/NO RETIRA):
+                </label>
+                <textarea 
+                    name="comentario_bitacora" 
+                    id="comentario_bitacora" 
+                    rows="3"
+                    class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-slate-500 focus:border-slate-500" 
+                    placeholder="Escriba el motivo, contexto o nota para este cambio.">
+                </textarea>
+            </div>
+            {# -------------------------------------------------- #}
+            <div class="flex justify-end gap-3 pt-4">
+                <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
+                    class="px-4 py-2 text-sm rounded border border-slate-300 text-slate-700 hover:bg-slate-50">
+                    Cancelar
+                </a>
+                <button type="submit"
                     class="px-4 py-2 text-sm rounded bg-red-600 text-white hover:bg-red-500">
-                Confirmar
-            </button>
+                    Confirmar
+                </button>
+            </div>
         </form>
     </div>
 </div>

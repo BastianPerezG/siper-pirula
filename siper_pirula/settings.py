@@ -34,7 +34,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
-    # tus apps:
+    # nuestras apps:
     "core", "inventario", "pedidos", "ventas", "tienda","reportes"
 ]
 
@@ -61,6 +61,7 @@ TEMPLATES = [{
             "django.template.context_processors.request",
             "django.contrib.auth.context_processors.auth",
             "django.contrib.messages.context_processors.messages",
+            "inventario.context_processors.stock_critico_context",
         ],
     },
 }]
@@ -95,7 +96,7 @@ DATABASES = {
 
 # 5) Static/Media (útil para despliegue)
 STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"          # collectstatic en producción
+STATIC_ROOT = BASE_DIR / "staticfiles"      
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
@@ -108,12 +109,12 @@ CSRF_TRUSTED_ORIGINS = env.list(
 )
 
 # Para desarrollo: imprime los correos en la consola
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_BACKEND = "core.emails_backend.smtpInseguroBackend"
 DEFAULT_FROM_EMAIL = "no-reply@siperpirula.local"
-SITE_URL = "http://localhost:8000"  # y en producción lo cambias a https://tudominio.cl
+SITE_URL = "http://localhost:8000"  
 
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_BACKEND = "core.emails_backend.smtpInseguroBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
@@ -124,7 +125,8 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
 DEFAULT_FROM_EMAIL = f"SIPER Pirula <{EMAIL_HOST_USER}>"
 
-# settings.py
+# Datos Webpay
+
 WEBPAY_COMMERCE_CODE = "597055555532"
 WEBPAY_API_KEY = "579B532A7440BB0C9079DED94D31EA1615BACEB56610332264630D42D0A36B1C"
 

@@ -3,50 +3,121 @@
 {% block title %}Dashboard - SIPER Pirula{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-8">
 
-    <div>
+    <header>
         <h1 class="text-3xl font-bold text-slate-800">SIPER Pirula</h1>
-        <p class="text-slate-600 mt-1">Sistema de inventario y ventas de la botillería.</p>
-    </div>
+        <p class="text-slate-600 mt-1">
+            Sistema de inventario y ventas de la botillería.
+        </p>
+    </header>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {# --- Sección 1: Inventario --- #}
+    <section class="space-y-3">
+        <h2 class="text-lg font-semibold text-slate-700">Inventario</h2>
 
-        <a href="{% url 'inventario:scan_ean' %}"
-           class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-            <h2 class="font-semibold text-lg">📷 Escanear producto</h2>
-            <p class="text-sm text-slate-600 mt-2">Buscar productos por código de barras</p>
-        </a>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
-        <a href="{% url 'inventario:producto_lista' %}"
-           class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-            <h2 class="font-semibold text-lg">📦 Productos</h2>
-            <p class="text-sm text-slate-600 mt-2">Ver listado completo</p>
-        </a>
+            <a href="{% url 'inventario:producto_lista' %}"
+                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+                <h3 class="font-semibold text-lg">📦 Productos</h3>
+                <p class="text-sm text-slate-600 mt-2">Ver y administrar el catálogo de productos.</p>
+            </a>
 
-        <a href="{% url 'inventario:producto_stock_critico' %}"
-           class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-            <h2 class="font-semibold text-lg">⚠️ Stock crítico</h2>
-            <p class="text-sm text-slate-600 mt-2">Productos con bajo stock</p>
-        </a>
+            <a href="{% url 'inventario:producto_stock_critico' %}"
+                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+                <h3 class="font-semibold text-lg">⚠️ Stock crítico</h3>
+                <p class="text-sm text-slate-600 mt-2">Productos con stock bajo según stock mínimo.</p>
+            </a>
 
-        <a href="{% url 'inventario:compra_lista' %}"
-           class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-            <h2 class="font-semibold text-lg">🧾 Compras</h2>
-            <p class="text-sm text-slate-600 mt-2">Compras a proveedores</p>
-        </a>
+            <a href="{% url 'inventario:flujos_inventario' %}"
+                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+                <h3 class="font-semibold text-lg">🔁 Flujos de inventario</h3>
+                <p class="text-sm text-slate-600 mt-2">
+                    Entradas, salidas, mermas y otros movimientos de stock.
+                </p>
+            </a>
 
-        <a href="{% url 'ventas:venta_lista' %}"
-           class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-            <h2 class="font-semibold text-lg">💵 Ventas</h2>
-            <p class="text-sm text-slate-600 mt-2">Ventas realizadas</p>
-        </a>
-        
-        <a href="{% url 'inventario:proveedor_lista' %}"
-           class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-            <h2 class="font-semibold text-lg"> Proveedores</h2>
-            <p class="text-sm text-slate-600 mt-2">Proveedores habituales</p>
-        </a>
-    </div>
+
+            {# Ajusta el nombre de la URL si tu vista de categorías se llama distinto #}
+            <a href="{% url 'inventario:categoria_lista' %}"
+                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+                <h3 class="font-semibold text-lg">🏷️ Categorías</h3>
+                <p class="text-sm text-slate-600 mt-2">Organizar productos por tipo / familia.</p>
+            </a>
+
+            <a href="{% url 'inventario:proveedor_lista' %}"
+                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+                <h3 class="font-semibold text-lg">🤝 Proveedores</h3>
+                <p class="text-sm text-slate-600 mt-2">Gestión de proveedores habituales.</p>
+            </a>
+
+            {# Compras a proveedores #}
+            <a href="{% url 'inventario:compra_lista' %}"
+                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+                <h3 class="font-semibold text-lg">🧾 Compras</h3>
+                <p class="text-sm text-slate-600 mt-2">Historial de compras e ingresos de stock.</p>
+            </a>
+
+            {# Mermas #}
+            <a href="{% url 'inventario:merma_lista' %}"
+                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+                <h3 class="font-semibold text-lg">🗑️ Mermas</h3>
+                <p class="text-sm text-slate-600 mt-2">Registrar pérdidas de productos.</p>
+            </a>
+
+            {# Promociones #}
+            <a href="{% url 'inventario:promo_lista' %}"
+                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+                <h3 class="font-semibold text-lg">🏷️ Promociones</h3>
+                <p class="text-sm text-slate-600 mt-2">Configurar promos y packs de productos.</p>
+            </a>
+
+
+
+            <a href="{% url 'inventario:scan_ean' %}" class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+                <h3 class="font-semibold text-lg">📷 Escanear producto</h3>
+                <p class="text-sm text-slate-600 mt-2">Buscar productos por código de barras.</p>
+            </a>
+
+        </div>
+    </section>
+
+    {# --- Sección 2: Operaciones y ventas --- #}
+    <section class="space-y-3">
+        <h2 class="text-lg font-semibold text-slate-700">Operaciones y ventas</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <a href="{% url 'ventas:venta_lista' %}" class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+                <h3 class="font-semibold text-lg">💵 Ventas</h3>
+                <p class="text-sm text-slate-600 mt-2">Historial y detalle de ventas realizadas.</p>
+            </a>
+
+            <a href="{% url 'pedidos:pedido_lista' %}"
+                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+                <h3 class="font-semibold text-lg">🛒 Pedidos</h3>
+                <p class="text-sm text-slate-600 mt-2">Pedidos en curso y completados.</p>
+            </a>
+
+            <a href="{% url 'pedidos:pedidos_monitor' %}"
+                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+                <h3 class="font-semibold text-lg">📡 Monitor de pedidos</h3>
+                <p class="text-sm text-slate-600 mt-2">Vista en tiempo real de pedidos del cliente.</p>
+            </a>
+        </div>
+    </section>
+
+    {# --- Sección 3: Reportes --- #}
+    <section class="space-y-3">
+        <h2 class="text-lg font-semibold text-slate-700">Reportes</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <a href="{% url 'reportes:inventario' %}" class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+                <h3 class="font-semibold text-lg">📊 Reporte de inventario</h3>
+                <p class="text-sm text-slate-600 mt-2">Resumen general de stock y valorización.</p>
+            </a>
+        </div>
+    </section>
+
 </div>
 {% endblock %}

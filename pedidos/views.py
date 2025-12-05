@@ -14,7 +14,7 @@ from .models import Pedido
 from .forms import PedidoForm, PedidoItemFormSet
 from ventas.models import Venta, VentaItem
 from tienda.views import get_negocio_actual
-
+from core.utlis import registrar_bitacora_simple
 def _generar_codigo():
     """Código corto tipo 'AB34XZ'."""
     return "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
@@ -108,16 +108,44 @@ def pedido_cambiar_estado_view(request, pk, nuevo_estado):
     """
     negocio = request.user.perfilusuario.negocio
     pedido = get_object_or_404(Pedido, pk=pk, negocio=negocio)
-
+    estado_anterior = pedido.estado
+    stock_liberado = False
     if request.method == "POST":
+        comentario_usuario = request.POST.get('comentario_bitacora','').strip()
         # Si el pedido se cancela o el cliente no retira, liberamos stock
         if nuevo_estado in ["CANCELADO", "NO_RETIRA"]:
             pedido.liberar_reservas_inventario()
-
+            stock_liberado = True
         # Cambiar estado
         pedido.estado = nuevo_estado
         pedido.save(update_fields=["estado"])
 
+        #Capturar y registrar
+        accion_descripcion = f"Cambio del estado del pedido#{pedido.pk}:{estado_anterior}->{nuevo_estado}"
+        #Preparamos los detalles criticos del Json
+        detalles_del_registro = {
+            'estado_anterior': estado_anterior,
+            'nuevo_estado': nuevo_estado,
+        }
+        if comentario_usuario:
+            detalles_del_registro['comentario_usuario'] = comentario_usuario
+        if stock_liberado:
+            if nuevo_estado == "CANCELADO":
+                mensaje_reversa = "Stock liberado por cancelación."
+            elif nuevo_estado == "NO_RETIRA":
+                mensaje_reversa = "Stock liberado porque el cliente no retiro el pedido."
+            else:
+                mensaje_reversa = "Reserva de stock liberado(Motivo no especificado)."
+            
+            detalles_del_registro['accion_inventario'] = mensaje_reversa
+        
+        # Llamada a la función de registro
+        registrar_bitacora_simple(
+            usuario=request.user,
+            accion=accion_descripcion,
+            entidad_id=pedido.pk,
+            detalles=detalles_del_registro
+        )
         # Notificación por correo
         enviar_correo_cambio_estado(pedido)
 

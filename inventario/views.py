@@ -2,12 +2,14 @@
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
-from django.views.generic import DetailView, CreateView, UpdateView, ListView, DeleteView,View
+from django.views.generic import DetailView, CreateView, UpdateView, ListView, DeleteView,View, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
 from django.utils.safestring import mark_safe
 from django.contrib import messages
+from django.db.models import Q
+from core.utlis import registrar_bitacora_simple 
 from .models import (
     Producto, 
     MovimientoInventario, 
@@ -65,16 +67,62 @@ class ProductoListaView(LoginRequiredMixin, ListView):
     model = Producto
     template_name = "inventario/productos/producto_lista.html"
     context_object_name = "productos"
-    ordering = ["nombre"]
     paginate_by = 25
 
     def get_queryset(self):
         negocio = self.request.user.perfilusuario.negocio
-        return (
-            Producto.objects
-            .filter(negocio=negocio, activo=True)
-            .order_by("nombre")
-        )
+        qs = Producto.objects.filter(negocio=negocio)
+
+        categoria_id = self.request.GET.get("categoria")
+        proveedor_id = self.request.GET.get("proveedor")
+        estado = self.request.GET.get("estado", "activos")
+        q = (self.request.GET.get("q") or "").strip()
+
+        # Estado: activos / inactivos / todos
+        if estado == "activos":
+            qs = qs.filter(activo=True)
+        elif estado == "inactivos":
+            qs = qs.filter(activo=False)
+        # "todos" -> no filtramos por activo
+
+        if categoria_id:
+            qs = qs.filter(categoria_id=categoria_id)
+
+        if proveedor_id:
+            qs = qs.filter(proveedor_id=proveedor_id)
+
+        if q:
+            qs = qs.filter(
+                Q(nombre__icontains=q)
+                | Q(ean__icontains=q)
+                | Q(sku__icontains=q)
+            )
+
+        return qs.order_by("nombre")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        negocio = self.request.user.perfilusuario.negocio
+
+        ctx["categorias"] = Categoria.objects.filter(
+            negocio=negocio, activo=True
+        ).order_by("nombre")
+
+        ctx["proveedores"] = Proveedor.objects.filter(
+            negocio=negocio, activo=True
+        ).order_by("nombre")
+
+        categoria_get = self.request.GET.get("categoria")
+        proveedor_get = self.request.GET.get("proveedor")
+
+        ctx["filtros"] = {
+            "categoria": int(categoria_get) if categoria_get else None,
+            "proveedor": int(proveedor_get) if proveedor_get else None,
+            "estado": self.request.GET.get("estado", "activos"),
+            "q": (self.request.GET.get("q") or "").strip(),
+        }
+        return ctx
+
 
 
 class ProductoDetalleView(LoginRequiredMixin, DetailView):
@@ -99,26 +147,73 @@ class ProductoCrearView(LoginRequiredMixin, CreateView):
         if ean:
             initial["ean"] = ean
         return initial
-
+    
     def form_valid(self, form):
         producto = form.save(commit=False)
         producto.negocio = self.request.user.perfilusuario.negocio
         producto.save()
+        detalles_registro = {
+            'nombre_producto': producto.nombre,
+            'sku': producto.sku, # Asumiendo que tienes un campo SKU
+            'ean': producto.ean or 'N/A',
+            'precio_inicial': str(producto.precio),
+            'usuario_creador_id': str(self.request.user.pk),
+        }
+        
+        registrar_bitacora_simple(
+            usuario=self.request.user,
+            accion=f"Creación de Producto: {producto.nombre}",
+            entidad_id=producto.pk,
+            detalles=detalles_registro
+        )
         return super().form_valid(form)
-
+    
 
 class ProductoActualizarView(LoginRequiredMixin, UpdateView):
     model = Producto
     form_class = ProductoCrearForm
     template_name = "inventario/productos/producto_editar.html"
-    success_url = reverse_lazy("inventario:scan_ean")
+    context_object_name = "producto"
 
     def get_queryset(self):
+        # Seguridad: solo productos del negocio del usuario
         negocio = self.request.user.perfilusuario.negocio
         return Producto.objects.filter(negocio=negocio)
 
+    def form_valid(self, form):
+        # Deja que el UpdateView haga el save
+        response = super().form_valid(form)
+        messages.success(self.request, "Producto actualizado correctamente.")
+        return response
+
+    def get_success_url(self):
+        # Volver al detalle del producto editado
+        return reverse("inventario:producto_detalle", args=[self.object.pk])
+
+
+
+@login_required
+def producto_toggle_activo(request, pk):
+    if request.method != "POST":
+        return redirect("inventario:producto_lista")
+
+    producto = get_object_or_404(
+        Producto,
+        pk=pk,
+        negocio=request.user.perfilusuario.negocio,
+    )
+    producto.activo = not producto.activo
+    producto.save(update_fields=["activo"])
+
+    estado = "activado" if producto.activo else "desactivado"
+    messages.success(request, f"Producto {estado} correctamente.")
+
+    return redirect("inventario:producto_lista")
 
 # --- Movimientos de stock ---
+class FlujosInventarioView(LoginRequiredMixin, TemplateView):
+    template_name = "inventario/movimiento_stock/flujos_dashboard.html"
+
 
 class MovimientoCrearView(LoginRequiredMixin, CreateView):
     model = MovimientoInventario
@@ -136,6 +231,25 @@ class MovimientoCrearView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.producto = self.producto
+        form.instance.usuario = self.request.user
+        movimiento = form.save()
+        accion_desc = f"Registro de Movimiento de Stock ({movimiento.get_tipo_display()}): {self.producto.nombre}"
+        
+        detalles_registro = {
+            'producto_afectado_id': self.producto.pk,
+            'producto_nombre': self.producto.nombre,
+            'tipo_movimiento': movimiento.get_tipo_display(), # 'ENTRADA', 'SALIDA', 'AJUSTE', etc.
+            'cantidad_movida': str(movimiento.cantidad),
+            'comentario_registro': movimiento.comentario or 'N/A',
+            'usuario_responsable_id': str(self.request.user.pk),
+        }
+        
+        registrar_bitacora_simple(
+            usuario=self.request.user,
+            accion=accion_desc,
+            entidad_id=movimiento.pk,
+            detalles=detalles_registro
+        )
         return super().form_valid(form)
 
     def get_success_url(self):
@@ -191,7 +305,46 @@ class CompraListaView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         negocio = self.request.user.perfilusuario.negocio
-        return Compra.objects.filter(negocio=negocio).order_by("-fecha")
+        qs = Compra.objects.filter(negocio=negocio)
+
+        proveedor_id = self.request.GET.get("proveedor")
+        fecha_desde = self.request.GET.get("desde")
+        fecha_hasta = self.request.GET.get("hasta")
+        q = (self.request.GET.get("q") or "").strip()
+
+        if proveedor_id:
+            qs = qs.filter(proveedor_id=proveedor_id)
+
+        if fecha_desde:
+            qs = qs.filter(fecha__date__gte=fecha_desde)
+
+        if fecha_hasta:
+            qs = qs.filter(fecha__date__lte=fecha_hasta)
+
+        if q:
+            filtro = Q(doc_num__icontains=q) | Q(comentario__icontains=q)
+            if q.isdigit():
+                filtro |= Q(id=int(q))
+            qs = qs.filter(filtro)
+
+        return qs.order_by("-fecha")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        negocio = self.request.user.perfilusuario.negocio
+
+        ctx["proveedores"] = Proveedor.objects.filter(
+            negocio=negocio, activo=True
+        ).order_by("nombre")
+
+        ctx["filtros"] = {
+            "proveedor": self.request.GET.get("proveedor", ""),
+            "desde": self.request.GET.get("desde", ""),
+            "hasta": self.request.GET.get("hasta", ""),
+            "q": (self.request.GET.get("q") or "").strip(),
+        }
+        return ctx
+
 
 
 class CompraDetalleView(LoginRequiredMixin, DetailView):
@@ -210,32 +363,30 @@ def compra_crear_view(request):
 
     # Mapa de costos y EAN -> id producto
     productos = Producto.objects.filter(negocio=negocio, activo=True)
-    costos_map = {str(p.id): p.costo for p in productos}   # ajusta el campo si se llama distinto
-    ean_map    = {str(p.ean): str(p.id) for p in productos}
+    costos_map = {str(p.id): p.costo for p in productos}
+    ean_map = {str(p.ean): str(p.id) for p in productos}
 
     if request.method == "POST":
-        form = CompraForm(request.POST)
-        if form.is_valid():
+        form = CompraForm(request.POST, request.FILES, negocio=negocio)
+        formset = CompraItemFormSet(
+            request.POST,
+            form_kwargs={"negocio": negocio},
+        )
+
+        if form.is_valid() and formset.is_valid():
             with transaction.atomic():
                 compra = form.save(commit=False)
                 compra.negocio = negocio
+                compra.usuario = request.user
                 compra.save()
 
-                formset = CompraItemFormSet(
-                    request.POST,
-                    instance=compra,
-                    form_kwargs={"negocio": negocio},
-                )
-                if formset.is_valid():
-                    formset.save()
-                    return redirect("inventario:compra_detalle", pk=compra.pk)
-        else:
-            formset = CompraItemFormSet(
-                request.POST,
-                form_kwargs={"negocio": negocio},
-            )
+                formset.instance = compra
+                formset.save()
+
+            messages.success(request, "Compra registrada correctamente.")
+            return redirect("inventario:compra_detalle", pk=compra.pk)
     else:
-        form = CompraForm()
+        form = CompraForm(negocio=negocio)
         formset = CompraItemFormSet(form_kwargs={"negocio": negocio})
 
     context = {
@@ -243,6 +394,44 @@ def compra_crear_view(request):
         "formset": formset,
         "costos_json": json.dumps(costos_map),
         "ean_map_json": json.dumps(ean_map),
+    }
+    return render(request, "inventario/compras/compra_crear.html", context)
+
+
+@login_required
+def compra_editar_view(request, pk):
+    negocio = request.user.perfilusuario.negocio
+    compra = get_object_or_404(Compra, pk=pk, negocio=negocio)
+
+    productos = Producto.objects.filter(negocio=negocio, activo=True)
+    costos_map = {str(p.id): p.costo for p in productos}
+    ean_map = {str(p.ean): str(p.id) for p in productos}
+
+    if request.method == "POST":
+        form = CompraForm(request.POST, request.FILES, instance=compra, negocio=negocio)
+        formset = CompraItemFormSet(
+            request.POST,
+            instance=compra,
+            form_kwargs={"negocio": negocio},
+        )
+
+        if form.is_valid() and formset.is_valid():
+            with transaction.atomic():
+                form.save()
+                formset.save()
+            messages.success(request, "Compra actualizada correctamente.")
+            return redirect("inventario:compra_detalle", pk=compra.pk)
+    else:
+        form = CompraForm(instance=compra, negocio=negocio)
+        formset = CompraItemFormSet(instance=compra, form_kwargs={"negocio": negocio})
+
+    context = {
+        "form": form,
+        "formset": formset,
+        "costos_json": json.dumps(costos_map),
+        "ean_map_json": json.dumps(ean_map),
+        "modo": "editar",
+        "compra": compra,
     }
     return render(request, "inventario/compras/compra_crear.html", context)
 
@@ -255,32 +444,50 @@ class CompraEliminarView(LoginRequiredMixin, DeleteView):
     def get_queryset(self):
         negocio = self.request.user.perfilusuario.negocio
         return Compra.objects.filter(negocio=negocio)
+    
+
 #==================sebastian-proveedores======================#
 #=============================================================#
 class ProveedorListView(LoginRequiredMixin, ListView):
-    """Muestra la lista de proveedores activos, filtrados por el negocio del usuario."""
+    """Lista de proveedores del negocio, con buscador y filtro por estado."""
     model = Proveedor
     template_name = "inventario/proveedores/proveedor_lista.html"
-    context_object_name = 'proveedores'
-    ordering = ["nombre"]
+    context_object_name = "proveedores"
     paginate_by = 25
+
     def get_queryset(self):
-        # 1. Obtener el negocio del usuario actual
         negocio = self.request.user.perfilusuario.negocio
-        
-        # 2. Filtrar por el negocio Y por el estado activo
-        return (
-            Proveedor.objects
-            .filter(negocio=negocio, activo=True)
-            .order_by("nombre")
-        )
-    
+
+        qs = Proveedor.objects.filter(negocio=negocio)
+
+        estado = self.request.GET.get("estado", "activos")
+        q = (self.request.GET.get("q") or "").strip()
+
+        # filtro por estado
+        if estado == "activos":
+            qs = qs.filter(activo=True)
+        elif estado == "inactivos":
+            qs = qs.filter(activo=False)
+        # "todos" => no filtramos
+
+        # buscador por nombre / contacto / correo
+        if q:
+            qs = qs.filter(
+                Q(nombre__icontains=q)
+                | Q(contacto__icontains=q)
+                | Q(correo__icontains=q)
+            )
+
+        return qs.order_by("nombre")
+
     def get_context_data(self, **kwargs):
-        # Mantiene la adición de la URL de creación para el template
-        context = super().get_context_data(**kwargs)
-        context["url_crear_proveedor"] = reverse_lazy("inventario:proveedor_crear")
-        return context
-    
+        ctx = super().get_context_data(**kwargs)
+        ctx["filtros"] = {
+            "q": (self.request.GET.get("q") or "").strip(),
+            "estado": self.request.GET.get("estado", "activos"),
+        }
+        ctx["url_crear_proveedor"] = reverse_lazy("inventario:proveedor_crear")
+        return ctx
 
 # ----------------------------------------------------
 # B. CREAR PROVEEDOR (CREATE)
@@ -342,33 +549,27 @@ class ProveedorDetailView(LoginRequiredMixin, DetailView):
         ).order_by('nombre')
         
         return context
-# ----------------------------------------------------
-# E. OCULTAR PROVEEDOR (SOFT DELETE / HIDE)
-# ----------------------------------------------------
-class ProveedorHideView(LoginRequiredMixin, DeleteView):
-    """Cambia el estado del proveedor a inactivo (is_active=False) en lugar de eliminarlo."""
-    
-    # Redirige a la lista de proveedores
-    url = reverse_lazy("inventario:proveedor_lista") 
 
-    def get(self, request, *args, **kwargs):
-        try:
-            # Obtiene el proveedor a ocultar
-            proveedor = Proveedor.objects.get(pk=self.kwargs['pk'])
-            
-            # Realiza la operación de "ocultar" (Soft Delete)
-            proveedor.is_active = False
-            proveedor.save()
-            
-            # Puedes agregar un mensaje de éxito si usas el sistema de mensajes de Django
-            # messages.success(request, f"Proveedor '{proveedor.nombre}' ocultado correctamente.")
-            
-        except Proveedor.DoesNotExist:
-            # Puedes agregar un mensaje de error
-            # messages.error(request, "El proveedor no existe.")
-            pass # Continúa la redirección
-            
-        return super().get(request, *args, **kwargs)
+
+class ProveedorToggleActivoView(LoginRequiredMixin, View):
+    """
+    Soft delete: alterna proveedor.activo en lugar de borrar.
+    Se llama siempre por POST.
+    """
+    def post(self, request, pk):
+        negocio = request.user.perfilusuario.negocio
+        proveedor = get_object_or_404(
+            Proveedor,
+            pk=pk,
+            negocio=negocio,
+        )
+        proveedor.activo = not proveedor.activo
+        proveedor.save(update_fields=["activo"])
+        messages.success(
+            request,
+            f"Proveedor {'activado' if proveedor.activo else 'desactivado'} correctamente."
+        )
+        return redirect("inventario:proveedor_lista")
 
 #=============sebastian-plantilla de proveedores================#
 
@@ -469,6 +670,45 @@ class ProveedorProductosView(DetailView):
         context['productos_del_proveedor'] = self.object.producto_set.all() 
         return context
     
+
+class ProveedorPlantillaView(LoginRequiredMixin, TemplateView):
+    template_name = "inventario/proveedores/proveedor_plantilla.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        negocio = self.request.user.perfilusuario.negocio
+
+        proveedor = get_object_or_404(
+            Proveedor,
+            pk=self.kwargs["proveedor_id"],  # o "pk" según tu URL
+            negocio=negocio,
+        )
+
+        productos = (
+            Producto.objects
+            .filter(negocio=negocio, proveedor=proveedor, activo=True)
+            .order_by("nombre")
+        )
+
+        # sugerir cantidad a pedir según stock crítico
+        for p in productos:
+            falta = max((p.stock_min or 0) - (p.stock_actual or 0), 0)
+            p.cantidad_sugerida = falta
+
+        ultima_compra = (
+            Compra.objects
+            .filter(negocio=negocio, proveedor=proveedor)
+            .order_by("-fecha")
+            .first()
+        )
+
+        context.update(
+            proveedor=proveedor,
+            productos=productos,
+            ultima_compra=ultima_compra,
+        )
+        return context
+
 # ================== CATEGORÍAS (CRUD INTERNO) ======================
 
 class CategoriaListaView(LoginRequiredMixin, ListView):
@@ -488,7 +728,7 @@ class CategoriaListaView(LoginRequiredMixin, ListView):
 
 class CategoriaCrearView(LoginRequiredMixin, CreateView):
     model = Categoria
-    fields = ["nombre", "imagen", "activa", "orden"]
+    fields = ["nombre", "imagen", "activo", "orden"]
     template_name = "inventario/categorias/categoria_form.html"
     success_url = reverse_lazy("inventario:categoria_lista")
 
@@ -499,7 +739,7 @@ class CategoriaCrearView(LoginRequiredMixin, CreateView):
 
 class CategoriaActualizarView(LoginRequiredMixin, UpdateView):
     model = Categoria
-    fields = ["nombre", "imagen", "activa", "orden"]
+    fields = ["nombre", "imagen", "activo", "orden"]
     template_name = "inventario/categorias/categoria_form.html"
     success_url = reverse_lazy("inventario:categoria_lista")
 
@@ -519,7 +759,7 @@ class CategoriaToggleActivaView(LoginRequiredMixin, View):
             pk=pk,
             negocio=negocio,
         )
-        categoria.activa = not categoria.activa
+        categoria.activo = not categoria.activo
         categoria.save()
         return redirect("inventario:categoria_lista")
 
@@ -557,7 +797,20 @@ def promo_crear_view(request):
 
             formset.instance = promo
             formset.save()
-
+            detalles_registro = {
+                'codigo_promo': promo.id, # Asumiendo que existe un campo 'codigo'
+                'nombre_promo': promo.nombre, # Asumiendo que existe un campo 'nombre'
+                'tipo_descripcion': promo.descripcion,
+                'precio_combo':promo.precio_combo, # Asumiendo este campo
+                # El número de ítems se puede contar si se necesita:
+                # 'items_incluidos': formset.total_form_count(),
+            }
+            registrar_bitacora_simple(
+                usuario=request.user,
+                accion=f"Creación de Promoción: {promo.id}",
+                entidad_id=promo.pk,
+                detalles=detalles_registro
+            )
             return redirect("inventario:promo_lista")
     else:
         form = PromoForm()
@@ -617,13 +870,36 @@ def promo_toggle_activa_view(request, pk):
 @login_required
 def merma_lista(request):
     negocio = get_negocio_actual(request)
-    mermas = MovimientoInventario.objects.filter(
+
+    qs = MovimientoInventario.objects.filter(
         tipo=MovimientoInventario.TIPO_MERMA,
         producto__negocio=negocio,
-    ).select_related("producto").order_by("-fecha")
+    ).select_related("producto", "producto__categoria").order_by("-fecha")
+
+    categoria_id = request.GET.get("categoria")
+    q = (request.GET.get("q") or "").strip()
+
+    if categoria_id:
+        qs = qs.filter(producto__categoria_id=categoria_id)
+
+    if q:
+        qs = qs.filter(
+            Q(producto__nombre__icontains=q)
+            | Q(producto__ean__icontains=q)
+            | Q(producto__sku__icontains=q)
+        )
+
+    categorias = Categoria.objects.filter(
+        negocio=negocio, activo=True
+    ).order_by("nombre")
 
     context = {
-        "mermas": mermas,
+        "mermas": qs,
+        "categorias": categorias,
+        "filtros": {
+            "categoria": categoria_id or "",
+            "q": q,
+        },
     }
     return render(request, "inventario/merma/merma_lista.html", context)
 
@@ -637,6 +913,7 @@ def merma_crear(request):
         if form.is_valid():
             merma = form.save(commit=False)
             merma.tipo = MovimientoInventario.TIPO_MERMA
+            merma.usuario = request.user
             merma.save()
             messages.success(request, "Merma registrada correctamente.")
             return redirect("inventario:merma_lista")

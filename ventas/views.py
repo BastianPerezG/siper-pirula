@@ -2,18 +2,20 @@
 
 import json
 from django.core.serializers.json import DjangoJSONEncoder
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_list_or_404
 from django.views.generic import ListView, DetailView
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from .models import Venta
+from .models import Venta,VentaItem,Anulacion
 from .forms import VentaForm, VentaItemFormSet
-from inventario.models import Producto
+from inventario.models import Producto, MovimientoInventario
 from django.db import transaction   
+from core.utlis import registrar_bitacora_simple
+from core.models import Negocio
 
-
+import json # Necesario para json.dumps en el contexto
 class VentaListaView(LoginRequiredMixin, ListView):
     model = Venta
     template_name = "ventas/venta_lista.html"
@@ -58,6 +60,7 @@ def venta_crear_view(request):
         formset = VentaItemFormSet(request.POST)
 
         if form.is_valid() and formset.is_valid():
+            comentario_usuario = form.cleaned_data.get('comentario', '').strip()
             with transaction.atomic():
                 venta = form.save(commit=False)
                 venta.negocio = negocio
@@ -86,6 +89,23 @@ def venta_crear_view(request):
                     transaction.set_rollback(True)
                     form.add_error(None, "La venta debe tener al menos un producto.")
                 else:
+                    # 'venta.total' ejecuta la suma de los subtotales de los ítems
+                    venta.monto_total = venta.total 
+                    
+                    # Esto congela el total en la base de datos (Inmutabilidad histórica)
+                    venta.save(update_fields=['monto_total'])
+                    detalles_registro = {
+                        'items_vendidos': items_validos,
+                        'monto_total': str(venta.monto_total), 
+                    }
+                    if comentario_usuario:
+                        detalles_registro['comentario_usuario'] = comentario_usuario
+                    registrar_bitacora_simple(
+                        usuario=request.user,
+                        accion=f"Creación de Venta POS #{venta.pk}",
+                        entidad_id=venta.pk,
+                        detalles=detalles_registro
+                    )
                     return redirect("ventas:venta_detalle", pk=venta.pk)
     else:
         form = VentaForm()
@@ -98,3 +118,64 @@ def venta_crear_view(request):
         "productos_ean_json": json.dumps(productos_ean),
     }
     return render(request, "ventas/venta_form.html", context)
+
+
+@login_required
+def venta_anular_view(request, pk):
+    venta = get_object_or_404(Venta, pk=pk, negocio=request.user.perfilusuario.negocio)
+    
+    # Prevenir doble anulación
+    if venta.estado == Venta.EST_ANULADA:
+        messages.error(request, "Esta venta ya fue anulada.")
+        return redirect('ventas:venta_detalle', pk=pk)
+
+    if request.method == 'POST':
+        motivo = request.POST.get('motivo')
+        
+        if not motivo:
+            messages.error(request, "Debe especificar un motivo para la anulación.")
+            return render(request, 'ventas/anular_confirmacion.html', {'venta': venta})
+            
+        with transaction.atomic():
+            # 1. Crear el registro de Anulacion (VentaItem es None, como se requiere)
+            anulacion = Anulacion.objects.create(
+                venta=venta,
+                motivo=motivo,
+                usuario=request.user,
+                venta_item=None # Clave para anulación completa
+            )
+
+            # 2. Revertir el stock y eliminar items lógicos (o simplemente revertir stock)
+            for item in venta.items.all():
+                # Crear un movimiento de ENTRADA para devolver el stock
+                MovimientoInventario.objects.create(
+                    producto=item.producto,
+                    tipo=MovimientoInventario.TIPO_ENTRADA,
+                    cantidad=item.cantidad,
+                    comentario=f"Reversa por Anulación Total Venta #{venta.pk} (Motivo: {motivo})",
+                    # Puedes relacionar esto a la Anulacion si quieres:
+                    # anulacion=anulacion 
+                )
+
+            # 3. Actualizar el estado de la Venta
+            venta.estado = Venta.EST_ANULADA
+            venta.save(update_fields=['estado'])
+            
+            # 4. Registrar la Bitácora
+            detalles_registro = {
+                'motivo_anulacion': motivo,
+                'monto_original': str(venta.monto_total),
+                'items_revertidos': venta.items.count(),
+                'usuario_anulador_id': str(request.user.pk),
+            }
+            registrar_bitacora_simple(
+                usuario=request.user,
+                accion=f"Anulación completa de Venta POS #{venta.pk}",
+                entidad_id=venta.pk,
+                detalles=detalles_registro
+            )
+
+            messages.success(request, f"Venta #{venta.pk} anulada y stock revertido correctamente.")
+            return redirect('ventas:venta_detalle', pk=pk)
+
+    return render(request, 'ventas/anular_confirmacion.html', {'venta': venta})

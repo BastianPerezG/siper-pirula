@@ -3,22 +3,166 @@
 {% block title %}Crear producto - SIPER Pirula{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Crear producto</h1>
-
-<form method="post" class="space-y-6 max-w-3xl">
-    {% csrf_token %}
-
-    <div class="bg-white shadow-sm rounded-lg p-6 grid gap-4 md:grid-cols-2 text-sm">
-        {{ form.as_p }}
+<div class="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+        <h1 class="text-2xl font-bold">Crear producto</h1>
+        <p class="text-sm text-slate-500">
+            Registra un nuevo producto en el catálogo. Los campos marcados con * son obligatorios.
+        </p>
     </div>
 
-    <div class="flex gap-3">
+    <a href="{% url 'inventario:producto_lista' %}"
+       class="inline-flex items-center px-3 py-1.5 rounded border border-slate-300 text-sm hover:bg-slate-50">
+        Volver al listado
+    </a>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="space-y-6 max-w-5xl">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+        <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
+            {{ form.non_field_errors }}
+        </div>
+    {% endif %}
+
+    <!-- Datos principales -->
+    <section class="bg-white shadow-sm rounded-lg p-6 space-y-4">
+        <h2 class="text-base font-semibold text-slate-800">Datos principales</h2>
+        <div class="grid gap-4 md:grid-cols-2 text-sm">
+            <div>
+                {{ form.ean.label_tag }}
+                {{ form.ean }}
+                {% if form.ean.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.ean.errors|striptags }}</p>
+                {% endif %}
+                {% if form.ean.help_text %}
+                    <p class="text-xs text-slate-500 mt-1">{{ form.ean.help_text }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                {{ form.nombre.label_tag }}
+                {{ form.nombre }}
+                {% if form.nombre.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.nombre.errors|striptags }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                {{ form.categoria.label_tag }}
+                {{ form.categoria }}
+                {% if form.categoria.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.categoria.errors|striptags }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                {{ form.proveedor.label_tag }}
+                {{ form.proveedor }}
+                {% if form.proveedor.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.proveedor.errors|striptags }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Venta y costos -->
+    <section class="bg-white shadow-sm rounded-lg p-6 space-y-4">
+        <h2 class="text-base font-semibold text-slate-800">Venta y costos</h2>
+        <div class="grid gap-4 md:grid-cols-3 text-sm">
+            <div>
+                {{ form.precio.label_tag }}
+                {{ form.precio }}
+                {% if form.precio.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.precio.errors|striptags }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                {{ form.costo.label_tag }}
+                {{ form.costo }}
+                {% if form.costo.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.costo.errors|striptags }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                {{ form.contiene_alcohol.label_tag }}
+                <div class="flex items-center gap-2">
+                    {{ form.contiene_alcohol }}
+                    <span class="text-xs text-slate-500">Marcar si el producto contiene alcohol.</span>
+                </div>
+                {% if form.contiene_alcohol.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.contiene_alcohol.errors|striptags }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-2 text-sm">
+            <div>
+                {{ form.unidad_de_venta.label_tag }}
+                {{ form.unidad_de_venta }}
+                {% if form.unidad_de_venta.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.unidad_de_venta.errors|striptags }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                {{ form.formato.label_tag }}
+                {{ form.formato }}
+                {% if form.formato.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.formato.errors|striptags }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Stock y bodega -->
+    <section class="bg-white shadow-sm rounded-lg p-6 space-y-4">
+        <h2 class="text-base font-semibold text-slate-800">Stock y bodega</h2>
+        <div class="grid gap-4 md:grid-cols-3 text-sm">
+            <div>
+                {{ form.stock_min.label_tag }}
+                {{ form.stock_min }}
+                {% if form.stock_min.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.stock_min.errors|striptags }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                {{ form.ubicacion.label_tag }}
+                {{ form.ubicacion }}
+                {% if form.ubicacion.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.ubicacion.errors|striptags }}</p>
+                {% endif %}
+            </div>
+
+            <div class="flex items-center gap-2 mt-6 md:mt-0">
+                {{ form.activo }}
+                {{ form.activo.label_tag }}
+                {% if form.activo.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.activo.errors|striptags }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="text-sm">
+            {{ form.imagen.label_tag }}
+            {{ form.imagen }}
+            {% if form.imagen.errors %}
+                <p class="text-red-600 text-xs mt-1">{{ form.imagen.errors|striptags }}</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <div class="flex flex-wrap gap-3">
         <button type="submit"
                 class="px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
             Guardar
         </button>
 
-        <a href="{% url 'inventario:scan_ean' %}"
+        <a href="{% url 'inventario:producto_lista' %}"
            class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
             Cancelar
         </a>

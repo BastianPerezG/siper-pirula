@@ -1,0 +1,186 @@
+{% extends "../../core/base.html" %}
+
+{% block title %}Plantilla de pedido - {{ proveedor.nombre }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+
+    <!-- Encabezado -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">
+                Plantilla de pedido · {{ proveedor.nombre }}
+            </h1>
+            <p class="text-sm text-slate-600 mt-1">
+                Selecciona las cantidades que deseas reponer. El total estimado se calculará automáticamente.
+            </p>
+            <p class="text-xs text-slate-500 mt-1">
+                Contacto: {{ proveedor.contacto|default:"N/D" }} ·
+                Tel: {{ proveedor.telefono|default:"N/D" }} ·
+                Email: {{ proveedor.correo|default:"N/D" }}
+            </p>
+            <p class="text-xs text-slate-500 mt-1">
+                {% if ultima_compra %}
+                Última compra registrada:
+                <span class="font-semibold">
+                    {{ ultima_compra.fecha|date:"d/m/Y H:i" }}
+                </span>
+                –
+                <a href="{% url 'inventario:compra_lista' %}?proveedor={{ proveedor.id }}"
+                    class="text-emerald-700 hover:underline">
+                    ver historial de compras
+                </a>
+                {% else %}
+                Aún no hay compras registradas con este proveedor.
+                Puedes registrar una desde
+                <a href="{% url 'inventario:compra_crear' %}?proveedor={{ proveedor.id }}"
+                    class="text-emerald-700 hover:underline">
+                    el módulo de Compras
+                </a>.
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="flex gap-2">
+            <a href="{% url 'inventario:proveedor_lista' %}"
+                class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+                ← Volver a proveedores
+            </a>
+        </div>
+    </div>
+
+    <!-- Tabla de productos -->
+    <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-200 flex justify-between items-center">
+            <h2 class="text-sm font-semibold text-slate-700">
+                Productos suministrados por {{ proveedor.nombre }}
+            </h2>
+            <span class="text-xs text-slate-500">
+                Productos críticos aparecen en <span class="font-semibold text-red-600">rojo</span>.
+            </span>
+        </div>
+
+        {% if productos %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-slate-50 text-slate-700 text-xs uppercase tracking-wide">
+                    <tr>
+                        <th class="px-4 py-2 text-left">Producto</th>
+                        <th class="px-4 py-2 text-left">EAN</th>
+                        <th class="px-4 py-2 text-right">Stock mín.</th>
+                        <th class="px-4 py-2 text-right">Stock actual</th>
+                        <th class="px-4 py-2 text-right">Costo unit.</th>
+                        <th class="px-4 py-2 text-right">Cant. a pedir</th>
+                        <th class="px-4 py-2 text-right">Subtotal</th>
+                        <th class="px-4 py-2 text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100" id="tabla-plantilla">
+                    {% for p in productos %}
+                    <tr class="hover:bg-slate-50 transition" data-costo="{{ p.costo|default:0 }}" data-id="{{ p.id }}">
+                        <td class="px-4 py-2">
+                            <div class="font-medium text-slate-900">{{ p.nombre }}</div>
+                            <div class="text-xs text-slate-500">
+                                Cat: {{ p.categoria|default:"Sin categoría" }}{% if p.ubicacion %}
+                                · Ubicación: {{ p.ubicacion }}
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-4 py-2 text-xs text-slate-600">
+                            {{ p.ean|default:"–" }}
+                        </td>
+                        <td class="px-4 py-2 text-right text-xs text-slate-600">
+                            {{ p.stock_min|default:"0" }}
+                        </td>
+                        <td class="px-4 py-2 text-right font-semibold
+                       {% if p.es_critico %}text-red-600{% else %}text-slate-800{% endif %}">
+                            {{ p.stock_actual|default:"0" }}
+                        </td>
+                        <td class="px-4 py-2 text-right text-emerald-700 font-semibold">
+                            $ {{ p.costo|floatformat:0 }}
+                        </td>
+                        <td class="px-4 py-2 text-right">
+                            <input type="number" min="0" step="1" value="{{ p.cantidad_sugerida }}" class="w-20 border border-slate-300 rounded px-2 py-1 text-right text-sm
+                            focus:outline-none focus:ring focus:ring-amber-300" name="cantidad_{{ p.id }}">
+                        </td>
+                        <td class="px-4 py-2 text-right">
+                            <span class="subtotal font-semibold text-slate-800">$ 0</span>
+                        </td>
+                        <td class="px-4 py-2 text-center">
+                            <a href="{% url 'inventario:producto_detalle' p.pk %}"
+                                class="text-xs text-slate-700 hover:underline">
+                                Ver detalle
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="bg-slate-50 border-t border-slate-200">
+                    <tr>
+                        <td colspan="6" class="px-4 py-3 text-right text-sm font-semibold text-slate-700">
+                            Total estimado del pedido:
+                        </td>
+                        <td class="px-4 py-3 text-right font-bold text-lg text-emerald-700" id="total-general">
+                            $ 0
+                        </td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <p class="p-4 text-sm text-slate-600">
+            Este proveedor aún no tiene productos asociados.
+        </p>
+        {% endif %}
+    </div>
+
+    <p class="text-xs text-slate-500">
+        * Esta plantilla es sólo de apoyo para estimar pedidos. El registro real de compras
+        se sigue realizando desde el módulo <span class="font-semibold">Compras</span>.
+    </p>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function formatearCLP(valor) {
+        // simple formateo con separador de miles
+        return valor.toLocaleString('es-CL', { minimumFractionDigits: 0 });
+    }
+
+    function recalcular() {
+        let totalGeneral = 0;
+
+        document.querySelectorAll('#tabla-plantilla tr[data-id]').forEach(function (fila) {
+            const costo = parseFloat(fila.dataset.costo || "0");
+            const input = fila.querySelector('input[type="number"]');
+
+            let cantidad = parseFloat(input.value || "0");
+
+            // Normalizar cantidad: nada raro, nada negativo
+            if (isNaN(cantidad) || cantidad < 0) {
+                cantidad = 0;
+                input.value = 0;
+            }
+
+            const subtotal = costo * cantidad;
+            const celdaSubtotal = fila.querySelector('.subtotal');
+            celdaSubtotal.textContent = '$ ' + formatearCLP(subtotal);
+
+            totalGeneral += subtotal;
+        });
+
+        document.getElementById('total-general').textContent = '$ ' + formatearCLP(totalGeneral);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('#tabla-plantilla input[type="number"]').forEach(function (input) {
+            input.addEventListener('input', recalcular);
+        });
+        // cálculo inicial
+        recalcular();
+    });
+</script>
+{% endblock %}
