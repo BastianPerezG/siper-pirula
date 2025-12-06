@@ -1,493 +1,359 @@
-
-# reportes/views.py
-import csv
-import json
-from django.db.models.functions import TruncDay
-from datetime import datetime
-from django.http import HttpResponse
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Sum, Count, F, DecimalField
+from django.http import HttpResponse
 from django.utils import timezone
-from django.db.models import Sum, F, Count, ExpressionWrapper, fields, Q, Max, Subquery, OuterRef
-from django.db.models.functions import TruncDay, TruncWeek, TruncMonth, TruncYear, ExtractYear
-from django.db.models import DecimalField
-from inventario.models import Compra, CompraItem, Categoria, Producto, Proveedor
+from datetime import datetime, timedelta
+from django.db.models.functions import TruncDay, TruncWeek, TruncMonth, TruncYear, ExtractHour, ExtractWeekDay
+
+import csv
+import json
 from ventas.models import Venta, VentaItem
+from inventario.models import Categoria, Producto, MovimientoInventario, Proveedor, CompraItem
+from django.views import View
+from django.shortcuts import render
+from pedidos.models import Pedido
 
 
 
-class ReporteInventarioView(LoginRequiredMixin, TemplateView):
-    template_name = "reportes/inventario.html"
+class ReporteStockQuiebresView(LoginRequiredMixin, TemplateView):
+    template_name = "reportes/reporte_quiebres.html"
 
-    def _get_ventas_filtradas(self, request):
-        negocio = request.user.perfilusuario.negocio
-        hoy = timezone.now().date()
+    def _parse_date(self, value, default):
+        if not value:
+            return default
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except ValueError:
+            return default
 
-        # Filtros desde la URL (?desde=YYYY-MM-DD&hasta=YYYY-MM-DD...)
-        desde_str = request.GET.get("desde")
-        hasta_str = request.GET.get("hasta")
-        medio = request.GET.get("medio") or None
-        categoria_id = request.GET.get("categoria") or None
-
-        # Si no hay fechas, usamos el mes actual
-        if not desde_str or not hasta_str:
-            desde = hoy.replace(day=1)
-            hasta = hoy
-        else:
-            # los <input type="date"> envían el formato YYYY-MM-DD
-            desde = datetime.strptime(desde_str, "%Y-%m-%d").date()
-            hasta = datetime.strptime(hasta_str, "%Y-%m-%d").date()
-
-        ventas_qs = Venta.objects.filter(
-            negocio=negocio,
-            estado=Venta.EST_CERRADA,
-            fecha__date__gte=desde,
-            fecha__date__lte=hasta,
-        )
-
-        if medio:
-            ventas_qs = ventas_qs.filter(medio_pago=medio)
-
-        if categoria_id:
-            ventas_qs = ventas_qs.filter(
-                items__producto__categoria_id=categoria_id)
-
-        return ventas_qs.distinct(), desde, hasta, medio, categoria_id, hoy, negocio
-
-    # ---------- GET: si viene ?export=csv, descargamos ----------
-    def get(self, request, *args, **kwargs):
-        ventas_qs, _, _, _, _, _, _ = self._get_ventas_filtradas(request)
-
-        if request.GET.get("export") == "csv":
-            return self.export_csv(ventas_qs)
-
-        # si no es export, seguimos con el flujo normal (HTML)
-        return super().get(request, *args, **kwargs)
-
-    # ---------- EXPORTACIÓN A CSV ----------
-    def export_csv(self, ventas_qs):
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = (
-            f'attachment; filename="reporte_ventas_{timezone.now().date()}.csv"'
-        )
-
-        writer = csv.writer(response)
-        writer.writerow(["Fecha", "Medio de pago", "Total"])
-
-        for v in ventas_qs.select_related():
-            writer.writerow([
-                v.fecha.date(),
-                v.get_medio_pago_display(),
-                v.total,
-            ])
-
-        return response
-
-    # ---------- CONTEXTO PARA EL TEMPLATE ----------
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+    def _get_filtros(self):
         request = self.request
-
-        ventas_qs, desde, hasta, medio, categoria_id, hoy, negocio = self._get_ventas_filtradas(
-            request)
-
-        # --- resumen rango filtrado ---
-        total_rango = ventas_qs.aggregate(
-            total=Sum(F("items__cantidad") * F("items__precio_unit"))
-        )["total"] or 0
-        cantidad_ventas_rango = ventas_qs.count()
-        ticket_promedio_rango = (
-            total_rango / cantidad_ventas_rango if cantidad_ventas_rango else 0
-        )
-
-        # --- agrupaciones día / semana / mes ---
-        ventas_por_dia = (
-            ventas_qs
-            .annotate(dia=TruncDay("fecha"))
-            .values("dia")
-            .annotate(
-                total=Sum(F("items__cantidad") * F("items__precio_unit")),
-                pedidos=Count("id", distinct=True),
-            )
-            .order_by("dia")
-        )
-
-        ventas_por_semana = (
-            ventas_qs
-            .annotate(semana=TruncWeek("fecha"))
-            .values("semana")
-            .annotate(
-                total=Sum(F("items__cantidad") * F("items__precio_unit")),
-                pedidos=Count("id", distinct=True),
-            )
-            .order_by("semana")
-        )
-
-        ventas_por_mes = (
-            ventas_qs
-            .annotate(mes=TruncMonth("fecha"))
-            .values("mes")
-            .annotate(
-                total=Sum(F("items__cantidad") * F("items__precio_unit")),
-                pedidos=Count("id", distinct=True),
-            )
-            .order_by("mes")
-        )
-
-        def ticket_promedio(lista):
-            total = sum((fila["total"] or 0) for fila in lista)
-            pedidos = sum((fila["pedidos"] or 0) for fila in lista)
-            return int(total / pedidos) if pedidos else 0
-
-        ticket_dia = ticket_promedio(ventas_por_dia)
-        ticket_semana = ticket_promedio(ventas_por_semana)
-        ticket_mes = ticket_promedio(ventas_por_mes)
-
-        # --- ventas hoy y del mes actual (para las tarjetas) ---
-        ventas_hoy = Venta.objects.filter(
-            negocio=negocio,
-            estado=Venta.EST_CERRADA,
-            fecha__date=hoy,
-        )
-        total_hoy = sum(v.total for v in ventas_hoy)
-
-        ventas_mes_actual = Venta.objects.filter(
-            negocio=negocio,
-            estado=Venta.EST_CERRADA,
-            fecha__year=hoy.year,
-            fecha__month=hoy.month,
-        )
-        total_mes_actual = sum(v.total for v in ventas_mes_actual)
-        cant_ventas_mes_actual = ventas_mes_actual.count()
-        ticket_promedio_mes_actual = (
-            total_mes_actual / cant_ventas_mes_actual if cant_ventas_mes_actual else 0
-        )
-
-        # --- ventas por medio de pago y top productos ---
-        ventas_por_medio = (
-            ventas_qs
-            .values("medio_pago")
-            .annotate(
-                total=Sum(F("items__cantidad") * F("items__precio_unit")),
-                cantidad=Count("id", distinct=True),
-            )
-            .order_by("medio_pago")
-        )
-
-        top_productos = (
-            VentaItem.objects
-            .filter(venta__in=ventas_qs)
-            .values("producto__nombre", "producto__categoria__nombre")
-            .annotate(
-                unidades=Sum("cantidad"),
-                total=Sum(F("cantidad") * F("precio_unit")),
-            )
-            .order_by("-unidades")[:10]
-        )
-
-        # --- contexto final ---
-        context.update({
-            "desde": desde,
-            "hasta": hasta,
-            "medio_seleccionado": medio,
-            "categoria_seleccionada": int(categoria_id) if categoria_id else None,
-            "medios_pago": Venta.MEDIO_PAGO_CHOICES,
-            "categorias": Categoria.objects.filter(negocio=negocio),
-
-            "total_rango": total_rango,
-            "cantidad_ventas_rango": cantidad_ventas_rango,
-            "ticket_promedio_rango": ticket_promedio_rango,
-
-            "ventas_por_dia": ventas_por_dia,
-            "ventas_por_semana": ventas_por_semana,
-            "ventas_por_mes": ventas_por_mes,
-            "ticket_dia": ticket_dia,
-            "ticket_semana": ticket_semana,
-            "ticket_mes": ticket_mes,
-
-            "ventas_hoy": ventas_hoy,
-            "total_hoy": total_hoy,
-            "ventas_mes": ventas_mes_actual,
-            "total_mes": total_mes_actual,
-            "ticket_promedio_mes": ticket_promedio_mes_actual,
-
-            "pagos": ventas_por_medio,
-            "top_productos": top_productos,
-            "hoy": hoy,
-        })
-        return context
-
-    template_name = "reportes/ventas.html"
-
-    # ----------------- Filtros compartidos (formulario + CSV + gráfico) -----------------
-    def _get_ventas_filtradas(self, request):
-        negocio = request.user.perfilusuario.negocio
         hoy = timezone.now().date()
 
-        ventas = Venta.objects.filter(
-            negocio=negocio,
-            estado=Venta.EST_CERRADA,
-        )
+        # Últimos 30 días por defecto
+        default_desde = hoy - timedelta(days=30)
+        default_hasta = hoy
 
-        # Filtros GET
         desde_str = request.GET.get("desde")
         hasta_str = request.GET.get("hasta")
-        medio = request.GET.get("medio") or ""
         categoria_id = request.GET.get("categoria") or ""
+        proveedor_id = request.GET.get("proveedor") or ""
+        # "critico", "quiebres", "ambos"
+        estado = request.GET.get("estado") or "ambos"
 
-        # Si no envían fechas, usamos el mes actual
-        if desde_str:
-            try:
-                desde = datetime.strptime(desde_str, "%Y-%m-%d").date()
-            except ValueError:
-                desde = hoy.replace(day=1)
-        else:
-            desde = hoy.replace(day=1)
+        desde = self._parse_date(desde_str, default_desde)
+        hasta = self._parse_date(hasta_str, default_hasta)
 
-        if hasta_str:
-            try:
-                hasta = datetime.strptime(hasta_str, "%Y-%m-%d").date()
-            except ValueError:
-                hasta = hoy
-        else:
-            hasta = hoy
+        # Normalizar: hasta nunca antes que desde y no en el futuro
+        hoy_sistema = hoy
+        if desde > hoy_sistema:
+            desde = hoy_sistema
+        if hasta > hoy_sistema:
+            hasta = hoy_sistema
+        if hasta < desde:
+            hasta = desde
 
-        ventas = ventas.filter(fecha__date__gte=desde, fecha__date__lte=hasta)
-
-        if medio:
-            ventas = ventas.filter(medio_pago=medio)
-
-        if categoria_id:
-            # Filtramos por categoría a través de VentaItem
-            venta_ids = (
-                VentaItem.objects
-                .filter(producto__categoria_id=categoria_id)
-                .values_list("venta_id", flat=True)
-            )
-            ventas = ventas.filter(id__in=venta_ids)
-
-        return ventas.distinct(), desde, hasta, medio, categoria_id, negocio, hoy
-
-    # ----------------- GET: CSV o HTML -----------------
-    def get(self, request, *args, **kwargs):
-        if request.GET.get("export") == "csv":
-            ventas_qs, *_ = self._get_ventas_filtradas(request)
-            return self.export_csv(ventas_qs)
-        return super().get(request, *args, **kwargs)
-
-    # ----------------- Exportar CSV -----------------
-    def export_csv(self, ventas_qs):
-        response = HttpResponse(content_type="text/csv; charset=utf-8")
-        response["Content-Disposition"] = (
-            f'attachment; filename="reporte_ventas_{timezone.now().date()}.csv"'
-        )
-
-        # BOM para que Excel reconozca bien UTF-8
-        response.write("\ufeff")
-
-        writer = csv.writer(response, delimiter=";")
-        writer.writerow(["Fecha", "Medio de pago", "Total"])
-
-        for v in ventas_qs.select_related():
-            writer.writerow([
-                v.fecha.date() if hasattr(v.fecha, "date") else v.fecha,
-                v.get_medio_pago_display(),
-                v.total,  # si no tienes campo total, cámbialo por una agregación
-            ])
-
-        return response
-
-    # ----------------- Contexto para el dashboard -----------------
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        request = self.request
-
-        ventas_filtradas, desde, hasta, medio, categoria_id, negocio, hoy = \
-            self._get_ventas_filtradas(request)
-
-        # ==== Tarjetas: ventas hoy y ventas del mes actual ====
-        ventas_hoy = Venta.objects.filter(
-            negocio=negocio,
-            estado=Venta.EST_CERRADA,
-            fecha__date=hoy,
-        )
-        total_hoy = sum(v.total for v in ventas_hoy)
-
-        ventas_mes = Venta.objects.filter(
-            negocio=negocio,
-            estado=Venta.EST_CERRADA,
-            fecha__year=hoy.year,
-            fecha__month=hoy.month,
-        )
-        total_mes = sum(v.total for v in ventas_mes)
-        cant_ventas_mes = ventas_mes.count()
-        ticket_promedio_mes = total_mes / cant_ventas_mes if cant_ventas_mes else 0
-
-        # ==== Tabla: total por medio de pago (mes actual) ====
-        pagos = (
-            VentaItem.objects
-            .filter(venta__in=ventas_mes)
-            .values("venta__medio_pago")
-            .annotate(
-                medio_pago=F("venta__medio_pago"),
-                total=Sum(
-                    F("cantidad") * F("precio_unit"),
-                    output_field=DecimalField(max_digits=12, decimal_places=0),
-                ),
-                cantidad=Count("venta", distinct=True),
-            )
-            .values("medio_pago", "total", "cantidad")
-            .order_by("medio_pago")
-        )
-
-        # ==== Top productos más vendidos (mes actual) ====
-        top_productos = (
-            VentaItem.objects
-            .filter(venta__in=ventas_mes)
-            .values("producto__nombre")
-            .annotate(
-                unidades=Sum("cantidad"),
-                total=Sum(
-                    F("cantidad") * F("precio_unit"),
-                    output_field=DecimalField(max_digits=12, decimal_places=0),
-                ),
-            )
-            .order_by("-unidades")[:10]
-        )
-
-        # =====================================================
-        #   GRÁFICO ÚNICO (Día / Mes / Año) – respeta filtros
-        # =====================================================
-        items_filtrados = VentaItem.objects.filter(venta__in=ventas_filtradas)
-
-        # Día
-        ventas_por_dia = (
-            items_filtrados
-            .annotate(dia=TruncDay("venta__fecha"))
-            .values("dia")
-            .annotate(
-                total=Sum(
-                    F("cantidad") * F("precio_unit"),
-                    output_field=DecimalField(max_digits=12, decimal_places=0),
-                ),
-            )
-            .order_by("dia")
-        )
-        day_labels = [v["dia"].strftime("%d-%m") for v in ventas_por_dia]
-        day_data = [int(v["total"] or 0) for v in ventas_por_dia]
-
-        # Mes
-        ventas_por_mes = (
-            items_filtrados
-            .annotate(mes=TruncMonth("venta__fecha"))
-            .values("mes")
-            .annotate(
-                total=Sum(
-                    F("cantidad") * F("precio_unit"),
-                    output_field=DecimalField(max_digits=12, decimal_places=0),
-                ),
-            )
-            .order_by("mes")
-        )
-        month_labels = [v["mes"].strftime("%b %Y") for v in ventas_por_mes]
-        month_data = [int(v["total"] or 0) for v in ventas_por_mes]
-
-        # Año
-        ventas_por_anio = (
-            items_filtrados
-            .annotate(anio=TruncYear("venta__fecha"))
-            .values("anio")
-            .annotate(
-                total=Sum(
-                    F("cantidad") * F("precio_unit"),
-                    output_field=DecimalField(max_digits=12, decimal_places=0),
-                ),
-            )
-            .order_by("anio")
-        )
-        year_labels = [str(v["anio"].year) for v in ventas_por_anio]
-        year_data = [int(v["total"] or 0) for v in ventas_por_anio]
-
-        chart_data = {
-            "day": {"labels": day_labels, "data": day_data},
-            "month": {"labels": month_labels, "data": month_data},
-            "year": {"labels": year_labels, "data": year_data},
-        }
-        chart_data_json = json.dumps(chart_data)
-
-        # =====================================================
-        #   KPIs Año vs Año (ventas totales del año completo)
-        # =====================================================
-        anio_actual = hoy.year
-        anio_anterior = hoy.year - 1
-
-        items_anio_actual = VentaItem.objects.filter(
-            venta__negocio=negocio,
-            venta__estado=Venta.EST_CERRADA,
-            venta__fecha__year=anio_actual,
-        )
-        total_anio_actual = (
-            items_anio_actual
-            .aggregate(
-                total=Sum(
-                    F("cantidad") * F("precio_unit"),
-                    output_field=DecimalField(max_digits=14, decimal_places=0),
-                )
-            )["total"] or 0
-        )
-
-        items_anio_anterior = VentaItem.objects.filter(
-            venta__negocio=negocio,
-            venta__estado=Venta.EST_CERRADA,
-            venta__fecha__year=anio_anterior,
-        )
-        total_anio_anterior = (
-            items_anio_anterior
-            .aggregate(
-                total=Sum(
-                    F("cantidad") * F("precio_unit"),
-                    output_field=DecimalField(max_digits=14, decimal_places=0),
-                )
-            )["total"] or 0
-        )
-
-        diff_abs = total_anio_actual - total_anio_anterior
-        diff_pct = (diff_abs / total_anio_anterior) * \
-            100 if total_anio_anterior else 0
-
-        # ----------------- Actualizar contexto -----------------
-        context.update({
-            # Filtros activos
+        return {
             "desde": desde,
             "hasta": hasta,
-            "medio_seleccionado": medio,
-            "categoria_seleccionada": int(categoria_id) if categoria_id else None,
-            "medios_pago": Venta.MEDIO_PAGO_CHOICES,
-            "categorias": Categoria.objects.filter(negocio=negocio),
+            "desde_str": desde.strftime("%Y-%m-%d"),
+            "hasta_str": hasta.strftime("%Y-%m-%d"),
+            "categoria_id": str(categoria_id),
+            "proveedor_id": str(proveedor_id),
+            "estado": estado,
+        }
 
-            # Tarjetas
-            "ventas_hoy": ventas_hoy,
-            "total_hoy": total_hoy,
-            "ventas_mes": ventas_mes,
-            "total_mes": total_mes,
-            "ticket_promedio_mes": ticket_promedio_mes,
+    def get(self, request, *args, **kwargs):
+        context = self.get_context_data(**kwargs)
 
-            # Tablas
-            "pagos": pagos,
-            "top_productos": top_productos,
+        export = request.GET.get("export")
+        if export == "csv":
+            filtros = context.get("filtros", {})
+            estado = filtros.get("estado", "ambos")
 
-            "hoy": hoy,
+            productos_criticos = context.get("productos_criticos", [])
+            quiebres = context.get("quiebres", [])
 
-            # Datos para el gráfico
-            "chart_data_json": chart_data_json,
+            # Respuesta  combinada
+            response = HttpResponse(
+                content_type="text/csv; charset=utf-8"
+            )
+            response["Content-Disposition"] = (
+                'attachment; filename="stock_critico_quiebres.csv"'
+            )
 
-            # KPIs año vs año
-            "anio_actual": anio_actual,
-            "anio_anterior": anio_anterior,
-            "ventas_anio_actual": total_anio_actual,
-            "ventas_anio_anterior": total_anio_anterior,
-            "ventas_yoy_abs": diff_abs,
-            "ventas_yoy_pct": diff_pct,
+            # BOM para que Excel detecte UTF-8
+            response.write("\ufeff")
+            writer = csv.writer(response, delimiter=";")
+
+            # STOCK CRÍTICO
+
+            if estado in ("critico", "ambos") and productos_criticos:
+                # Título de sección
+                writer.writerow(["Productos con stock crítico"])
+                # Encabezados
+                writer.writerow([
+                    "Código",
+                    "Nombre",
+                    "Categoría",
+                    "Proveedor",
+                    "Stock actual",
+                    "Stock mínimo",
+                    "Diferencia",
+                    "Estado",
+                ])
+
+                for item in productos_criticos:
+                    producto = item["producto"]
+                    codigo = getattr(
+                        producto,
+                        "sku",
+                        getattr(producto, "ean", producto.pk)
+                    )
+
+                    writer.writerow([
+                        codigo,
+                        producto.nombre,
+                        item["categoria"].nombre if item["categoria"] else "",
+                        item["proveedor"].nombre if item["proveedor"] else "",
+                        item["stock"],
+                        item["minimo"],
+                        item["diferencia"],
+                        "SIN STOCK" if item["sin_stock"] else "CRÍTICO",
+                    ])
+
+            # HISTORIAL QUIEBRES
+            if estado in ("quiebres", "ambos") and quiebres:
+                # Si ya escribimos críticos antes, dejamos una fila en blanco
+                if estado == "ambos" and productos_criticos:
+                    writer.writerow([])
+
+                writer.writerow(["Historial de quiebres"])
+                writer.writerow([
+                    "Producto",
+                    "Categoría",
+                    "Proveedor",
+                    "Fecha quiebre",
+                    "Fecha reposición",
+                    "Duración (días)",
+                    "N° quiebres en el período",
+                ])
+
+                for item in quiebres:
+                    producto = item["producto"]
+                    categoria = getattr(
+                        producto.categoria, "nombre", ""
+                    ) if getattr(producto, "categoria_id", None) else ""
+                    proveedor = getattr(
+                        producto.proveedor, "nombre", ""
+                    ) if getattr(producto, "proveedor_id", None) else ""
+
+                    fecha_quiebre = item["fecha_quiebre"]
+                    fecha_reposicion = item.get("fecha_reposicion")
+                    duracion = item.get("duracion")
+                    total_quiebres = item.get("total_quiebres_producto", 0)
+
+                    writer.writerow([
+                        producto.nombre,
+                        categoria,
+                        proveedor,
+                        fecha_quiebre.strftime("%d-%m-%Y"),
+                        fecha_reposicion.strftime(
+                            "%d-%m-%Y") if fecha_reposicion else "Sin reposición registrada",
+                        duracion if duracion is not None else "-",
+                        total_quiebres,
+                    ])
+
+            return response
+
+        # Render normal (HTML)
+        return self.render_to_response(context)
+
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        filtros = self._get_filtros()
+        request = self.request
+
+        negocio = request.user.perfilusuario.negocio
+
+        # Catálogos base
+        categorias_qs = Categoria.objects.filter(
+            negocio=negocio
+        )
+        proveedores_qs = Proveedor.objects.filter(
+            negocio=negocio
+        )
+
+        categoria_id = filtros["categoria_id"]
+        proveedor_id = filtros["proveedor_id"]
+
+        #limita proveedores
+        if categoria_id:
+            proveedores_qs = proveedores_qs.filter(
+                producto__negocio=negocio,
+                producto__categoria_id=categoria_id,
+            ).distinct()
+
+        # limita categorías
+        if proveedor_id:
+            categorias_qs = categorias_qs.filter(
+                producto__negocio=negocio,
+                producto__proveedor_id=proveedor_id,
+            ).distinct()
+
+        categorias = categorias_qs.order_by("nombre")
+        proveedores = proveedores_qs.order_by("nombre")
+
+        productos_qs = Producto.objects.filter(
+            negocio=negocio,
+            activo=True
+        ).select_related("categoria", "proveedor")
+
+        if categoria_id:
+            productos_qs = productos_qs.filter(categoria_id=categoria_id)
+
+        if proveedor_id:
+            productos_qs = productos_qs.filter(proveedor_id=proveedor_id)
+
+        # ---  Productos con stock crítico ---
+        productos_criticos = []
+
+        for p in productos_qs:
+
+            stock_actual = getattr(p, "stock_actual", None)
+            if stock_actual is None:
+                stock_actual = getattr(p, "stock", 0)
+
+            stock_minimo = getattr(p, "stock_min", None)
+            if stock_minimo is None:
+                stock_minimo = getattr(p, "stock_minimo", 0)
+
+            stock_minimo = stock_minimo or 0
+
+            sin_stock = stock_actual <= 0
+            critico = (stock_actual > 0) and (stock_actual <= stock_minimo)
+
+            if not (sin_stock or critico):
+                # No está en nivel crítico, omitimos
+                continue
+
+            ultima_compra = None
+            dias_sin_compra = None
+
+            productos_criticos.append({
+                "producto": p,
+                "categoria": p.categoria,
+                "proveedor": p.proveedor,
+                "stock": stock_actual,
+                "minimo": stock_minimo,
+                "diferencia": max(0, stock_minimo - stock_actual),
+                "sin_stock": sin_stock,
+                "critico": critico,
+                "ultima_compra": ultima_compra,
+                "dias_sin_compra": dias_sin_compra,
+            })
+
+        # Ordenar por criticidad (mayor falta primero, y sin stock al tope)
+        productos_criticos.sort(
+            key=lambda x: (0 if x["sin_stock"] else 1, -x["diferencia"])
+        )
+
+        # --- Historial de quiebres ---
+        desde = filtros["desde"]
+        hasta = filtros["hasta"]
+
+        # Tomamos solo mermas que sean realmente quiebres segun el comentario que reciba
+        movimientos = (
+            MovimientoInventario.objects
+            .filter(
+                producto__in=productos_qs,
+                fecha__date__gte=desde,
+                fecha__date__lte=hasta,
+                tipo=MovimientoInventario.TIPO_MERMA,
+                # cualquier cosa que tenga "quieb" o "sin stock" o "agotad"
+                comentario__iregex=r"(quieb|sin stock|agotad)",
+            )
+            .select_related("producto")
+            .order_by("producto_id", "fecha", "id")
+        )
+
+        quiebres = []
+        quiebres_por_producto = {}
+
+        for m in movimientos:
+            producto = m.producto
+            fecha_quiebre = m.fecha.date()
+
+            # Buscar la siguiente entrada como reposición
+            siguiente_mov = (
+                MovimientoInventario.objects
+                .filter(
+                    producto=producto,
+                    fecha__gt=m.fecha,
+                    tipo__in=[
+                        MovimientoInventario.TIPO_ENTRADA,
+                        MovimientoInventario.TIPO_AJUSTE,
+                    ],
+                )
+                .order_by("fecha")
+                .first()
+            )
+
+            if siguiente_mov:
+                fecha_reposicion = siguiente_mov.fecha.date()
+                duracion = (fecha_reposicion - fecha_quiebre).days
+            else:
+                fecha_reposicion = None
+                duracion = None
+
+            quiebres.append({
+                "producto": producto,
+                "fecha_quiebre": fecha_quiebre,
+                "fecha_reposicion": fecha_reposicion,
+                "duracion": duracion,
+            })
+
+            quiebres_por_producto[producto.id] = (
+                quiebres_por_producto.get(producto.id, 0) + 1
+            )
+
+        # Anotar cantidad de quiebres por producto
+        for q in quiebres:
+            q["total_quiebres_producto"] = quiebres_por_producto.get(
+                q["producto"].id, 0
+            )
+
+        # Si el estado es critico, ocultamos la tabla de quiebres
+        estado = filtros["estado"]
+
+        # Para la tabla de productos críticos
+        if estado == "quiebres":
+            #Solo quiebre
+            productos_criticos_mostrar = []
+        else:
+            productos_criticos_mostrar = productos_criticos
+
+
+        if estado == "critico":
+            # Solo stock crítico
+            quiebres_mostrar = []
+        else:
+            quiebres_mostrar = quiebres
+
+        # Mensaje si no hay nada que mostrar en ninguna tabla
+        hay_datos = bool(productos_criticos_mostrar or quiebres_mostrar)
+        hoy_sistema = timezone.now().date()
+
+        context.update({
+            "filtros": filtros,
+            "categorias": categorias,
+            "proveedores": proveedores,
+            "productos_criticos": productos_criticos_mostrar,
+            "quiebres": quiebres_mostrar,
+            "hay_datos": hay_datos,
+            "hoy_sistema": hoy_sistema,
         })
         return context
 
@@ -495,46 +361,56 @@ class ReporteInventarioView(LoginRequiredMixin, TemplateView):
 class ReporteVentasView(LoginRequiredMixin, TemplateView):
     template_name = "reportes/ventas.html"
 
-    # ----------------- Filtros compartidos (formulario + CSV + gráfico) -----------------
     def _get_ventas_filtradas(self, request):
         negocio = request.user.perfilusuario.negocio
-        hoy = timezone.now().date()
+        hoy_sistema = timezone.now().date()  # fecha real de hoy
 
         ventas = Venta.objects.filter(
             negocio=negocio,
             estado=Venta.EST_CERRADA,
         )
 
-        # Filtros GET
         desde_str = request.GET.get("desde")
         hasta_str = request.GET.get("hasta")
         medio = request.GET.get("medio") or ""
         categoria_id = request.GET.get("categoria") or ""
 
-        # Si no envían fechas, usamos el mes actual
+        # PARSEO DE FECHAS
         if desde_str:
             try:
                 desde = datetime.strptime(desde_str, "%Y-%m-%d").date()
             except ValueError:
-                desde = hoy.replace(day=1)
+                desde = hoy_sistema.replace(day=1)
         else:
-            desde = hoy.replace(day=1)
+            # por defecto, primer día del mes actual
+            desde = hoy_sistema.replace(day=1)
 
         if hasta_str:
             try:
                 hasta = datetime.strptime(hasta_str, "%Y-%m-%d").date()
             except ValueError:
-                hasta = hoy
+                hasta = hoy_sistema
         else:
-            hasta = hoy
+            # por defecto, hoy
+            hasta = hoy_sistema
 
+        # Ninguna fecha puede ser futura
+        if desde > hoy_sistema:
+            desde = hoy_sistema
+        if hasta > hoy_sistema:
+            hasta = hoy_sistema
+
+        # "Hasta" nunca puede ser menor que "Desde"
+        if hasta < desde:
+            hasta = desde
+
+        # APLICAR FILTROS
         ventas = ventas.filter(fecha__date__gte=desde, fecha__date__lte=hasta)
 
         if medio:
             ventas = ventas.filter(medio_pago=medio)
 
         if categoria_id:
-            # Filtramos por categoría a través de VentaItem
             venta_ids = (
                 VentaItem.objects
                 .filter(producto__categoria_id=categoria_id)
@@ -542,61 +418,109 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
             )
             ventas = ventas.filter(id__in=venta_ids)
 
-        return ventas.distinct(), desde, hasta, medio, categoria_id, negocio, hoy
+        # Fecha de referencia para "ventas hoy" y textos
+        dia_ref = hasta or hoy_sistema
 
-    # ----------------- GET: CSV o HTML -----------------
+        return ventas.distinct(), desde, hasta, medio, categoria_id, negocio, dia_ref
+
     def get(self, request, *args, **kwargs):
         if request.GET.get("export") == "csv":
-            ventas_qs, *_ = self._get_ventas_filtradas(request)
-            return self.export_csv(ventas_qs)
+            return self.exportar_csv(request)
         return super().get(request, *args, **kwargs)
 
+
     # ----------------- Exportar CSV -----------------
-    def export_csv(self, ventas_qs):
-        response = HttpResponse(content_type="text/csv; charset=utf-8")
-        response["Content-Disposition"] = (
-            f'attachment; filename="reporte_ventas_{timezone.now().date()}.csv"'
+
+
+    def exportar_csv(self, request):
+
+        ventas_filtradas, _, _, _, _, _, _ = self._get_ventas_filtradas(
+            request)
+
+        # Ítems de esas ventas, con producto y categoría
+        items = (
+            VentaItem.objects
+            .filter(venta__in=ventas_filtradas)
+            .select_related("venta", "producto", "producto__categoria")
+            .order_by("venta__fecha", "venta_id")
         )
 
-        # BOM para que Excel reconozca bien UTF-8
-        response.write("\ufeff")
+        # Respuesta CSV
+        response = HttpResponse(
+            content_type="text/csv; charset=utf-8"
+        )
+        response["Content-Disposition"] = 'attachment; filename="reporte_ventas_items.csv"'
+        response.write("\ufeff")  # BOM para que Excel muestre bien los acentos
 
         writer = csv.writer(response, delimiter=";")
-        writer.writerow(["Fecha", "Medio de pago", "Total"])
 
-        for v in ventas_qs.select_related():
+        # Encabezados
+        writer.writerow([
+            "Fecha",
+            "Hora",
+            "ID venta",
+            "Medio de pago",
+            "Producto",
+            "Categoría",
+            "Cantidad",
+            "Precio unitario",
+            "Total ítem",
+            "Total venta",
+        ])
+
+        # UNA por item vendido
+        for item in items:
+            venta = item.venta
+            producto = item.producto
+            categoria = getattr(producto.categoria, "nombre", "") if getattr(
+                producto, "categoria_id", None) else ""
+
+            total_item = item.cantidad * item.precio_unit
+
+            # Intentamos usar propiedad total de la venta 
+            venta_total = getattr(venta, "total", None)
+            if venta_total is None:
+                # Si no hay propiedad total en el modelo, calculamos a mano
+                venta_total = sum(
+                    it.cantidad * it.precio_unit
+                    for it in venta.items.all()
+                )
+
             writer.writerow([
-                v.fecha.date() if hasattr(v.fecha, "date") else v.fecha,
-                v.get_medio_pago_display(),
-                v.total,
+                venta.fecha.strftime("%d-%m-%Y"),
+                venta.fecha.strftime("%H:%M"),
+                venta.id,
+                venta.get_medio_pago_display(),
+                producto.nombre,
+                categoria,
+                item.cantidad,
+                item.precio_unit,
+                venta_total,
             ])
 
         return response
 
-    # ----------------- Contexto para el dashboard -----------------
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         request = self.request
 
-        ventas_filtradas, desde, hasta, medio, categoria_id, negocio, hoy = \
+        hoy_sistema = timezone.now().date()  
+
+        ventas_filtradas, desde, hasta, medio, categoria_id, negocio, dia_ref = \
             self._get_ventas_filtradas(request)
 
-        # ==== Tarjetas: ventas hoy (fija) ====
-        ventas_hoy = Venta.objects.filter(
-            negocio=negocio,
-            estado=Venta.EST_CERRADA,
-            fecha__date=hoy,
-        )
+        # --------- VENTAS DEL DIA ----------
+
+        ventas_hoy = ventas_filtradas.filter(fecha__date=dia_ref)
         total_hoy = sum(v.total for v in ventas_hoy)
 
-        # ==== Tarjetas: ventas del PERÍODO filtrado ====
+        # --------- KPIs DEL PERÍODO FILTRADO ----------
         total_periodo = sum(v.total for v in ventas_filtradas)
         cant_ventas_periodo = ventas_filtradas.count()
         ticket_promedio_periodo = (
             total_periodo / cant_ventas_periodo if cant_ventas_periodo else 0
         )
 
-        # ==== Tabla: total por medio de pago (PERÍODO) ====
         pagos = (
             VentaItem.objects
             .filter(venta__in=ventas_filtradas)
@@ -613,7 +537,6 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
             .order_by("medio_pago")
         )
 
-        # ==== Top productos más vendidos (PERÍODO) ====
         top_productos = (
             VentaItem.objects
             .filter(venta__in=ventas_filtradas)
@@ -628,9 +551,6 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
             .order_by("-unidades")[:10]
         )
 
-        # =====================================================
-        #   GRÁFICO ÚNICO (Día / Mes / Año) – respeta filtros
-        # =====================================================
         items_filtrados = VentaItem.objects.filter(venta__in=ventas_filtradas)
 
         # Día
@@ -688,11 +608,9 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
         }
         chart_data_json = json.dumps(chart_data)
 
-        # =====================================================
         #   KPIs Año vs Año (ventas totales del año completo)
-        # =====================================================
-        anio_actual = hoy.year
-        anio_anterior = hoy.year - 1
+        anio_actual = dia_ref.year
+        anio_anterior = dia_ref.year - 1
 
         items_anio_actual = VentaItem.objects.filter(
             venta__negocio=negocio,
@@ -735,13 +653,15 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
             "hasta": hasta,
             "medio_seleccionado": medio,
             "categoria_seleccionada": int(categoria_id) if categoria_id else None,
+            "hoy": dia_ref,
+            "hoy_sistema": hoy_sistema,
             "medios_pago": Venta.MEDIO_PAGO_CHOICES,
             "categorias": Categoria.objects.filter(negocio=negocio),
 
             # Tarjetas
             "ventas_hoy": ventas_hoy,
             "total_hoy": total_hoy,
-            "ventas_mes": ventas_filtradas,          # ahora es el período filtrado
+            "ventas_mes": ventas_filtradas,          
             "total_mes": total_periodo,
             "ticket_promedio_mes": ticket_promedio_periodo,
 
@@ -749,7 +669,6 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
             "pagos": pagos,
             "top_productos": top_productos,
 
-            "hoy": hoy,
 
             # Datos para el gráfico
             "chart_data_json": chart_data_json,
@@ -765,159 +684,685 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
         return context
 
 
-  
-class ReporteComprasView(LoginRequiredMixin, TemplateView):
-    """
-    Reporte de compras:
-    - Total de compras del mes
-    - Total por proveedor
-    - Productos más comprados
-    """
-    template_name = "reportes/compras.html"
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+class ReporteNoRetiraView(LoginRequiredMixin, TemplateView):
+    template_name = "reportes/no_retira.html"
 
-        negocio = self.request.user.perfilusuario.negocio
-        hoy = timezone.now().date()
+    def _get_datos_base(self, request):
+        negocio = request.user.perfilusuario.negocio
+        hoy_sistema = timezone.now().date()
 
-        compras_qs = Compra.objects.filter(negocio=negocio)
+        # ----- Filtros -----
+        desde_str = (request.GET.get("desde") or "").strip()
+        hasta_str = (request.GET.get("hasta") or "").strip()
+        canal = (request.GET.get("canal") or "TODOS").strip()
+        monto_min_str = (request.GET.get("monto_min") or "").strip()
 
-        # Compras del mes
-        compras_mes = compras_qs.filter(
-            fecha__year=hoy.year,
-            fecha__month=hoy.month,
+        # Rango por defecto 30 días
+        default_desde = hoy_sistema - timedelta(days=30)
+        default_hasta = hoy_sistema
+
+        # Parseo de fechas
+        def _parse_date(value, default):
+            if not value:
+                return default
+            try:
+                return datetime.strptime(value, "%Y-%m-%d").date()
+            except ValueError:
+                return default
+
+        desde = _parse_date(desde_str, default_desde)
+        hasta = _parse_date(hasta_str, default_hasta)
+
+        # Protección para el calendario nada en el futuro y hasta >= desde
+        if desde > hoy_sistema:
+            desde = hoy_sistema
+        if hasta > hoy_sistema:
+            hasta = hoy_sistema
+        if hasta < desde:
+            hasta = desde
+
+        # ----- Query base sobre PEDIDOS -----
+        pedidos_qs = (
+            Pedido.objects
+            .filter(
+                negocio=negocio,
+                fecha__date__gte=desde,
+                fecha__date__lte=hasta,
+            )
+            .select_related("cliente")
         )
 
-        # Total del mes (sumando cantidad * costo_unit)
-        total_mes = (
-            CompraItem.objects
-            .filter(compra__in=compras_mes)
-            .aggregate(
-                total=Sum(F("cantidad") * F("costo_unit"))
+        # Si el Pedido tiene un campo "canal", se usa directo.
+        if canal and canal != "TODOS":
+            if hasattr(Pedido, "canal"):
+                pedidos_qs = pedidos_qs.filter(canal=canal)
+            else:
+                # Ajusta estos valores a tus choices reales de forma_pago
+                if canal.upper() == "ONLINE":
+                    pedidos_qs = pedidos_qs.filter(
+                        forma_pago=Pedido.FORMA_WEBPAY
+                    )
+                elif canal.upper() == "MOSTRADOR":
+                    pedidos_qs = pedidos_qs.filter(
+                        forma_pago=Pedido.FORMA_RETIRO
+                    )
+
+        # ----- Filtro por monto minimo -----
+        monto_min = None
+        if monto_min_str:
+            try:
+                monto_min = int(monto_min_str)
+                pedidos_qs = pedidos_qs.filter(total_monto__gte=monto_min)
+            except ValueError:
+                monto_min = None  
+
+        total_pedidos = pedidos_qs.count()
+
+        # ----- Pedidos con estado No retira -----
+        estado_no_retira = getattr(Pedido, "EST_NO_RETIRA", None)
+        if estado_no_retira is not None:
+            pedidos_no_retirados = pedidos_qs.filter(estado=estado_no_retira)
+        else:
+            
+            pedidos_no_retirados = pedidos_qs.filter(estado="NO_RETIRA")
+
+        total_no_retirados = pedidos_no_retirados.count()
+
+        # Monto perdido por no retiro
+        monto_no_retirado = (
+            pedidos_no_retirados.aggregate(
+                total=Sum("total_monto")
             )["total"] or 0
         )
 
-        # Total por proveedor
-        compras_por_proveedor = (
-            CompraItem.objects
-            .filter(compra__negocio=negocio)
-            .values("compra__proveedor__nombre")
-            .annotate(
-                total=Sum(F("cantidad") * F("costo_unit")),
-            )
-            .order_by("-total")
+        # Tasa por no retiro
+        tasa_no_retira = (
+            (total_no_retirados / total_pedidos) * 100
+            if total_pedidos
+            else 0
         )
 
-        # Top 10 productos más comprados
-        top_comprados = (
-            CompraItem.objects
-            .filter(compra__negocio=negocio)
-            .values("producto__nombre")
-            .annotate(
-                unidades=Sum("cantidad"),
-                total=Sum(F("cantidad") * F("costo_unit")),
-            )
-            .order_by("-unidades")[:10]
-        )
+        # Detalle para la tabla y CSV
+        detalle = pedidos_no_retirados.order_by("-fecha")
 
-        context.update({
-            "compras_mes": compras_mes,
-            "total_mes": total_mes,
-            "compras_por_proveedor": compras_por_proveedor,
-            "top_comprados": top_comprados,
-            "hoy": hoy,
-        })
-        return context
-
-
-    template_name = "reportes/stock.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        negocio = self.request.user.perfilusuario.negocio
-
-        # ======= Productos críticos =======
-        productos_criticos = Producto.objects.filter(
-            movimientos__stock_actual__lte=F("stock_min"),
-            movimientos__stock_actual__gt=0,
-            negocio=negocio
-        )
-
-        # ======= Productos en quiebre =======
-        productos_quiebre = Producto.objects.filter(
-            movimientos__stock_actual__lte=0,
-            negocio=negocio
-)
-
-        # ======= Historial de quiebres filtrado por fechas =======
-        desde = self.request.GET.get("desde")
-        hasta = self.request.GET.get("hasta")
-
-        historial = HistorialQuiebres.objects.all()
-
-        if desde:
-            historial = historial.filter(fecha_quiebre__date__gte=desde)
-        if hasta:
-            historial = historial.filter(fecha_quiebre__date__lte=hasta)
-
-        context.update({
-            "productos_criticos": productos_criticos,
-            "productos_quiebre": productos_quiebre,
-            "historial": historial,
+        return {
             "desde": desde,
             "hasta": hasta,
-        })
+            "desde_str": desde.strftime("%Y-%m-%d"),
+            "hasta_str": hasta.strftime("%Y-%m-%d"),
+            "hoy_sistema": hoy_sistema,
+            "canal": canal or "TODOS",
+            "monto_min": monto_min_str or "",
+            "total_pedidos": total_pedidos,
+            "total_no_retirados": total_no_retirados,
+            "tasa_no_retira": tasa_no_retira,
+            "monto_no_retirado": monto_no_retirado,
+            "detalle_no_retirados": detalle,
+        }
 
-        return context
 
+    def get(self, request, *args, **kwargs):
+        if request.GET.get("export") == "csv":
+            return self.export_csv(request)
+        return super().get(request, *args, **kwargs)
 
-    template_name = "reportes/stock.html"
-
+    # ------------------ contexto ------------------
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        datos = self._get_datos_base(self.request)
 
-        productos = Producto.objects.all()
+        context.update({
+            "desde": datos["desde"],
+            "hasta": datos["hasta"],
+            "desde_str": datos["desde_str"],
+            "hasta_str": datos["hasta_str"],
+            "hoy_sistema": datos["hoy_sistema"],
+            "canal": datos["canal"],
+            "monto_min": datos["monto_min"],
+            "total_pedidos": datos["total_pedidos"],
+            "total_no_retirados": datos["total_no_retirados"],
+            "tasa_no_retira": datos["tasa_no_retira"],
+            "monto_no_retirado": datos["monto_no_retirado"],
+            "detalle_no_retirados": datos["detalle_no_retirados"],
+        })
+        return context
+
+    # ------------------ EXPORT CSV ------------------
+    def export_csv(self, request):
+        datos = self._get_datos_base(request)
+        pedidos = datos["detalle_no_retirados"]
+
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        filename = f"reporte_no_retira_{datos['desde']}_a_{datos['hasta']}.csv"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        # BOM para que Excel lea bien UTF-8
+        response.write("\ufeff")
+
+        writer = csv.writer(response, delimiter=";")
+
+        # Encabezados (solo lo que realmente tenemos)
+        writer.writerow([
+            "N° pedido",
+            "Fecha creación",
+            "Monto total",
+            "Cliente",
+            "Canal",
+        ])
+
+        def fmt_fecha(value):
+            """Formatea la fecha de creación del pedido."""
+            if not value:
+                return ""
+            try:
+                return value.strftime("%d-%m-%Y %H:%M")
+            except Exception:
+                return str(value)
+
+        for p in pedidos:
+            # Monto total (usa total_monto si existe, si no total)
+            monto = getattr(p, "total_monto", None) or getattr(
+                p, "total", "") or ""
+
+            # Cliente
+            if getattr(p, "cliente_id", None):
+                cliente = str(p.cliente)
+            else:
+                cliente = getattr(p, "nombre", "") or "-"
+
+            # Canal
+            if hasattr(p, "canal"):
+                canal_val = getattr(p, "canal", "") or "-"
+            else:
+                forma_pago = getattr(p, "forma_pago", "")
+                canal_val = (
+                    "ONLINE" if forma_pago == getattr(Pedido, "FORMA_WEBPAY", None)
+                    else "MOSTRADOR" if forma_pago == getattr(Pedido, "FORMA_RETIRO", None)
+                    else "-"
+                )
+
+            writer.writerow([
+                p.id,
+                # ← fecha creación del pedido
+                fmt_fecha(getattr(p, "fecha", None)),
+                monto,
+                cliente,
+                canal_val,
+            ])
+
+        return response
 
 
-        # Filtros
-        categoria_id = self.request.GET.get("categoria")
-        proveedor = self.request.GET.get("proveedor")
-        estado = self.request.GET.get("estado")  # critico | quiebre | ambos
+class ReporteMermasProveedorView(LoginRequiredMixin, TemplateView):
+    template_name = "reportes\mermas_proveedor.html"
 
-        productos = Producto.objects.all()
+    # --------- Filtros base ---------
+    def _get_filtros(self):
+        request = self.request
+        hoy = timezone.now().date()
+        default_desde = hoy - timedelta(days=30)
+        default_hasta = hoy
 
-        if categoria_id:
-            productos = productos.filter(categoria_id=categoria_id)
+        desde_str = (request.GET.get("desde") or "").strip()
+        hasta_str = (request.GET.get("hasta") or "").strip()
+        proveedor_id = (request.GET.get("proveedor") or "").strip()
+        categoria_id = (request.GET.get("categoria") or "").strip()
 
-        # ========== CALCULAR STOCK ==========
-        productos_con_datos = []
-        for p in productos:
-            movimientos = MovimientoStock.objects.filter(producto=p)
-            stock_actual = sum(m.cantidad for m in movimientos)
+        def _parse_date(value, default):
+            if not value:
+                return default
+            try:
+                return datetime.strptime(value, "%Y-%m-%d").date()
+            except ValueError:
+                return default
 
-            productos_con_datos.append({
-                "producto": p,
-                "stock_actual": stock_actual,
-                "stock_min": p.stock_min,
-                "diferencia": p.stock_min - stock_actual,
-                "proveedor": p.ubicacion,  # o tu campo proveedor real si lo tienes
-                "en_quiebre": stock_actual <= 0,
-                "critico": 0 < stock_actual <= p.stock_min,
+        desde = _parse_date(desde_str, default_desde)
+        hasta = _parse_date(hasta_str, default_hasta)
+
+        return {
+            "desde": desde,
+            "hasta": hasta,
+            "desde_str": desde.strftime("%Y-%m-%d"),
+            "hasta_str": hasta.strftime("%Y-%m-%d"),
+            "proveedor_id": int(proveedor_id) if proveedor_id else None,
+            "categoria_id": int(categoria_id) if categoria_id else None,
+        }
+
+    # --------- 2) Obtener datos crudos (compras + mermas) ---------
+    def _get_qs(self, filtros):
+        negocio = self.request.user.perfilusuario.negocio
+        desde = filtros["desde"]
+        hasta = filtros["hasta"]
+
+        # Compras en el período
+        compras_qs = CompraItem.objects.filter(
+            compra__negocio=negocio,
+            compra__fecha__date__gte=desde,
+            compra__fecha__date__lte=hasta,
+        ).select_related("compra__proveedor", "producto")
+
+        # Mermas en el período
+        mermas_qs = MovimientoInventario.objects.filter(
+            producto__negocio=negocio,
+            tipo=MovimientoInventario.TIPO_MERMA,
+            fecha__date__gte=desde,
+            fecha__date__lte=hasta,
+        ).select_related("producto", "producto__proveedor", "producto__categoria")
+
+        # Filtro por proveedor
+        if filtros["proveedor_id"]:
+            compras_qs = compras_qs.filter(
+                compra__proveedor_id=filtros["proveedor_id"])
+            mermas_qs = mermas_qs.filter(
+                producto__proveedor_id=filtros["proveedor_id"])
+
+        # Filtro por categoría
+        if filtros["categoria_id"]:
+            compras_qs = compras_qs.filter(
+                producto__categoria_id=filtros["categoria_id"])
+            mermas_qs = mermas_qs.filter(
+                producto__categoria_id=filtros["categoria_id"])
+
+        mermas_qs = mermas_qs.exclude(comentario__iexact="quiebre")
+        
+        return compras_qs, mermas_qs
+
+    # --------- 3) Armar estructuras para el template y CSV ---------
+    def _build_data(self):
+        filtros = self._get_filtros()
+        compras_qs, mermas_qs = self._get_qs(filtros)
+        negocio = self.request.user.perfilusuario.negocio
+
+        # --- 3.1 Resumen por proveedor ---
+
+        # Total comprado por proveedor en el período
+        compras_agg = compras_qs.values(
+            "compra__proveedor_id",
+            "compra__proveedor__nombre",
+        ).annotate(
+            monto_comprado=Sum(F("cantidad") * F("costo_unit"))
+        )
+
+        compras_map = {
+            row["compra__proveedor_id"]: row for row in compras_agg
+        }
+
+        # Total de merma por proveedor (usamos costo del producto)
+        mermas_agg = mermas_qs.values(
+            "producto__proveedor_id",
+            "producto__proveedor__nombre",
+        ).annotate(
+            cantidad_merma=Sum("cantidad"),
+            monto_merma=Sum(F("cantidad") * F("producto__costo")),
+        )
+
+        mermas_map = {
+            row["producto__proveedor_id"]: row for row in mermas_agg
+        }
+
+        resumen = []
+        proveedor_ids = set(compras_map.keys()) | set(mermas_map.keys())
+
+        for prov_id in proveedor_ids:
+            nombre = (
+                (compras_map.get(prov_id) or {}).get(
+                    "compra__proveedor__nombre")
+                or (mermas_map.get(prov_id) or {}).get("producto__proveedor__nombre")
+                or "Sin nombre"
+            )
+            monto_comprado = compras_map.get(
+                prov_id, {}).get("monto_comprado", 0) or 0
+            monto_merma = mermas_map.get(
+                prov_id, {}).get("monto_merma", 0) or 0
+            cant_merma = mermas_map.get(prov_id, {}).get(
+                "cantidad_merma", 0) or 0
+
+            if monto_comprado > 0:
+                porcentaje = round((monto_merma / monto_comprado) * 100, 2)
+            else:
+                porcentaje = None
+
+            resumen.append({
+                "proveedor_id": prov_id,
+                "proveedor": nombre,
+                "monto_comprado": int(monto_comprado),
+                "monto_merma": int(monto_merma),
+                "cantidad_merma": cant_merma,
+                "porcentaje_merma": porcentaje,
             })
 
-        # ========== FILTRAR SEGÚN ESTADO ==========
-        if estado == "critico":
-            productos_con_datos = [
-                p for p in productos_con_datos if p["critico"]]
-        elif estado == "quiebre":
-            productos_con_datos = [
-                p for p in productos_con_datos if p["en_quiebre"]]
+        # Ordenar de mayor a menor porcentaje de merma
+        resumen.sort(key=lambda r: (r["porcentaje_merma"] or 0), reverse=True)
 
-        productos_con_datos.sort(key=lambda x: x["stock_actual"])
+        # --- 3.2 Detalle de mermas ---
+        # --- 3.2 Detalle de mermas ---
+        detalle = []
 
-        context["productos"] = productos_con_datos
+        for m in mermas_qs.select_related(
+            "producto",
+            "producto__proveedor",
+            "producto__categoria",
+        ).order_by("-fecha"):
 
+            producto = m.producto
+            proveedor = getattr(producto, "proveedor", None)
+            categoria = getattr(producto, "categoria", None)
+
+            # si no hay costo, lo dejamos en 0
+            costo_unit = (getattr(producto, "costo", 0) or 0)
+            monto_merma = m.cantidad * costo_unit
+
+            detalle.append({
+                "fecha": m.fecha,
+                "proveedor": proveedor.nombre if proveedor else "Sin proveedor",
+                "producto": producto.nombre if producto else "",
+                "categoria": categoria.nombre if categoria else "",
+                "cantidad": m.cantidad,
+                "unidad": getattr(producto, "unidad_de_venta", "") or "",
+                "motivo": m.comentario or "",
+                "costo_unit": costo_unit,
+                "monto_merma": monto_merma,
+            })
+
+
+        # --- 3.3 Catálogos para filtros ---
+        proveedores = Proveedor.objects.filter(
+            negocio=negocio, activo=True
+        ).order_by("nombre")
+
+        categorias = Categoria.objects.filter(
+            negocio=negocio, activo=True
+        ).order_by("nombre")
+
+        return {
+            "resumen_proveedores": resumen,
+            "detalle_mermas": detalle,
+            "proveedores": proveedores,
+            "categorias": categorias,
+            "filtros": filtros,
+        }
+
+    # --------- 4) Exportar a CSV ---------
+    def _export_csv(self, data):
+        filtros = data["filtros"]
+        filename = f"mermas_por_proveedor_{filtros['desde_str']}_al_{filtros['hasta_str']}.csv"
+
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        writer = csv.writer(response)
+
+        # Sección resumen
+        writer.writerow(["Resumen de mermas por proveedor"])
+        writer.writerow([
+            "Proveedor",
+            "Monto comprado",
+            "Monto en merma",
+            "Cantidad en merma",
+            "% Merma",
+        ])
+        for row in data["resumen_proveedores"]:
+            writer.writerow([
+                row["proveedor"],
+                row["monto_comprado"],
+                row["monto_merma"],
+                row["cantidad_merma"],
+                row["porcentaje_merma"] if row["porcentaje_merma"] is not None else "",
+            ])
+
+        writer.writerow([])
+        writer.writerow(["Detalle de mermas"])
+        writer.writerow([
+            "Fecha",
+            "Proveedor",
+            "Producto",
+            "Categoría",
+            "Cantidad",
+            "Unidad",
+            "Motivo",
+            "Costo unitario",
+            "Monto merma",
+        ])
+
+        for d in data["detalle_mermas"]:
+            writer.writerow([
+                d["fecha"].strftime("%Y-%m-%d %H:%M"),
+                d["proveedor"],
+                d["producto"],
+                d["categoria"],
+                d["cantidad"],
+                d["unidad"],
+                d["motivo"],
+                d["costo_unit"],
+                d["monto_merma"],
+            ])
+
+        return response
+
+    # --------- 5) GET: HTML o CSV ---------
+    def get(self, request, *args, **kwargs):
+        data = self._build_data()
+
+        if request.GET.get("export") == "csv":
+            return self._export_csv(data)
+
+        context = self.get_context_data(**data)
+        return self.render_to_response(context)
+
+
+class ReporteDiaHoraView(LoginRequiredMixin, TemplateView):
+    template_name = "reportes/dia_hora.html"
+
+    DIA_SEMANA_LABELS = {
+        1: "Domingo",
+        2: "Lunes",
+        3: "Martes",
+        4: "Miércoles",
+        5: "Jueves",
+        6: "Viernes",
+        7: "Sábado",
+    }
+
+    def get(self, request, *args, **kwargs):
+        # sirve para la exportación
+        if request.GET.get("export") == "csv":
+            return self.export_csv(request)
+        return super().get(request, *args, **kwargs)
+
+    # ------------------ LÓGICA PRINCIPAL ------------------
+    def _get_datos_base(self, request):
+        ventas_view = ReporteVentasView()
+        (ventas_qs,desde,hasta,medio_seleccionado,categoria_id,negocio,dia_ref,) = ventas_view._get_ventas_filtradas(request)
+
+        # Hoy real de sistema (para proteger por backend)
+        hoy_sistema = timezone.now().date()
+
+        # Protección extra por si cambian algo en el DOM
+        if desde > hoy_sistema:
+            desde = hoy_sistema
+        if hasta > hoy_sistema:
+            hasta = hoy_sistema
+        if hasta < desde:
+            hasta = desde
+
+        # Sólo ventas cerradas
+        ventas_qs = ventas_qs.filter(estado=Venta.EST_CERRADA)
+
+        # Solo ventas cerradas
+        ventas_qs = ventas_qs.filter(estado=Venta.EST_CERRADA)
+
+        # Si no hay ventas lleva a una estructura vacia
+        if not ventas_qs.exists():
+            return {
+                "ventas_qs": ventas_qs,
+                "desde": desde,
+                "hasta": hasta,
+                "hoy": dia_ref,          # fecha de referencia del filtro
+                "hoy_sistema": hoy_sistema,
+                "total_pedidos": 0,
+                "total_monto": 0,
+                "ventas_por_hora": [],
+                "ventas_por_dia": [],
+                "dia_hora_list": [],
+                "top3": [],
+                "bottom3": [],
+                "chart_horas_labels_json": "[]",
+                "chart_horas_data_json": "[]",
+                "chart_dias_labels_json": "[]",
+                "chart_dias_data_json": "[]",
+            }
+
+        # Totales
+        total_pedidos = ventas_qs.values("id").distinct().count()
+        total_monto = (
+            ventas_qs.annotate(
+                total_venta=F("items__cantidad") * F("items__precio_unit")
+            )
+            .aggregate(total=Sum("total_venta"))["total"]
+            or 0
+        )
+
+        # -------- Distribución por HORA ----------
+        ventas_por_hora_qs = (
+            ventas_qs.annotate(hora=ExtractHour("fecha"))
+            .values("hora")
+            .annotate(
+                cantidad=Count("id", distinct=True),
+                total=Sum(F("items__cantidad") * F("items__precio_unit")),
+            )
+            .order_by("hora")
+        )
+        ventas_por_hora = list(ventas_por_hora_qs)
+
+        horas_labels = [f"{h:02d}:00" for h in range(24)]
+        cantidad_por_hora = {row["hora"]: row["cantidad"]
+                             for row in ventas_por_hora}
+        chart_horas_data = [cantidad_por_hora.get(h, 0) for h in range(24)]
+
+        # -------- Distribución por DÍA ----------
+        ventas_por_dia_qs = (
+            ventas_qs.annotate(dia_semana=ExtractWeekDay("fecha"))
+            .values("dia_semana")
+            .annotate(
+                cantidad=Count("id", distinct=True),
+                total=Sum(F("items__cantidad") * F("items__precio_unit")),
+            )
+        )
+        ventas_por_dia = list(ventas_por_dia_qs)
+
+        orden_dias = [2, 3, 4, 5, 6, 7, 1]  # Lunes–Domingo
+        cantidad_por_dia = {row["dia_semana"]: row["cantidad"]
+                            for row in ventas_por_dia}
+        chart_dias_labels = [self.DIA_SEMANA_LABELS[d] for d in orden_dias]
+        chart_dias_data = [cantidad_por_dia.get(d, 0) for d in orden_dias]
+
+        # --------  Combinación DÍA + HORA ----------
+        dia_hora_qs = (
+            ventas_qs.annotate(
+                dia_semana=ExtractWeekDay("fecha"),
+                hora=ExtractHour("fecha"),
+            )
+            .values("dia_semana", "hora")
+            .annotate(
+                cantidad=Count("id", distinct=True),
+                total=Sum(F("items__cantidad") * F("items__precio_unit")),
+            )
+            .order_by("dia_semana", "hora")
+        )
+
+        dia_hora_list = [
+            {
+                "dia_semana": row["dia_semana"],
+                "dia_label": self.DIA_SEMANA_LABELS.get(row["dia_semana"], "-"),
+                "hora": row["hora"],
+                "hora_label": f"{row['hora']:02d}:00",
+                "cantidad": row["cantidad"],
+                "total": row["total"] or 0,
+            }
+            for row in dia_hora_qs
+        ]
+
+        # Top / bottom 3
+        top3 = sorted(dia_hora_list, key=lambda r: r["cantidad"], reverse=True)[:3]
+        bottom3 = sorted(dia_hora_list, key=lambda r: r["cantidad"])[:3]
+
+        ventas_por_dia = []
+        chart_dias_labels = []
+        chart_dias_data = []
+
+        return {
+            "ventas_qs": ventas_qs,
+            "desde": desde,
+            "hasta": hasta,
+            "hoy": dia_ref,
+            "hoy_sistema": hoy_sistema,
+            "total_pedidos": total_pedidos,
+            "total_monto": total_monto,
+            "ventas_por_hora": ventas_por_hora,
+            "ventas_por_dia": ventas_por_dia,
+            "dia_hora_list": dia_hora_list,
+            "top3": top3,
+            "bottom3": bottom3,
+            "chart_horas_labels_json": json.dumps(horas_labels),
+            "chart_horas_data_json": json.dumps(chart_horas_data),
+            "chart_dias_labels_json": json.dumps(chart_dias_labels),
+            "chart_dias_data_json": json.dumps(chart_dias_data),
+        }
+
+    # ------------------ CONTEXTO ------------------
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        datos = self._get_datos_base(self.request)
+
+        desde = datos["desde"]
+        hasta = datos["hasta"]
+        hoy_sistema = datos["hoy_sistema"]
+
+        context.update(
+            {
+                "desde": desde,
+                "hasta": hasta,
+                "desde_str": desde.strftime("%Y-%m-%d") if desde else "",
+                "hasta_str": hasta.strftime("%Y-%m-%d") if hasta else "",
+                "hoy_sistema": hoy_sistema,
+                "total_pedidos": datos["total_pedidos"],
+                "total_monto": datos["total_monto"],
+                "ventas_por_hora": datos["ventas_por_hora"],
+                "ventas_por_dia": datos["ventas_por_dia"],
+                "dia_hora_list": datos["dia_hora_list"],
+                "top3": datos["top3"],
+                "bottom3": datos["bottom3"],
+                "chart_horas_labels_json": datos["chart_horas_labels_json"],
+                "chart_horas_data_json": datos["chart_horas_data_json"],
+                "chart_dias_labels_json": datos["chart_dias_labels_json"],
+                "chart_dias_data_json": datos["chart_dias_data_json"],
+            }
+        )
         return context
+
+    # ------------------ EXPORT CSV ------------------
+    def export_csv(self, request):
+        datos = self._get_datos_base(request)
+        dia_hora_list = datos["dia_hora_list"]
+
+        response = HttpResponse(content_type="text/csv")
+        filename = f"reporte_dia_hora_{datos['desde']}_a_{datos['hasta']}.csv"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        response.write("\ufeff".encode("utf-8"))
+
+        writer = csv.writer(response, delimiter=';')
+
+        writer.writerow(["Día de la semana", "Hora",
+                        "Cantidad de pedidos", "Monto total"])
+
+        for row in dia_hora_list:
+            writer.writerow([
+                row["dia_label"],
+                row["hora_label"],
+                row["cantidad"],
+                row["total"],
+            ])
+
+        return response
 

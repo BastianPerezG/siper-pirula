@@ -32,14 +32,7 @@ class CheckoutForm(forms.Form):
         }),
     )
 
-    correo = forms.EmailField(
-        label="Correo electrónico",
-        widget=forms.EmailInput(attrs={
-            "class": "w-full px-4 py-3 rounded-2xl border border-slate-200 "
-                     "focus:outline-none focus:ring-2 focus:ring-slate-800",
-            "placeholder": "tucorreo@ejemplo.com",
-        }),
-    )
+    
 
     telefono = forms.CharField(
         label="Teléfono",

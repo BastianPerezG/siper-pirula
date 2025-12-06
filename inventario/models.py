@@ -1,14 +1,14 @@
 from django.db import models
 from django.db.models import Sum, Case, When, IntegerField, F
 from django.core.exceptions import ValidationError
-from core.models import Negocio 
+from core.models import Negocio
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.contrib.auth  import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
-#=======
+# =======
 from django.utils.text import slugify
 from django.utils import timezone
 
@@ -51,7 +51,7 @@ class Producto(models.Model):
     precio = models.PositiveIntegerField(default=0, help_text="Precio de venta en pesos chilenos")
     costo = models.PositiveIntegerField(default=0, help_text="Costo en pesos chilenos")
     unidad_de_venta = models.CharField(max_length=120, blank=True, null=False)
-    formato = models.CharField(max_length=120,blank=True, null=False)
+    formato = models.CharField(max_length=120, blank=True, null=False)
     stock_min = models.IntegerField(default=0)
     ubicacion = models.CharField(max_length=60, blank=True, null=True)
     activo = models.BooleanField(default=True)
@@ -112,7 +112,7 @@ class Producto(models.Model):
                         tipo__in=[
                             MovimientoInventario.TIPO_SALIDA,
                             MovimientoInventario.TIPO_MERMA,
-                            MovimientoInventario.TIPO_RESERVA,
+                            MovimientoInventario.TIPO_RESERVA,  
                         ],
                         then=-F("cantidad")
                     ),
@@ -122,25 +122,24 @@ class Producto(models.Model):
             )
         )
         return resultado["total"] or 0
-      
+
 
 class MovimientoInventario(models.Model):
     TIPO_ENTRADA = "ENTRADA"
     TIPO_SALIDA = "SALIDA"
     TIPO_AJUSTE = "AJUSTE"
     TIPO_MERMA = "MERMA"
-    TIPO_RESERVA = "RESERVA" 
+    TIPO_RESERVA = "RESERVA"
     TIPO_VENTA = "VENTA"
-    
+
     TIPO_CHOICES = [
         (TIPO_ENTRADA, "Entrada (compra, devolución)"),
         (TIPO_SALIDA, "Salida (venta manual, uso interno)"),
         (TIPO_AJUSTE, "Ajuste (conteo inventario)"),
         (TIPO_MERMA, "Merma (rotura, pérdida)"),
-        (TIPO_RESERVA, "Reserva por pedido"),  
+        (TIPO_RESERVA, "Reserva por pedido"),
         (TIPO_VENTA, "Venta"),
     ]
-
 
     producto = models.ForeignKey(
         "Producto",
@@ -163,6 +162,7 @@ class MovimientoInventario(models.Model):
         blank=True,
         related_name="movimientos",
     )
+
 
     pedido_item = models.ForeignKey(
         "pedidos.PedidoItem",
@@ -190,7 +190,7 @@ class MovimientoInventario(models.Model):
 
     def __str__(self):
         return f"{self.tipo} {self.cantidad} de {self.producto.nombre} [{self.fecha}]"
-        
+    
     def clean(self):
         """
         Evita que un movimiento deje el stock en negativo.
@@ -220,7 +220,7 @@ class MovimientoInventario(models.Model):
                 raise ValidationError(
                     {"cantidad": f"No hay stock suficiente. Stock actual: {stock_actual}"}
                 )
-            
+        
 
 class Proveedor(models.Model):
     negocio = models.ForeignKey(Negocio, on_delete=models.PROTECT)
@@ -299,14 +299,14 @@ class CompraItem(models.Model):
         super().save(*args, **kwargs)
 
         if es_nuevo:
-            # Solo al CREAR el item generamos el movimiento de ENTRADA
+            # Solo al crear el item generamos el movimiento de ENTRADA
             MovimientoInventario.objects.create(
                 producto=self.producto,
                 tipo=MovimientoInventario.TIPO_ENTRADA,
                 cantidad=self.cantidad,
-                comentario=f"Compra #{self.compra.id} {self.compra.doc_tipo} {self.compra.doc_num or ''}".strip(),
+                comentario=f"Compra #{self.compra.id} {self.compra.doc_tipo} {self.compra.doc_num or ''}".strip(
+                ),
                 compra_item=self,
-                usuario = getattr(self.compra, "usuario", None),
             )
 
 
@@ -357,14 +357,14 @@ class PlantillaProveedorProducto(models.Model):
         verbose_name_plural = "Plantillas Proveedor-Producto"
         # Asegura que un proveedor solo pueda listar un producto una vez
         unique_together = ('proveedor', 'producto')
-        
+
     def __str__(self):
         return f"{self.proveedor.nombre} - {self.producto.nombre}"
     # Propiedad para obtener la última fecha de compra para este par proveedor/producto
     @property
     def ultima_fecha_compra(self):
         return Compra.objects.filter(
-            items__producto=self.producto, # Filtra las compras del producto
+            items__producto=self.producto,  # Filtra las compras del producto
             proveedor=self.proveedor       # Y que fueron a este proveedor
         ).order_by('-fecha').values_list('fecha', flat=True).first()
 
@@ -379,7 +379,7 @@ class PlantillaProveedorProducto(models.Model):
 ##############################
 
 
-    
+
 
 class Promo(models.Model):
     """

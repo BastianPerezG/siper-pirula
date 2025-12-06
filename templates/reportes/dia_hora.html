@@ -1,0 +1,240 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+  <!-- Título y filtros -->
+  <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-800">📊 Reporte Día x Hora</h1>
+      <p class="text-sm text-slate-500">
+        Distribución de pedidos por día de la semana y hora, según el rango seleccionado.
+      </p>
+    </div>
+
+    <form method="get" class="flex flex-wrap items-end gap-3 bg-white shadow-sm rounded-xl px-4 py-3">
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1">Desde</label>
+        <input type="date" id="desde" name="desde" value="{{ desde_str }}" max="{{ hoy_sistema|date:'Y-m-d' }}"
+          class="border rounded-md px-2 py-1 text-sm">
+      </div>
+    
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1">Hasta</label>
+        <input type="date" id="hasta" name="hasta" value="{{ hasta_str }}" max="{{ hoy_sistema|date:'Y-m-d' }}"
+          class="border rounded-md px-2 py-1 text-sm">
+      </div>
+    
+      <button type="submit"
+        class="inline-flex items-center px-3 py-2 rounded-md bg-sky-600 text-white text-sm font-medium hover:bg-sky-700">
+        Aplicar filtros
+      </button>
+    </form>
+
+  </div>
+
+  <!-- Indicadores resumen -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="bg-white rounded-xl shadow-sm px-4 py-3">
+      <p class="text-xs text-slate-500 uppercase">Pedidos en el período</p>
+      <p class="mt-1 text-2xl font-semibold text-slate-800">{{ total_pedidos }}</p>
+      <p class="text-xs text-slate-400">
+        Desde {{ desde|date:"d-m-Y" }} hasta {{ hasta|date:"d-m-Y" }}
+      </p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm px-4 py-3">
+      <p class="text-xs text-slate-500 uppercase">Monto total</p>
+      <p class="mt-1 text-2xl font-semibold text-emerald-600">
+        $ {{ total_monto|floatformat:0 }}
+      </p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm px-4 py-3">
+      <p class="text-xs text-slate-500 uppercase">Exportar</p>
+      <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}export=csv"
+         class="mt-1 inline-flex items-center px-3 py-2 rounded-md bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600">
+        Exportar tabla Día x Hora (CSV)
+      </a>
+    </div>
+  </div>
+
+  {% if total_pedidos == 0 %}
+    <div class="bg-white rounded-xl shadow-sm px-4 py-6 text-center text-slate-500">
+      No se encontraron pedidos para los filtros seleccionados. 🎉
+    </div>
+  {% else %}
+
+  <!-- Gráfico: pedidos por franja horaria -->
+  <div class="bg-white rounded-xl shadow-sm px-4 py-4">
+    <h2 class="text-sm font-semibold text-slate-700 mb-2">Pedidos por franja horaria</h2>
+    <p class="text-xs text-slate-400 mb-3">
+      Total de pedidos agrupados por hora del día (0–23).
+    </p>
+    <div class="h-64">
+      <canvas id="chartHoras"></canvas>
+    </div>
+  </div>
+
+  <!-- Resumen de horarios clave -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="bg-white rounded-xl shadow-sm px-4 py-4">
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">Top 3 horarios con más pedidos</h3>
+      <ul class="text-sm text-slate-600 space-y-1">
+        {% for row in top3 %}
+          <li>
+            <span class="font-medium">{{ row.dia_label }}</span>,
+            {{ row.hora_label }} —
+            {{ row.cantidad }} pedido(s) ·
+            $ {{ row.total|floatformat:0 }}
+          </li>
+        {% empty %}
+          <li class="text-slate-400 text-xs">No hay datos suficientes.</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm px-4 py-4">
+      <h3 class="text-sm font-semibold text-slate-700 mb-2">Top 3 horarios con menos pedidos</h3>
+      <ul class="text-sm text-slate-600 space-y-1">
+        {% for row in bottom3 %}
+          <li>
+            <span class="font-medium">{{ row.dia_label }}</span>,
+            {{ row.hora_label }} —
+            {{ row.cantidad }} pedido(s) ·
+            $ {{ row.total|floatformat:0 }}
+          </li>
+        {% empty %}
+          <li class="text-slate-400 text-xs">No hay datos suficientes.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <!-- Tabla detallada Día x Hora -->
+  <div class="bg-white rounded-xl shadow-sm px-4 py-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-sm font-semibold text-slate-700">Detalle Día x Hora</h2>
+      <p class="text-xs text-slate-400">
+        Cada fila representa una combinación de día y hora con al menos un pedido.
+      </p>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-50 text-xs uppercase text-slate-500">
+          <tr>
+            <th class="px-3 py-2 text-left">Día</th>
+            <th class="px-3 py-2 text-left">Hora</th>
+            <th class="px-3 py-2 text-right">Pedidos</th>
+            <th class="px-3 py-2 text-right">Monto total</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for row in dia_hora_list %}
+            <tr class="hover:bg-slate-50">
+              <td class="px-3 py-2">{{ row.dia_label }}</td>
+              <td class="px-3 py-2">{{ row.hora_label }}</td>
+              <td class="px-3 py-2 text-right">{{ row.cantidad }}</td>
+              <td class="px-3 py-2 text-right">$ {{ row.total|floatformat:0 }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="4" class="px-3 py-4 text-center text-slate-400 text-sm">
+                No hay datos para mostrar en la tabla.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% endif %}
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const horasLabels = JSON.parse('{{ chart_horas_labels_json|escapejs }}');
+  const horasData   = JSON.parse('{{ chart_horas_data_json|escapejs }}');
+
+  const ctxHoras = document.getElementById('chartHoras').getContext('2d');
+  new Chart(ctxHoras, {
+    type: 'bar',
+    data: {
+      labels: horasLabels,
+      datasets: [{
+        label: 'Pedidos',
+        data: horasData,
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { precision: 0 }
+        }
+      }
+    }
+  });
+
+  const diasLabels = JSON.parse('{{ chart_dias_labels_json|escapejs }}');
+  const diasData   = JSON.parse('{{ chart_dias_data_json|escapejs }}');
+
+  const ctxDias = document.getElementById('chartDias').getContext('2d');
+  new Chart(ctxDias, {
+    type: 'bar',
+    data: {
+      labels: diasLabels,
+      datasets: [{
+        label: 'Pedidos',
+        data: diasData,
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { precision: 0 }
+        }
+      }
+    }
+  });
+
+  const hoySistemaStr = "{{ hoy_sistema|date:'Y-m-d' }}";
+  const inputDesde = document.getElementById('desde');
+  const inputHasta = document.getElementById('hasta');
+
+function normalizarFechas() {
+      let d = inputDesde.value;
+      let h = inputHasta.value;
+
+      // Ajustar a hoy si se pasan al futuro
+      if (d && d > hoySistemaStr) {
+        inputDesde.value = hoySistemaStr;
+        d = hoySistemaStr;
+      }
+      if (h && h > hoySistemaStr) {
+        inputHasta.value = hoySistemaStr;
+        h = hoySistemaStr;
+      }
+
+      // Si hasta < desde, forzamos hasta = desde
+      if (d && h && h < d) {
+        inputHasta.value = d;
+      }
+    }
+
+  if (inputDesde) inputDesde.addEventListener('change', normalizarFechas);
+  if (inputHasta) inputHasta.addEventListener('change', normalizarFechas);
+</script>
+
+
+
+{% endblock %}

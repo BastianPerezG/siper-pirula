@@ -1,0 +1,144 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+    <h1 class="text-2xl font-semibold text-slate-800">
+        📉 Mermas por proveedor
+    </h1>
+
+    <!-- Filtros -->
+    <form method="get" class="bg-white shadow-sm rounded-lg p-4 flex flex-wrap gap-4 items-end">
+        <div>
+            <label class="block text-xs font-medium text-slate-600">Desde</label>
+            <input type="date" name="desde" value="{{ filtros.desde|date:'Y-m-d' }}"
+                class="mt-1 border rounded px-2 py-1 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-slate-600">Hasta</label>
+            <input type="date" name="hasta" value="{{ filtros.hasta|date:'Y-m-d' }}"
+                class="mt-1 border rounded px-2 py-1 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-slate-600">Proveedor</label>
+            <select name="proveedor" class="mt-1 border rounded px-2 py-1 text-sm">
+                <option value="">Todos</option>
+                {% for p in proveedores %}
+                <option value="{{ p.id }}" {% if filtros.proveedor_id == p.id %}selected{% endif %}>
+                    {{ p.nombre }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-slate-600">Categoría</label>
+            <select name="categoria" class="mt-1 border rounded px-2 py-1 text-sm">
+                <option value="">Todas</option>
+                {% for c in categorias %}
+                <option value="{{ c.id }}" {% if filtros.categoria_id == c.id %}selected{% endif %}>
+                    {{ c.nombre }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button type="submit"
+            class="ml-auto bg-sky-600 text-white text-sm font-medium px-4 py-2 rounded hover:bg-sky-700">
+            Aplicar filtros
+        </button>
+
+        <button type="submit" name="export" value="csv"
+            class="bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded hover:bg-emerald-700">
+            Exportar CSV
+        </button>
+    </form>
+
+    <!-- Resumen por proveedor -->
+    <div class="bg-white shadow-sm rounded-lg p-4">
+        <h2 class="text-sm font-semibold text-slate-700 mb-3">
+            Resumen por proveedor ({{ filtros.desde }} – {{ filtros.hasta }})
+        </h2>
+
+        {% if resumen_proveedores %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="border-b bg-slate-50 text-xs text-slate-500 uppercase">
+                        <th class="text-left py-2 px-3">Proveedor</th>
+                        <th class="text-right py-2 px-3">Monto comprado</th>
+                        <th class="text-right py-2 px-3">Monto merma</th>
+                        <th class="text-right py-2 px-3">% Merma</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in resumen_proveedores %}
+                    <tr class="border-b last:border-0 hover:bg-slate-50">
+                        <td class="py-2 px-3">{{ row.proveedor }}</td>
+                        <td class="py-2 px-3 text-right">
+                            $ {{ row.monto_comprado|floatformat:0 }}
+                        </td>
+                        <td class="py-2 px-3 text-right text-rose-600">
+                            $ {{ row.monto_merma|floatformat:0 }}
+                        </td>
+                        <td class="py-2 px-3 text-right">
+                            {{ row.porcentaje_merma|floatformat:1 }} %
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-sm text-slate-500">
+            No se registran mermas para los filtros seleccionados.
+        </p>
+        {% endif %}
+    </div>
+
+    <!-- Detalle de mermas -->
+    <div class="bg-white shadow-sm rounded-lg p-4">
+        <h2 class="text-sm font-semibold text-slate-700 mb-3">
+            Detalle de mermas
+        </h2>
+
+        {% if detalle_mermas %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-xs">
+                <thead>
+                    <tr class="border-b bg-slate-50 text-slate-500 uppercase">
+                        <th class="text-left py-2 px-2">Fecha</th>
+                        <th class="text-left py-2 px-2">Proveedor</th>
+                        <th class="text-left py-2 px-2">Producto</th>
+                        <th class="text-right py-2 px-2">Cantidad</th>
+                        <th class="text-left py-2 px-2">Unidad</th>
+                        <th class="text-left py-2 px-2">Motivo</th>
+                        <th class="text-right py-2 px-2">Costo unit.</th>
+                        <th class="text-right py-2 px-2">Monto merma</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in detalle_mermas %}
+                    <tr>
+                        <td>{{ d.fecha | date:"d-m-Y H:i" }}</td>
+                        <td>{{ d.proveedor }}</td>
+                        <td>{{ d.producto }}</td>
+                        <td class="text-end">{{ d.cantidad }}</td>
+                        <td>{{ d.unidad }}</td>
+                        <td>{{ d.motivo }}</td>
+                        <td class="text-end">${{ d.costo_unit }}</td>
+                        <td class="text-end">${{ d.monto_merma }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-sm text-slate-500">
+            No hay registros de merma en el período seleccionado.
+        </p>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
