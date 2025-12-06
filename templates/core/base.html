@@ -9,57 +9,89 @@
 
     <!-- Tailwind CDN (desarrollo) -->
     <script src="https://cdn.tailwindcss.com"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     {% block extra_head %}
     <!-- Select2 -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     {% endblock %}
 </head>
 
-<body class="bg-slate-100 min-h-screen flex flex-col">
+<body class="bg-slate-100 min-h-screen flex flex-col" x-data="{ openMenu: false }">
 
     <!-- Navbar superior -->
     <header class="bg-slate-900 text-slate-100">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-            <a href="{% url 'core:dashboard' %}" class="font-bold text-lg tracking-wide">
+        <!-- Contenedor principal de la barra de navegación -->
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4 relative">
+            
+            <a href="{% url 'core:dashboard' %}" class="font-bold text-lg tracking-wide z-20">
                 SIPER Pirula
             </a>
 
-            <nav class="flex flex-wrap gap-4 text-sm">
-                <a href="{% url 'core:dashboard' %}" class="hover:text-amber-300">Inicio</a>
+            <!-- Botón de Hamburguesa -->
+            <button @click="openMenu = !openMenu" class="md:hidden p-2 rounded-md hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 z-20">
+                <svg x-show="!openMenu" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                <svg x-show="openMenu" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            
+            <!-- CONTENEDOR DE NAVEGACIÓN COMPLETA (RESPONSIVE) -->
+            <div class="absolute md:relative top-full left-0 right-0 w-full md:w-auto 
+                        md:flex md:items-center md:gap-4 md:text-sm md:bg-transparent 
+                        flex-col bg-slate-800 shadow-lg z-10 p-4 md:p-0"
+                 :class="{'hidden': !openMenu, 'flex': openMenu}">
 
-                <a href="{% url 'inventario:producto_lista' %}" class="hover:text-amber-300">
-                    Productos
-                </a>
-                <a href="{% url 'inventario:promo_lista' %}" class="hover:text-amber-300">Promos</a>
-                <a href="{% url 'inventario:compra_lista' %}" class="hover:text-amber-300">Compras</a>
-                <a href="{% url 'ventas:venta_lista' %}" class="hover:text-amber-300">Ventas</a>
-                <a href="{% url 'reportes:inventario' %}" class="hover:text-amber-300">Reportes</a>
-                <a href="{% url 'inventario:scan_ean' %}" class="hover:text-amber-300">Escanear</a>
-                <a href="{% url 'pedidos:pedido_lista' %}" class="hover:text-amber-300">Pedidos</a>
-                <a href="{% url 'inventario:merma_lista' %}" class="hover:text-amber-300">Mermas</a>
-                <a href="{% url 'pedidos:pedidos_monitor' %}" class="hover:text-amber-300 text-sm">
-                    Monitor Pedidos
-                </a>
-                         <!-- Nuevo link de stock crítico con badge -->
-                <a href="{% url 'inventario:producto_stock_critico' %}"
-                    class="hover:text-amber-300 flex items-center gap-1">
-                    <span>Stock crítico</span>
-                    <span class="inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold
-                 {% if stock_critico_count %}
-                    bg-red-500 text-white
-                 {% else %}
-                    bg-slate-500 text-white
-                 {% endif %}">
-                        {{ stock_critico_count|default:"0" }}
-                    </span>
-                </a>
-            </nav>
+                <!-- Bloque de Links Principales -->
+                <nav class="flex flex-col md:flex-row md:items-center md:flex-wrap gap-1 md:gap-4 text-base md:text-sm w-full md:w-auto">
+                    
+                    <!-- Enlaces Principales -->
+                    <a href="{% url 'core:dashboard' %}" class="hover:text-amber-300 px-3 py-2 md:p-0 border-b md:border-none border-slate-700">Inicio</a>
+                    <a href="{% url 'inventario:producto_lista' %}" class="hover:text-amber-300 px-3 py-2 md:p-0 border-b md:border-none border-slate-700">Productos</a>
+                    <a href="{% url 'inventario:promo_lista' %}" class="hover:text-amber-300 px-3 py-2 md:p-0 border-b md:border-none border-slate-700">Promos</a>
+                    <a href="{% url 'inventario:compra_lista' %}" class="hover:text-amber-300 px-3 py-2 md:p-0 border-b md:border-none border-slate-700">Compras</a>
+                    <a href="{% url 'ventas:venta_lista' %}" class="hover:text-amber-300 px-3 py-2 md:p-0 border-b md:border-none border-slate-700">Ventas</a>
+                    <a href="{% url 'reportes:inventario' %}" class="hover:text-amber-300 px-3 py-2 md:p-0 border-b md:border-none border-slate-700">Reportes</a>
+                    <a href="{% url 'inventario:scan_ean' %}" class="hover:text-amber-300 px-3 py-2 md:p-0 border-b md:border-none border-slate-700">Escanear</a>
+                    <a href="{% url 'pedidos:pedido_lista' %}" class="hover:text-amber-300 px-3 py-2 md:p-0 border-b md:border-none border-slate-700">Pedidos</a>
+                    <a href="{% url 'inventario:merma_lista' %}" class="hover:text-amber-300 px-3 py-2 md:p-0 border-b md:border-none border-slate-700">Mermas</a>
+                    <a href="{% url 'pedidos:pedidos_monitor' %}" class="hover:text-amber-300 px-3 py-2 md:p-0 border-b md:border-none border-slate-700">
+                        Monitor Pedidos
+                    </a>
 
-            {# Espacio para info de usuario / logout si quieres agregarlo después #}
-            {# <div class="text-xs text-right">
-                {{ request.user.username }}
-            </div> #}
+                    <!-- Stock crítico con Badge (Alineado para funcionar como un link completo) -->
+                    <a href="{% url 'inventario:producto_stock_critico' %}"
+                        class="hover:text-amber-300 flex items-center gap-1 px-3 py-2 md:p-0">
+                        <span>Stock crítico</span>
+                        <span class="inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold
+                        {% if stock_critico_count %}
+                            bg-red-500 text-white
+                        {% else %}
+                            bg-slate-500 text-white
+                        {% endif %}">
+                            {{ stock_critico_count|default:"0" }}
+                        </span>
+                    </a>
+                </nav>
+
+                <!-- Bloque de Usuario y Logout (Separador visible en escritorio) -->
+                <div class="mt-4 pt-4 border-t border-slate-700 md:mt-0 md:pt-0 md:border-t-0 
+                            md:pl-4 md:text-xs md:border-l md:border-slate-700 md:ml-4 
+                            flex flex-col md:flex-row md:items-center gap-2">
+                    
+                    {% if request.user.is_authenticated %}
+                        <span class="text-xs text-slate-300 px-3 py-1 md:p-0">
+                            Hola, {{ request.user.username|default:"Usuario" }}
+                        </span>
+                        <a href="{% url 'core:logout_interno' %}" class="hover:text-amber-300 text-xs px-3 py-1 md:p-0">
+                            Cerrar sesión
+                        </a>
+                    {% else %}
+                        <a href="{% url 'core:login_interno' %}" class="hover:text-amber-300 text-xs px-3 py-1 md:p-0">
+                            Iniciar sesión
+                        </a>
+                    {% endif %}
+                </div>
+
+            </div>
+            
         </div>
     </header>
 
@@ -67,7 +99,7 @@
     <main class="flex-1">
         <div class="max-w-6xl mx-auto px-4 py-6">
 
-            {# Mensajes de Django #}
+            {# Mensajes de Django: Ahora incluye tags para warning #}
             {% if messages %}
             <div class="mb-4 space-y-2">
                 {% for message in messages %}

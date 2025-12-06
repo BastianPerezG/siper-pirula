@@ -5,20 +5,19 @@
 {% block content %}
 <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
   <a href="javascript:history.back()"
-     class="inline-flex items-center text-xs sm:text-sm text-slate-600 hover:text-slate-900 mb-4">
+    class="inline-flex items-center text-xs sm:text-sm text-slate-600 hover:text-slate-900 mb-4">
     ← Volver
   </a>
 
   <div class="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row overflow-hidden">
     <div class="sm:w-1/2 bg-slate-50 flex items-center justify-center">
       {% if producto.imagen %}
-        <img src="{{ producto.imagen.url }}"
-             alt="{{ producto.nombre }}"
-             class="w-full h-full object-contain max-h-96 p-4">
+      <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}"
+        class="w-full h-full object-contain max-h-96 p-4">
       {% else %}
-        <div class="w-full h-full flex items-center justify-center text-5xl text-slate-300">
-          {{ producto.nombre|slice:":1" }}
-        </div>
+      <div class="w-full h-full flex items-center justify-center text-5xl text-slate-300">
+        {{ producto.nombre|slice:":1" }}
+      </div>
       {% endif %}
     </div>
 
@@ -33,13 +32,13 @@
       </div>
 
       {% if producto.descripcion_larga %}
-        <p class="text-sm text-slate-700">
-          {{ producto.descripcion_larga }}
-        </p>
+      <p class="text-sm text-slate-700">
+        {{ producto.descripcion_larga }}
+      </p>
       {% elif producto.descripcion_corta %}
-        <p class="text-sm text-slate-700">
-          {{ producto.descripcion_corta }}
-        </p>
+      <p class="text-sm text-slate-700">
+        {{ producto.descripcion_corta }}
+      </p>
       {% endif %}
 
       <div class="mt-2">
@@ -50,40 +49,66 @@
           $ {{ producto.precio|floatformat:0 }}
         </p>
       </div>
-
+      <div class="mt-2">
+        <p class="text-xs uppercase tracking-wide text-slate-500">
+          unidad
+        </p>
+        <p class="text-2xl font-bold text-slate-900">
+          {{ producto.unidad_de_venta}}
+        </p>
+      </div>
+      <div class="mt-2">
+        <p class="text-xs uppercase tracking-wide text-slate-500">
+          Formato
+        </p>
+        <p class="text-2xl font-bold text-slate-900">
+          {{ producto.formato }}
+        </p>
+      </div>
+      <div class="mt-1 flex items-center justify-between">
+        <div>
+          {% if producto.contiene_alcohol %}
+            <p class="text-xs uppercase tracking-wide text-slate-500">
+              Este producto contiene alcohol. Su venta está restringida a mayores de 18 años.
+            </p>
+          {% else %}
+          {% endif %}
+        </div>
+      </div>
       <div>
         <p class="text-xs uppercase tracking-wide text-slate-500">
           Stock disponible
         </p>
         {% if producto.stock_actual > 0 %}
-          <p class="text-sm text-emerald-700 font-semibold">
-            {{ producto.stock_actual}} unidades
-          </p>
+        <p class="text-sm text-emerald-700 font-semibold">
+          {{ producto.stock_actual}} unidades
+        </p>
         {% else %}
-          <p class="text-sm text-red-600 font-semibold">
-            Sin stock
-          </p>
+        <p class="text-sm text-red-600 font-semibold">
+          Sin stock
+        </p>
         {% endif %}
       </div>
 
       <div class="mt-2">
         {% if producto.stock_actual > 0 %}
-          <form method="post" action="{% url 'tienda:carrito_agregar' producto.id %}">
-            {% csrf_token %}
-            <button type="submit"
-                    class="w-full inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
-              Agregar al carrito
-            </button>
-          </form>
-          {% if cantidad_en_carrito > 0 %}
-            <p class="mt-1 text-xs text-slate-500">
-              Ya tienes {{ cantidad_en_carrito }} en el carrito.
-            </p>
-          {% endif %}
+        <form method="post" action="{% url 'tienda:carrito_agregar' producto.id %}">
+          {% csrf_token %}
+          <button type="submit"
+            class="w-full inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+            Agregar al carrito
+          </button>
+        </form>
+        {% if cantidad_en_carrito > 0 %}
+        <p class="mt-1 text-xs text-slate-500">
+          Ya tienes {{ cantidad_en_carrito }} en el carrito.
+        </p>
+        {% endif %}
         {% else %}
-          <span class="inline-flex items-center justify-center rounded-full bg-red-100 text-red-700 px-4 py-2 text-xs font-semibold">
-            Sin stock
-          </span>
+        <span
+          class="inline-flex items-center justify-center rounded-full bg-red-100 text-red-700 px-4 py-2 text-xs font-semibold">
+          Sin stock
+        </span>
         {% endif %}
       </div>
     </div>

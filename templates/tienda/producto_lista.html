@@ -7,151 +7,159 @@
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
 
-  <!-- Encabezado -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6">
-    <div>
-      {% if categoria %}
-      <p class="text-xs uppercase tracking-wide text-slate-500">
-        Categoría
-      </p>
-      <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">
-        {{ categoria.nombre }}
-      </h1>
-      {% if categoria.descripcion %}
-      <p class="mt-1 text-sm text-slate-600 max-w-xl">
-        {{ categoria.descripcion }}
-      </p>
-      {% endif %}
-      {% else %}
-      <p class="text-xs uppercase tracking-wide text-slate-500">
-        Productos
-      </p>
-      <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">
-        Todos los productos
-      </h1>
-      {% endif %}
-    </div>
-    <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
-      <a href="{% url 'tienda:home' %}"
-        class="inline-flex items-center justify-center rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 w-full sm:w-auto">
-        ← Volver a categorías
-      </a>
-      <a href="{% url 'tienda:carrito_ver' %}"
-        class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 w-full sm:w-auto">
-        Ver carrito
-      </a>
-    </div>
-  </div>
-
-  <!-- Filtros (chips + buscador) -->
-<form method="get" class="mb-5 flex flex-col sm:flex-row gap-3 sm:items-center">
-  <select name="categoria"
-          class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-full sm:w-56">
-    <option value="">Todas las categorías</option>
-    {% for cat in categorias %}
-      <option value="{{ cat.slug }}"
-        {% if categoria and categoria.slug == cat.slug %}selected{% endif %}>
-        {{ cat.nombre }}
-      </option>
-    {% endfor %}
-  </select>
-
-  <input type="text"
-         name="q"
-         value="{{ q }}"
-         placeholder="Buscar producto..."
-         class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-full sm:w-64">
-
-  <button type="submit"
-          class="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">
-    Buscar
-  </button>
-</form>
-
-  <!-- Grid de productos -->
-  {% if productos %}
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-    {% for producto in productos %}
-    <div
-      class="bg-white rounded-2xl shadow-sm hover:shadow-md border border-slate-100 flex flex-col transition-shadow duration-200">
-      {% if producto.imagen %}
-      <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}"
-        class="h-40 sm:h-44 w-full object-cover rounded-t-2xl">
-      {% else %}
-      <div class="h-40 sm:h-44 w-full bg-slate-100 flex items-center justify-center rounded-t-2xl">
-        <span class="text-4xl text-slate-400">
-          {{ producto.nombre|slice:":1" }}
-        </span>
-      </div>
-      {% endif %}
-
-      <div class="flex-1 flex flex-col px-4 sm:px-5 py-3 sm:py-4">
-        <h2 class="text-base sm:text-lg font-semibold text-slate-900 line-clamp-2">
-          <a href="{% url 'tienda:producto_detalle' producto.id %}" class="hover:underline">
-            {{ producto.nombre }}
-          </a>
-        </h2>
-
-        {% if producto.descripcion_corta %}
-        <p class="mt-1 text-xs sm:text-sm text-slate-500 line-clamp-2">
-          {{ producto.descripcion_corta }}
-        </p>
-        {% endif %}
-        <div class="mt-2 sm:mt-3 flex items-end justify-between">
-          <div>
+    <!-- Encabezado -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6">
+        <div>
+            {% if categoria %}
             <p class="text-xs uppercase tracking-wide text-slate-500">
-              Precio
+                Categoría
             </p>
-            <p class="text-lg sm:text-xl font-bold text-slate-900">
-              $ {{ producto.precio|floatformat:0 }}
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">
+                {{ categoria.nombre }}
+            </h1>
+            {% if categoria.descripcion %}
+            <p class="mt-1 text-sm text-slate-600 max-w-xl">
+                {{ categoria.descripcion }}
             </p>
-          </div>
-
-          {% if producto.stock_actual > 0 %}
-          <form method="post" action="{% url 'tienda:carrito_agregar' producto.id %}">
-            {% csrf_token %}
-            <button type="submit"
-              class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-slate-800">
-              Agregar
-            </button>
-          </form>
-          {% else %}
-          <span class="inline-flex items-center rounded-full bg-red-100 text-red-700 text-xs px-3 py-1">
-            Sin stock
-          </span>
-          {% endif %}
+            {% endif %}
+            {% else %}
+            <p class="text-xs uppercase tracking-wide text-slate-500">
+                Productos
+            </p>
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">
+                Todos los productos
+            </h1>
+            {% endif %}
         </div>
-      </div>
+        <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <a href="{% url 'tienda:home' %}"
+                class="inline-flex items-center justify-center rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 w-full sm:w-auto">
+                ← Volver a categorías
+            </a>
+            <a href="{% url 'tienda:carrito_ver' %}"
+                class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 w-full sm:w-auto">
+                Ver carrito
+            </a>
+        </div>
     </div>
-    {% endfor %}
-  </div>
 
-  <!-- Paginación -->
-  {% if page_obj.has_other_pages %}
-  <div class="mt-4 flex justify-center gap-2 text-sm">
-    {% if page_obj.has_previous %}
-    <a href="?page={{ page_obj.previous_page_number }}{% if categoria %}&categoria={{ categoria.slug }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}"
-      class="px-3 py-1 rounded border border-slate-300 hover:bg-slate-50">
-      Anterior
-    </a>
+    <!-- Filtros (chips + buscador + ORDENAMIENTO) -->
+    <form method="get" class="mb-5 flex flex-col md:flex-row gap-3 md:items-center">
+        <!-- Selector de Categorías -->
+        <select name="categoria"
+            class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-full md:w-56">
+            <option value="">Todas las categorías</option>
+            {% for cat in categorias %}
+            <option value="{{ cat.id }}"
+                {% if categoria and categoria.id == cat.id %}selected{% endif %}>
+                {{ cat.id }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <!-- Buscador -->
+        <input type="text"
+            name="q"
+            value="{{ q }}"
+            placeholder="Buscar producto..."
+            class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-full md:w-64">
+
+        <!-- Selector de Ordenamiento (NUEVO) -->
+        <select name="orden"
+            class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-full md:w-48">
+            <option value="">Ordenar por...</option>
+            <option value="precio" {% if orden == 'precio' %}selected{% endif %}>Precio (Menor a Mayor)</option>
+            <option value="-precio" {% if orden == '-precio' %}selected{% endif %}>Precio (Mayor a Menor)</option>
+            <option value="nombre" {% if orden == 'nombre' %}selected{% endif %}>Nombre (A-Z)</option>
+            <option value="-nombre" {% if orden == '-nombre' %}selected{% endif %}>Nombre (Z-A)</option>
+        </select>
+
+        <button type="submit"
+            class="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">
+            Buscar
+        </button>
+    </form>
+
+    <!-- Grid de productos -->
+    {% if productos %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+        {% for producto in productos %}
+        <div
+            class="bg-white rounded-2xl shadow-sm hover:shadow-md border border-slate-100 flex flex-col transition-shadow duration-200">
+            {% if producto.imagen %}
+            <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}"
+                class="h-40 sm:h-44 w-full object-cover rounded-t-2xl">
+            {% else %}
+            <div class="h-40 sm:h-44 w-full bg-slate-100 flex items-center justify-center rounded-t-2xl">
+                <span class="text-4xl text-slate-400">
+                    {{ producto.nombre|slice:":1" }}
+                </span>
+            </div>
+            {% endif %}
+
+            <div class="flex-1 flex flex-col px-4 sm:px-5 py-3 sm:py-4">
+                <h2 class="text-base sm:text-lg font-semibold text-slate-900 line-clamp-2">
+                    <a href="{% url 'tienda:producto_detalle' producto.id %}" class="hover:underline">
+                        {{ producto.nombre }}
+                    </a>
+                </h2>
+
+                
+                <div class="mt-2 sm:mt-3 flex items-end justify-between">
+                    <div>
+                        <p class="text-xs uppercase tracking-wide text-slate-500">
+                            Precio
+                        </p>
+                        <p class="text-lg sm:text-xl font-bold text-slate-900">
+                            $ {{ producto.precio|floatformat:0 }}
+                        </p>
+                    </div>
+
+                    {% if producto.stock_actual > 0 %}
+                    <form method="post" action="{% url 'tienda:carrito_agregar' producto.id %}">
+                        {% csrf_token %}
+                        <button type="submit"
+                            class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-slate-800">
+                            Agregar
+                        </button>
+                    </form>
+                    {% else %}
+                    <span class="inline-flex items-center rounded-full bg-red-100 text-red-700 text-xs px-3 py-1">
+                        Sin stock
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Paginación -->
+    {% if page_obj.has_other_pages %}
+    <div class="mt-4 flex justify-center gap-2 text-sm">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% if categoria %}&categoria={{ categoria.slug }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}{% if orden %}&orden={{ orden }}{% endif %}"
+            class="px-3 py-1 rounded border border-slate-300 hover:bg-slate-50">
+            Anterior
+        </a>
+        {% endif %}
+        <span class="px-3 py-1 text-slate-600">
+            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+        </span>
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if categoria %}&categoria={{ categoria.slug }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}{% if orden %}&orden={{ orden }}{% endif %}"
+            class="px-3 py-1 rounded border border-slate-300 hover:bg-slate-50">
+            Siguiente
+        </a>
+        {% endif %}
+    </div>
     {% endif %}
-    <span class="px-3 py-1 text-slate-600">
-      Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
-    </span>
-    {% if page_obj.has_next %}
-    <a href="?page={{ page_obj.next_page_number }}{% if categoria %}&categoria={{ categoria.slug }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}"
-      class="px-3 py-1 rounded border border-slate-300 hover:bg-slate-50">
-      Siguiente
-    </a>
+    {% else %}
+    <div class="bg-white rounded-xl border border-dashed border-slate-300 px-4 sm:px-6 py-6 sm:py-8 text-center">
+        <p class="text-sm sm:text-base text-slate-500">
+            No hay productos disponibles con los filtros actuales.
+        </p>
+    </div>
     {% endif %}
-  </div>
-  {% endif %}
-  {% else %}
-  <div class="bg-white rounded-xl border border-dashed border-slate-300 px-4 sm:px-6 py-6 sm:py-8 text-center">
-    <p class="text-sm sm:text-base text-slate-500">
-      No hay productos disponibles con los filtros actuales.
-    </p>
-  </div>
-  {% endif %}
 </div>
 {% endblock %}

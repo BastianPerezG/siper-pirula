@@ -4,43 +4,54 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}SIPER Pirula · Tienda{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"> <title>{% block title %}SIPER Pirula · Tienda{% endblock %}</title>
 
-    <!-- Tailwind CDN (como en base interna) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     {% block extra_head %}{% endblock %}
 </head>
 
-<body class="bg-slate-100 min-h-screen flex flex-col">
-
+<body class="bg-slate-100 min-h-screen flex flex-col" x-data="{ openMenu: false }"> 
+    
     <header class="bg-slate-900 text-slate-100">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-            <a href="{% url 'tienda:home' %}" class="font-bold text-lg tracking-wide">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between relative"> 
+            
+            <a href="{% url 'tienda:home' %}" class="font-bold text-lg tracking-wide z-20">
                 SIPER Pirula
             </a>
 
-            <nav class="flex items-center gap-4 text-sm">
-                <a href="{% url 'tienda:home' %}" class="hover:text-amber-300">
+            <button @click="openMenu = !openMenu" class="md:hidden p-2 rounded-md hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 z-20">
+                <svg x-show="!openMenu" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                <svg x-show="openMenu" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            
+            <nav class="absolute md:relative top-full left-0 right-0 w-full md:w-auto 
+                        md:flex md:flex-row md:items-center md:gap-4 md:text-sm md:bg-transparent 
+                        flex-col bg-slate-800 text-base shadow-lg z-10 p-2 md:p-0" 
+                 :class="{'hidden': !openMenu, 'flex': openMenu}">
+                
+                <a href="{% url 'tienda:home' %}" class="hover:text-amber-300 px-2 py-1 md:p-0 border-b md:border-none border-slate-700">
                     Inicio
                 </a>
 
-                <a href="{% url 'tienda:carrito_ver' %}" class="hover:text-amber-300">
+                <a href="{% url 'tienda:carrito_ver' %}" class="hover:text-amber-300 px-2 py-1 md:p-0 border-b md:border-none border-slate-700">
                     Carrito
                 </a>
 
                 {% if request.user.is_authenticated %}
-                <span class="text-xs text-slate-300">
+                <span class="text-xs text-slate-300 px-2 py-1 md:p-0">
                     Hola, {{ request.user.username }}
                 </span>
-                <a href="{% url 'tienda:logout' %}" class="hover:text-amber-300 text-xs">
+                <a href="{% url 'tienda:logout' %}" class="hover:text-amber-300 text-xs px-2 py-1 md:p-0">
                     Cerrar sesión
                 </a>
                 {% else %}
-                <a href="{% url 'tienda:login' %}" class="hover:text-amber-300 text-xs">
+                <a href="{% url 'tienda:login' %}" class="hover:text-amber-300 text-xs px-2 py-1 md:p-0 border-b md:border-none border-slate-700">
                     Iniciar sesión
                 </a>
-                <a href="{% url 'tienda:registro' %}" class="hover:text-amber-300 text-xs">
+                <a href="{% url 'tienda:registro' %}" class="hover:text-amber-300 text-xs px-2 py-1 md:p-0">
                     Registrarme
                 </a>
                 {% endif %}

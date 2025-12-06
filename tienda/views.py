@@ -16,6 +16,8 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
+from django.views.generic import ListView # Importamos la vista de clase genérica
+from django.db.models import F, Q # Importamos F para stock_critico y Q para búsqueda OR
 
 
 from .forms import CheckoutForm
@@ -611,25 +613,148 @@ def logout_cliente_view(request):
 # ------------------------------------------------------------------
 # Listado y detalle de productos
 # ------------------------------------------------------------------
+def producto_lista(request):
+    # --- 1. Obtener la Categoría Activa (para filtrar y marcar como 'selected') ---
+    categoria_id = request.GET.get('categoria') # Obtiene el ID de categoría del parámetro GET
+    
+    categoria_activa = None
+    if categoria_id:
+        try:
+            # Intenta obtener el objeto Categoria. Si no existe, lo ignora o lanza 404
+            categoria_activa = get_object_or_404(Categoria, id=categoria_id)
+        except Exception:
+            # Manejo de error si el ID es inválido, podrías simplemente continuar con None
+            pass
+
+    # --- 2. Consulta de Productos ---
+    productos = Producto.objects.all()
+    
+    # Aplicar filtro por categoría si hay una activa
+    if categoria_activa:
+        productos = productos.filter(categoria=categoria_activa)
+
+    # --- 3. Búsqueda y Ordenamiento (Ejemplo) ---
+    query = request.GET.get('q')
+    orden = request.GET.get('orden')
+    
+    if query:
+        # Ejemplo de filtro por nombre
+        productos = productos.filter(nombre__icontains=query) 
+
+    if orden:
+        productos = productos.order_by(orden)
 
 
-def productos_list_view(request):
-    negocio = get_negocio_actual()
-    productos_qs = Producto.objects.filter(
-        negocio=negocio,
-        activo=True,
-    ).order_by("nombre")
+    # --- 4. Consulta de TODAS las Categorías (¡La clave para el dropdown!) ---
+    # ESTA LÍNEA ES CRUCIAL: Trae todas las categorías de la DB.
+    todas_las_categorias = Categoria.objects.all().order_by('nombre') 
 
-    paginator = Paginator(productos_qs, 12)
-    page_number = request.GET.get("page")
+    # --- 5. Paginación (Ejemplo) ---
+    paginator = Paginator(productos, 12)  # Mostrar 12 productos por página
+    page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-
-    context = {
-        "negocio": negocio,
-        "page_obj": page_obj,
+    
+    # --- 6. Construir el Contexto ---
+    contexto = {
+        # Esta variable llena el bucle {% for cat in categorias %}
+        'categorias': todas_las_categorias, 
+        
+        # Esta variable es el objeto completo de la categoría seleccionada (usado en {% if categoria ... %})
+        'categoria': categoria_activa, 
+        
+        # Otros datos necesarios para la plantilla
+        'productos': page_obj.object_list,
+        'page_obj': page_obj,
+        'q': query,
+        'orden': orden,
     }
-    return render(request, "tienda/producto_lista.html", context)
+    
+    return render(request, 'tienda/producto_lista.html', contexto)
 
+class ProductoListView(ListView):
+    """
+    Vista de clase para listar productos públicos con filtros de categoría,
+    búsqueda y ordenamiento.
+    """
+    model = Producto
+    template_name = 'tienda/productos_lista.html'
+    context_object_name = 'productos'
+    paginate_by = 12
+
+    
+    def get_queryset(self):
+        # Asumimos que esta función existe para un entorno multi-negocio
+        # negocio = get_negocio_actual() 
+
+        # Queryset base: productos activos y con stock
+        queryset = super().get_queryset().filter(
+            # negocio=negocio, # Descomentar cuando get_negocio_actual() esté disponible
+            activo=True,
+            stock_actual__gt=0 
+        )
+        
+        # --- A. Aplicar Filtro por Búsqueda (query) ---
+        query = self.request.GET.get('q')
+        if query:
+            # Búsqueda en nombre O descripción corta
+            queryset = queryset.filter(
+                Q(nombre__icontains=query) 
+            )
+
+        # --- B. Aplicar Filtro por Categoría ---
+        categoria_slug = self.request.GET.get('categoria')
+        if categoria_slug:
+            try:
+                # Filtramos por el slug de la categoría
+                queryset = queryset.filter(categoria__slug=categoria_slug)
+            except:
+                # Si el slug es inválido, no se aplica el filtro
+                pass 
+                
+        # --- C. Aplicar Ordenamiento ---
+        orden = self.request.GET.get('orden')
+        if orden:
+            # El valor se pasa directamente al order_by: 'precio' (ASC), '-precio' (DESC), etc.
+            queryset = queryset.order_by(orden)
+        else:
+            # Orden por defecto si no se selecciona ningún criterio
+            queryset = queryset.order_by('nombre')
+            
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        # Obtenemos el contexto base de ListView
+        context = super().get_context_data(**kwargs)
+        
+        # Obtener los parámetros de filtro actuales
+        categoria_slug = self.request.GET.get('categoria')
+        query = self.request.GET.get('q')
+        orden = self.request.GET.get('orden')
+        
+        # Variables de contexto adicionales para el template
+        context['categorias'] = Categoria.objects.all()
+        context['q'] = query
+        context['orden'] = orden
+        
+        # Lógica para mostrar la información de la Categoría seleccionada
+        if categoria_slug:
+            try:
+                context['categoria'] = Categoria.objects.get(slug=categoria_slug)
+            except Categoria.DoesNotExist:
+                context['categoria'] = None
+        else:
+            context['categoria'] = None
+            
+        # Cálculo del stock crítico (para el menú base)
+        # negocio = get_negocio_actual() 
+        context['negocio'] = None # Placeholder
+        
+        context['stock_critico_count'] = Producto.objects.filter(
+            # negocio=context['negocio'],
+            stock_actual__lte=F('stock_minimo')
+        ).count()
+
+        return context
 
 def producto_detalle(request, producto_id):
     negocio = get_negocio_actual()
