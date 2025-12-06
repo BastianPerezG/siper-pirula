@@ -1,4 +1,5 @@
 # core/forms.py
+from symtable import Symbol
 from django import forms
 from django.contrib.auth.models import User
 from .models import PerfilUsuario
@@ -51,8 +52,34 @@ class UsuarioCrearForm(forms.ModelForm):
         cleaned = super().clean()
         p1 = cleaned.get("password1")
         p2 = cleaned.get("password2")
+
+        # Verificar que las contraseñas coincidan
         if p1 and p2 and p1 != p2:
             raise forms.ValidationError("Las contraseñas no coinciden.")
+
+        # Validaciones de seguridad
+        if p1:
+            # Largo mínimo
+            if len(p1) < 6:
+                raise forms.ValidationError("La contraseña debe tener al menos 6 caracteres.")
+
+            # Mayúscula
+            if not any(c.isupper() for c in p1):
+                raise forms.ValidationError("La contraseña debe contener al menos una letra mayúscula.")
+
+            # Número
+            if not any(c.isdigit() for c in p1):
+                raise forms.ValidationError("La contraseña debe contener al menos un número.")
+
+            # Símbolo
+            symbols = "!@#$%^&*()_+-={}[]|:;<>,.?/~`"
+            if not any(c in symbols for c in p1):
+                raise forms.ValidationError("La contraseña debe contener al menos un símbolo.")
+
+            # Espacios no permitidos
+            if " " in p1:
+                raise forms.ValidationError("La contraseña no debe contener espacios.")
+
         return cleaned
 
     def save(self, negocio, commit=True):

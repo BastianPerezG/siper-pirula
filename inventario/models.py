@@ -112,7 +112,7 @@ class Producto(models.Model):
                         tipo__in=[
                             MovimientoInventario.TIPO_SALIDA,
                             MovimientoInventario.TIPO_MERMA,
-                            MovimientoInventario.TIPO_RESERVA,  # 🔹 NUEVO
+                            MovimientoInventario.TIPO_RESERVA,  
                         ],
                         then=-F("cantidad")
                     ),
@@ -299,7 +299,7 @@ class CompraItem(models.Model):
         super().save(*args, **kwargs)
 
         if es_nuevo:
-            # Solo al CREAR el item generamos el movimiento de ENTRADA
+            # Solo al crear el item generamos el movimiento de ENTRADA
             MovimientoInventario.objects.create(
                 producto=self.producto,
                 tipo=MovimientoInventario.TIPO_ENTRADA,

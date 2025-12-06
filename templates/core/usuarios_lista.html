@@ -1,5 +1,6 @@
 {% extends "core/base.html" %}
-{% load static %}
+
+{% block title %}Usuarios del sistema{% endblock %}
 
 {% block content %}
 <h1 class="text-2xl font-bold mb-4">Usuarios del sistema</h1>
@@ -8,19 +9,24 @@
   <input type="text" name="q" placeholder="Buscar por nombre, usuario o correo"
          value="{{ q }}"
          class="border rounded px-2 py-1 flex-1 min-w-[200px]">
+
   <select name="rol" class="border rounded px-2 py-1">
     <option value="">Todos los roles</option>
     {% for value,label in roles %}
       <option value="{{ value }}"{% if rol_actual == value %} selected{% endif %}>{{ label }}</option>
     {% endfor %}
   </select>
+
   <select name="estado" class="border rounded px-2 py-1">
     <option value="">Todos</option>
     <option value="activos"{% if estado_actual == "activos" %} selected{% endif %}>Activos</option>
     <option value="inactivos"{% if estado_actual == "inactivos" %} selected{% endif %}>Inactivos</option>
   </select>
+
   <button class="px-3 py-1 bg-sky-600 text-white rounded">Filtrar</button>
-  <a href="{% url 'core:usuario_crear' %}" class="ml-auto px-3 py-1 bg-emerald-600 text-white rounded">
+
+  <a href="{% url 'core:usuario_crear' %}"
+     class="ml-auto px-3 py-1 bg-emerald-600 text-white rounded">
     Nuevo usuario
   </a>
 </form>
@@ -42,9 +48,7 @@
         <td class="border px-2 py-1">{{ u.user.get_full_name|default:u.user.username }}</td>
         <td class="border px-2 py-1">{{ u.user.username }}</td>
         <td class="border px-2 py-1">{{ u.user.email }}</td>
-        <td class="border px-2 py-1">
-          {{ u.get_rol_display }}
-        </td>
+        <td class="border px-2 py-1">{{ u.get_rol_display }}</td>
         <td class="border px-2 py-1">
           {% if u.activo %}
             <span class="text-emerald-600 font-semibold">Activo</span>
@@ -68,4 +72,5 @@
     {% endfor %}
   </tbody>
 </table>
+
 {% endblock %}

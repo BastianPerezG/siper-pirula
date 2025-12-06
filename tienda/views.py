@@ -25,7 +25,7 @@ try:
     from transbank.common.options import WebpayOptions
     from transbank.common.integration_type import IntegrationType
 except ImportError:
-    Transaction = None  # para que el proyecto no reviente si aún no instalas el SDK
+    Transaction = None  
 
 
 CART_SESSION_KEY = "carrito"
@@ -37,7 +37,7 @@ CART_SESSION_KEY = "carrito"
 
 
 def get_negocio_actual():
-    # Para este proyecto asumimos una sola botillería
+    
     return Negocio.objects.first()
 
 

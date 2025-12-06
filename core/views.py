@@ -112,9 +112,6 @@ class UsuarioListaView(RolRequeridoMixin, ListView):
 
 
 class UsuarioCrearView(RolRequeridoMixin, CreateView):
-    """
-    Formulario para crear un nuevo trabajador.
-    """
     model = PerfilUsuario
     form_class = UsuarioCrearForm
     template_name = "core/usuario_form.html"
@@ -122,16 +119,13 @@ class UsuarioCrearView(RolRequeridoMixin, CreateView):
     roles_requeridos = ["ADMIN"]
 
     def form_valid(self, form):
-        negocio = Negocio.objects.first()  # en tu caso hay una sola botillería
+        negocio = Negocio.objects.first()  
         form.save(negocio=negocio)
         messages.success(self.request, "Usuario creado correctamente.")
-        return redirect(self.get_success_url())
+        return redirect("core:usuarios_lista")
 
 
 class UsuarioEditarView(RolRequeridoMixin, UpdateView):
-    """
-    Permite editar rol, teléfono, estado y datos básicos del user.
-    """
     model = PerfilUsuario
     form_class = UsuarioEditarForm
     template_name = "core/usuario_form.html"
@@ -147,7 +141,7 @@ class UsuarioEditarView(RolRequeridoMixin, UpdateView):
     def form_valid(self, form):
         form.save()
         messages.success(self.request, "Usuario actualizado correctamente.")
-        return redirect(self.get_success_url())
+        return redirect("core:usuarios_lista")
 
 
 @rol_requerido("ADMIN")

@@ -1,0 +1,108 @@
+{% extends "core/base.html" %}
+
+{% block title %}
+    {% if object %}Editar usuario{% else %}Nuevo usuario{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow">
+    
+    <h1 class="text-2xl font-bold mb-4">
+        {% if object %}Editar usuario{% else %}Crear nuevo usuario{% endif %}
+    </h1>
+
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+
+        {# --- Errores generales del formulario (contraseña insegura, etc.) --- #}
+        {% if form.non_field_errors %}
+        <div class="bg-red-100 text-red-800 text-sm px-4 py-2 rounded mb-2">
+            {% for error in form.non_field_errors %}
+                <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Campos User -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="font-semibold">Nombre completo</label>
+                {{ form.nombre }}
+                {% if form.nombre.errors %}
+                <p class="text-red-600 text-sm">{{ form.nombre.errors|striptags }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="font-semibold">Nombre de usuario</label>
+                {{ form.username }}
+                {% if form.username.errors %}
+                <p class="text-red-600 text-sm">{{ form.username.errors|striptags }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="font-semibold">Correo</label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                <p class="text-red-600 text-sm">{{ form.email.errors|striptags }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="font-semibold">Teléfono</label>
+                {{ form.telefono }}
+            </div>
+        </div>
+
+        <!-- Contraseña solo si es creación -->
+        {% if not object %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="font-semibold">Contraseña</label>
+                {{ form.password1 }}
+                {% if form.password1.errors %}
+                <p class="text-red-600 text-sm">{{ form.password1.errors|striptags }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="font-semibold">Repetir contraseña</label>
+                {{ form.password2 }}
+                {% if form.password2.errors %}
+                <p class="text-red-600 text-sm">{{ form.password2.errors|striptags }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Rol y estado -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="font-semibold">Rol</label>
+                {{ form.rol }}
+            </div>
+
+            {% if object %}
+            <div>
+                <label class="font-semibold">Activo</label>
+                {{ form.activo }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="flex justify-end gap-3">
+            <a href="{% url 'core:usuarios_lista' %}"
+               class="px-4 py-2 bg-slate-200 rounded hover:bg-slate-300">
+                Volver
+            </a>
+            <button type="submit"
+                    class="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-500">
+                {% if object %}Guardar cambios{% else %}Crear usuario{% endif %}
+            </button>
+        </div>
+
+    </form>
+
+</div>
+{% endblock %}
