@@ -109,12 +109,12 @@ CSRF_TRUSTED_ORIGINS = env.list(
 )
 
 # Para desarrollo: imprime los correos en la consola
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_BACKEND = "core.emails_backend.smtpInseguroBackend"
 DEFAULT_FROM_EMAIL = "no-reply@siperpirula.local"
 SITE_URL = "http://localhost:8000"  
 
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_BACKEND = "core.emails_backend.smtpInseguroBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True

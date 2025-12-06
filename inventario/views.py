@@ -9,7 +9,7 @@ from django.db import transaction
 from django.utils.safestring import mark_safe
 from django.contrib import messages
 from django.db.models import Q
-
+from core.utlis import registrar_bitacora_simple 
 from .models import (
     Producto, 
     MovimientoInventario, 
@@ -147,13 +147,27 @@ class ProductoCrearView(LoginRequiredMixin, CreateView):
         if ean:
             initial["ean"] = ean
         return initial
-
+    
     def form_valid(self, form):
         producto = form.save(commit=False)
         producto.negocio = self.request.user.perfilusuario.negocio
         producto.save()
+        detalles_registro = {
+            'nombre_producto': producto.nombre,
+            'sku': producto.sku, # Asumiendo que tienes un campo SKU
+            'ean': producto.ean or 'N/A',
+            'precio_inicial': str(producto.precio),
+            'usuario_creador_id': str(self.request.user.pk),
+        }
+        
+        registrar_bitacora_simple(
+            usuario=self.request.user,
+            accion=f"Creación de Producto: {producto.nombre}",
+            entidad_id=producto.pk,
+            detalles=detalles_registro
+        )
         return super().form_valid(form)
-
+    
 
 class ProductoActualizarView(LoginRequiredMixin, UpdateView):
     model = Producto
@@ -218,6 +232,24 @@ class MovimientoCrearView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.producto = self.producto
         form.instance.usuario = self.request.user
+        movimiento = form.save()
+        accion_desc = f"Registro de Movimiento de Stock ({movimiento.get_tipo_display()}): {self.producto.nombre}"
+        
+        detalles_registro = {
+            'producto_afectado_id': self.producto.pk,
+            'producto_nombre': self.producto.nombre,
+            'tipo_movimiento': movimiento.get_tipo_display(), # 'ENTRADA', 'SALIDA', 'AJUSTE', etc.
+            'cantidad_movida': str(movimiento.cantidad),
+            'comentario_registro': movimiento.comentario or 'N/A',
+            'usuario_responsable_id': str(self.request.user.pk),
+        }
+        
+        registrar_bitacora_simple(
+            usuario=self.request.user,
+            accion=accion_desc,
+            entidad_id=movimiento.pk,
+            detalles=detalles_registro
+        )
         return super().form_valid(form)
 
     def get_success_url(self):
@@ -765,7 +797,20 @@ def promo_crear_view(request):
 
             formset.instance = promo
             formset.save()
-
+            detalles_registro = {
+                'codigo_promo': promo.id, # Asumiendo que existe un campo 'codigo'
+                'nombre_promo': promo.nombre, # Asumiendo que existe un campo 'nombre'
+                'tipo_descripcion': promo.descripcion,
+                'precio_combo':promo.precio_combo, # Asumiendo este campo
+                # El número de ítems se puede contar si se necesita:
+                # 'items_incluidos': formset.total_form_count(),
+            }
+            registrar_bitacora_simple(
+                usuario=request.user,
+                accion=f"Creación de Promoción: {promo.id}",
+                entidad_id=promo.pk,
+                detalles=detalles_registro
+            )
             return redirect("inventario:promo_lista")
     else:
         form = PromoForm()
