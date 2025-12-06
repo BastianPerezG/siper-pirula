@@ -14,26 +14,7 @@
             </p>
         </div>
 
-        {% if request.user.is_authenticated %}
-        <div class="bg-slate-900 text-slate-100 px-4 py-3 rounded-xl text-sm shadow">
-            <p class="text-xs uppercase tracking-wide text-slate-400">
-                Sesión actual
-            </p>
-            <p class="font-semibold">
-                {{ request.user.get_full_name|default:request.user.username }}
-            </p>
-            <p class="text-xs mt-1">
-                Rol:
-                <span class="font-medium text-amber-300">
-                    {% if request.user.perfilusuario %}
-                        {{ request.user.perfilusuario.get_rol_display }}
-                    {% else %}
-                        Sin perfil asignado
-                    {% endif %}
-                </span>
-            </p>
-        </div>
-        {% endif %}
+        
     </header>
 
     {# --- Sección 1: Inventario --- #}
