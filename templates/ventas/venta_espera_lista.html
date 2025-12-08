@@ -1,14 +1,19 @@
 {% extends "core/base.html" %}
 
-{% block title %}Ventas - SIPER Pirula{% endblock %}
+{% block title %}Ventas en espera - SIPER Pirula{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Ventas</h1>
+<h1 class="text-2xl font-bold mb-4">Ventas en espera</h1>
 
-<div class="mb-4">
+<div class="mb-4 flex flex-wrap gap-3 items-center">
     <a href="{% url 'ventas:venta_crear' %}"
         class="inline-flex items-center px-3 py-1.5 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700">
         Registrar nueva venta
+    </a>
+
+    <a href="{% url 'ventas:venta_lista' %}"
+        class="inline-flex items-center px-3 py-1.5 rounded border border-slate-300 text-sm hover:bg-slate-50">
+        Ver todas las ventas
     </a>
 </div>
 
@@ -19,14 +24,13 @@
                 <th class="px-4 py-2">ID</th>
                 <th class="px-4 py-2">Fecha</th>
                 <th class="px-4 py-2">Documento</th>
-                <th class="px-4 py-2">Estado</th>
                 <th class="px-4 py-2">Medio de pago</th>
                 <th class="px-4 py-2 text-right">Total</th>
                 <th class="px-4 py-2 text-right">Acciones</th>
             </tr>
         </thead>
         <tbody>
-            {% for venta in ventas %}
+            {% for venta in ventas_en_espera %}
             <tr class="border-t hover:bg-slate-50">
                 <td class="px-4 py-2">
                     <a href="{% url 'ventas:venta_detalle' venta.pk %}" class="text-emerald-700 hover:underline">
@@ -34,50 +38,38 @@
                     </a>
                 </td>
                 <td class="px-4 py-2">{{ venta.fecha }}</td>
-                <td class="px-4 py-2">{{ venta.doc_tipo }} {{ venta.doc_num }}</td>
                 <td class="px-4 py-2">
-                    {% if venta.estado == "ABIERTA" %}
-                    <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                        En espera
-                    </span>
-                    {% elif venta.estado == "ANULADA" %}
-                    <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                        Anulada
-                    </span>
-                    {% else %}
-                    <span
-                        class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                        Cerrada
-                    </span>
-                    {% endif %}
+                    {{ venta.doc_tipo }}{% if venta.doc_num %} #{{ venta.doc_num }}{% endif %}
                 </td>
-                <td class="px-4 py-2">{{ venta.medio_pago }}</td>
+                <td class="px-4 py-2">{{ venta.medio_pago|default:"—" }}</td>
                 <td class="px-4 py-2 text-right">$ {{ venta.total }}</td>
                 <td class="px-4 py-2 text-right">
-                    <a href="{% url 'ventas:venta_detalle' venta.pk %}"
-                        class="text-emerald-700 hover:underline text-sm">
-                        Ver
-                    </a>
-
                     {% if venta.estado == "ABIERTA" %}
+                    <a href="{% url 'ventas:venta_editar' venta.pk %}" class="text-emerald-700 hover:underline text-sm">
+                        Editar
+                    </a>
                     <a href="{% url 'ventas:venta_cobrar' venta.pk %}"
                         class="ml-3 text-amber-700 hover:underline text-sm">
                         Cobrar
                     </a>
-                    {% endif %}
-
+                    {% else %}
+                    <a href="{% url 'ventas:venta_detalle' venta.pk %}"
+                        class="text-emerald-700 hover:underline text-sm">
+                        Ver
+                    </a>
                     {% if venta.estado == "CERRADA" %}
                     <a href="{% url 'ventas:venta_anular' venta.pk %}"
                         class="ml-3 text-red-700 hover:underline text-sm">
                         Anular
                     </a>
                     {% endif %}
+                    {% endif %}
                 </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5" class="px-4 py-4 text-center text-slate-500">
-                    No hay ventas registradas.
+                <td colspan="6" class="px-4 py-4 text-center text-slate-500">
+                    No hay ventas en espera en este momento.
                 </td>
             </tr>
             {% endfor %}

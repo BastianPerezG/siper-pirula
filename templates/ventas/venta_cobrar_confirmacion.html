@@ -1,0 +1,78 @@
+{% extends "core/base.html" %}
+
+{% block title %}Cobrar venta #{{ venta.id }} - SIPER Pirula{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">
+    Cobrar venta en espera #{{ venta.id }}
+</h1>
+
+<section class="bg-white rounded-lg shadow-sm p-6 text-sm mb-6">
+    <p class="mb-4 text-slate-700">
+        Estás a punto de <strong>cobrar y cerrar</strong> la siguiente venta en espera.
+        Al confirmar:
+    </p>
+    <ul class="list-disc list-inside text-slate-700 mb-4">
+        <li>Las <strong>reservas de stock</strong> asociadas a esta venta se transformarán en salidas definitivas.</li>
+        <li>La venta quedará en estado <strong>CERRADA</strong>.</li>
+        <li>El total quedará registrado en los reportes y arqueos de caja.</li>
+    </ul>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+            <p class="text-slate-500 font-semibold">Fecha</p>
+            <p>{{ venta.fecha }}</p>
+        </div>
+        <div>
+            <p class="text-slate-500 font-semibold">Documento</p>
+            <p>
+                {{ venta.doc_tipo }}
+                {% if venta.doc_num %}#{{ venta.doc_num }}{% endif %}
+            </p>
+        </div>
+        <div>
+            <p class="text-slate-500 font-semibold">Medio de pago</p>
+            <p>{{ venta.medio_pago|default:"No especificado" }}</p>
+        </div>
+        <div>
+            <p class="text-slate-500 font-semibold">Total estimado</p>
+            <p class="text-lg font-semibold text-emerald-700">
+                $ {{ venta.total }}
+            </p>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <p class="text-slate-600 mb-2 font-semibold">Resumen de ítems</p>
+        <ul class="space-y-1 text-slate-700">
+            {% for item in venta.items.all %}
+                <li>
+                    • {{ item.producto.nombre }} × {{ item.cantidad }}
+                    — $ {{ item.subtotal }}
+                </li>
+            {% empty %}
+                <li class="text-slate-500">Esta venta no tiene ítems registrados.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</section>
+
+<form method="post" class="flex flex-wrap gap-3">
+    {% csrf_token %}
+
+    <button type="submit"
+            class="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-sm">
+        Confirmar cobro
+    </button>
+
+    <a href="{% url 'ventas:ventas_en_espera_lista' %}"
+       class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+        Cancelar y volver
+    </a>
+
+    <a href="{% url 'ventas:venta_detalle' venta.pk %}"
+       class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+        Ver detalle de la venta
+    </a>
+</form>
+{% endblock %}

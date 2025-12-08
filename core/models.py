@@ -101,4 +101,5 @@ class BitacoraAccion(models.Model):
         verbose_name_plural = "Bitácora de Acciones Simples"
         ordering = ['-fecha_hora']
     def __str__(self):
-        return f"[{self.fecha_hora.strftime('%Y-%m-%d %H:%M')}] {self.accion} por {self.usuario}"    
+        return f"[{self.fecha_hora.strftime('%Y-%m-%d %H:%M')}] {self.accion} por {self.usuario}" 
+       

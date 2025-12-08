@@ -26,9 +26,9 @@
                 Rol:
                 <span class="font-medium text-amber-300">
                     {% if request.user.perfilusuario %}
-                        {{ request.user.perfilusuario.get_rol_display }}
+                    {{ request.user.perfilusuario.get_rol_display }}
                     {% else %}
-                        Sin perfil asignado
+                    Sin perfil asignado
                     {% endif %}
                 </span>
             </p>
@@ -101,8 +101,7 @@
             {% endif %}
 
             <!-- Escanear: todos -->
-            <a href="{% url 'inventario:scan_ean' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+            <a href="{% url 'inventario:scan_ean' %}" class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
                 <h3 class="font-semibold text-lg">📷 Escanear producto</h3>
                 <p class="text-sm text-slate-600 mt-2">Buscar productos por código de barras.</p>
             </a>
@@ -116,13 +115,33 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
             {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
-            <a href="{% url 'ventas:venta_lista' %}"
+            <!-- Punto de venta (POS) -->
+            <a href="{% url 'ventas:venta_crear' %}" class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+                <h3 class="font-semibold text-lg">🧾 Punto de venta (POS)</h3>
+                <p class="text-sm text-slate-600 mt-2">
+                    Registrar ventas con lector de código de barras y aplicar descuentos autorizados.
+                </p>
+            </a>
+
+            <!-- Historial de ventas -->
+            <a href="{% url 'ventas:venta_lista' %}" class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+                <h3 class="font-semibold text-lg">💵 Historial de ventas</h3>
+                <p class="text-sm text-slate-600 mt-2">
+                    Ver detalle de ventas, anular y revisar comprobantes.
+                </p>
+            </a>
+
+            <!-- Caja y arqueos -->
+            <a href="{% url 'ventas:caja_historial' %}"
                 class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">💵 Ventas</h3>
-                <p class="text-sm text-slate-600 mt-2">Historial y detalle de ventas realizadas.</p>
+                <h3 class="font-semibold text-lg">💰 Caja y arqueos</h3>
+                <p class="text-sm text-slate-600 mt-2">
+                    Abrir caja, registrar arqueos parciales y revisar cierres de turno.
+                </p>
             </a>
             {% endif %}
 
+            <!-- Pedidos -->
             <a href="{% url 'pedidos:pedido_lista' %}"
                 class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
                 <h3 class="font-semibold text-lg">🛒 Pedidos</h3>
@@ -137,26 +156,24 @@
         </div>
     </section>
 
+
     {# --- Sección 3: Reportes (ADMIN y CAJERO) --- #}
     {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
     <section class="space-y-3">
         <h2 class="text-lg font-semibold text-slate-700">Reportes</h2>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <a href="{% url 'reportes:ventas' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+            <a href="{% url 'reportes:ventas' %}" class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
                 <h3 class="font-semibold text-lg">📊 Ventas</h3>
                 <p class="text-sm text-slate-600 mt-2">Resumen general de ventas por período.</p>
             </a>
 
-            <a href="{% url 'reportes:dia-hora' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+            <a href="{% url 'reportes:dia-hora' %}" class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
                 <h3 class="font-semibold text-lg">🕒 Día × Hora</h3>
                 <p class="text-sm text-slate-600 mt-2">Comportamiento de la demanda por franja horaria.</p>
             </a>
 
-            <a href="{% url 'reportes:no-retira' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+            <a href="{% url 'reportes:no-retira' %}" class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
                 <h3 class="font-semibold text-lg">🚫 Tasa de no retiro</h3>
                 <p class="text-sm text-slate-600 mt-2">Pedidos que no fueron retirados por el cliente.</p>
             </a>

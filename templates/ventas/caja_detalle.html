@@ -1,0 +1,324 @@
+{% extends "../core/base.html" %}
+
+{% block title %}Informe de caja #{{ caja.id }} - SIPER Pirula{% endblock %}
+
+{% block extra_head %}
+{{ block.super }}
+<style>
+    /* Estilos especiales para impresión del informe */
+    @media print {
+
+        nav,
+        header.sticky,
+        .no-print {
+            display: none !important;
+        }
+
+        body {
+            background: #ffffff !important;
+        }
+
+        .print-container {
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="print-container max-w-4xl mx-auto space-y-6">
+
+    <!-- Encabezado e info general -->
+    <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">
+                Informe de arqueo y cierre de caja
+            </h1>
+            <p class="text-sm text-slate-600">
+                Folio: <span class="font-mono">CAJA-{{ caja.id }}</span>
+            </p>
+            <p class="text-xs text-slate-500 mt-1">
+                Generado el {% now "d/m/Y H:i" %}
+            </p>
+        </div>
+
+        {% if not for_pdf %}
+        <div class="no-print flex flex-col items-end gap-2">
+            <button type="button" onclick="window.print()"
+                class="px-4 py-2 rounded-lg bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700">
+                Imprimir / Guardar como PDF
+            </button>
+
+            <a href="{% url 'ventas:caja_pdf' caja.pk %}"
+                class="px-4 py-2 rounded-lg bg-slate-900 text-xs font-semibold text-white hover:bg-slate-800">
+                Descargar PDF
+            </a>
+
+            <a href="{% url 'ventas:caja_historial' %}"
+                class="px-3 py-1.5 rounded-lg border text-xs text-slate-700 hover:bg-slate-50">
+                Volver al historial
+            </a>
+        </div>
+        {% endif %}
+
+
+    </header>
+
+    <!-- Datos del turno -->
+    <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 text-sm space-y-1">
+        <p>
+            <span class="font-semibold text-slate-800">Negocio:</span>
+            {{ caja.negocio.nombre }}
+        </p>
+        <p>
+            <span class="font-semibold text-slate-800">Estado:</span>
+            {% if caja.estado == caja.EST_ABIERTA %}
+            <span class="text-emerald-600 font-medium">ABIERTA</span>
+            {% else %}
+            <span class="text-slate-900 font-medium">CERRADA</span>
+            {% endif %}
+        </p>
+        <p>
+            <span class="font-semibold text-slate-800">Apertura:</span>
+            {{ caja.fecha_apertura|date:"d/m/Y H:i" }}
+            · Por:
+            {{ caja.usuario_apertura.get_full_name|default:caja.usuario_apertura.username }}
+        </p>
+        {% if caja.fecha_cierre %}
+        <p>
+            <span class="font-semibold text-slate-800">Cierre:</span>
+            {{ caja.fecha_cierre|date:"d/m/Y H:i" }}
+            · Por:
+            {{ caja.usuario_cierre.get_full_name|default:caja.usuario_cierre.username }}
+        </p>
+        {% endif %}
+    </section>
+
+    <!-- Resumen financiero del turno -->
+    <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 text-sm space-y-4">
+        <h2 class="text-base font-semibold text-slate-800">
+            Resumen financiero del turno
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-1">
+                <p>
+                    <span class="font-semibold">Fondo inicial:</span>
+                    <span class="font-mono">
+                        ${{ caja.monto_inicial|floatformat:0 }}
+                    </span>
+                </p>
+                <p>
+                    <span class="font-semibold">Total ventas del turno:</span>
+                    <span class="font-mono">
+                        ${{ total_ventas|floatformat:0 }}
+                    </span>
+                </p>
+                <p>
+                    <span class="font-semibold">Total descuentos aplicados:</span>
+                    <span class="font-mono">
+                        ${{ total_descuentos|floatformat:0 }}
+                    </span>
+                </p>
+            </div>
+
+            <div class="space-y-1">
+                <p>
+                    <span class="font-semibold">Monto esperado en caja (efectivo):</span>
+                    <span class="font-mono">
+                        ${{ monto_esperado_efectivo|floatformat:0 }}
+                    </span>
+                </p>
+                <p>
+                    <span class="font-semibold">Monto contado al cierre:</span>
+                    <span class="font-mono">
+                        {% if caja.monto_contado_cierre %}
+                        ${{ caja.monto_contado_cierre|floatformat:0 }}
+                        {% else %}
+                        —
+                        {% endif %}
+                    </span>
+                </p>
+                <p>
+                    <span class="font-semibold">Diferencia final:</span>
+                    {% if diferencia_cierre is not None %}
+                    {% with diff=diferencia_cierre %}
+                    <span
+                        class="font-mono {% if diff < 0 %}text-red-600{% elif diff > 0 %}text-amber-600{% else %}text-emerald-600{% endif %}">
+                        {{ diff|floatformat:0 }}
+                    </span>
+                    {% endwith %}
+                    {% else %}
+                    <span class="font-mono text-slate-500">—</span>
+                    {% endif %}
+                </p>
+                {% if caja.observacion_cierre %}
+                <p class="text-xs text-slate-600 mt-1">
+                    <span class="font-semibold">Observación de cierre:</span>
+                    {{ caja.observacion_cierre }}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Ventas por medio de pago -->
+        <div class="border-t border-slate-200 pt-3">
+            <h3 class="text-xs font-semibold text-slate-600 mb-1">
+                Ventas por método de pago
+            </h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-xs">
+                    <thead>
+                        <tr class="text-left text-slate-500">
+                            <th class="py-1 pr-4">Medio de pago</th>
+                            <th class="py-1 pr-4">Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-slate-800">
+                        {% for row in totales_medios %}
+                        <tr>
+                            <td class="py-0.5 pr-4">
+                                {{ row.medio_pago }}
+                            </td>
+                            <td class="py-0.5 pr-4 font-mono">
+                                ${{ row.monto|floatformat:0 }}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="2" class="py-1 text-slate-500">
+                                No hay ventas registradas en el turno.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Anulaciones y ajustes -->
+    <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 text-sm space-y-3">
+        <h2 class="text-base font-semibold text-slate-800">
+            Anulaciones y ajustes del turno
+        </h2>
+
+        {% if anulaciones %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-xs">
+                <thead>
+                    <tr class="text-left text-slate-500">
+                        <th class="py-1 pr-3">Fecha</th>
+                        <th class="py-1 pr-3">Venta</th>
+                        <th class="py-1 pr-3">Usuario</th>
+                        <th class="py-1 pr-3">Motivo</th>
+                    </tr>
+                </thead>
+                <tbody class="text-slate-800">
+                    {% for a in anulaciones %}
+                    <tr>
+                        <td class="py-0.5 pr-3">
+                            {{ a.created_at|date:"d/m/Y H:i" }}
+                        </td>
+                        <td class="py-0.5 pr-3">
+                            #{{ a.venta.id }} · ${{ a.venta.monto_total|floatformat:0 }}
+                        </td>
+                        <td class="py-0.5 pr-3">
+                            {{ a.usuario.get_full_name|default:a.usuario.username }}
+                        </td>
+                        <td class="py-0.5 pr-3">
+                            {{ a.motivo|default:"(sin motivo registrado)" }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-xs text-slate-600">
+            No se registraron anulaciones en este turno.
+        </p>
+        {% endif %}
+    </section>
+
+    <!-- Arqueos parciales -->
+    <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 text-sm space-y-3">
+        <h2 class="text-base font-semibold text-slate-800">
+            Arqueos parciales
+        </h2>
+
+        {% if caja.arqueos.all %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-xs">
+                <thead>
+                    <tr class="text-left text-slate-500">
+                        <th class="py-1 pr-3">Fecha</th>
+                        <th class="py-1 pr-3">Usuario</th>
+                        <th class="py-1 pr-3">Monto esperado</th>
+                        <th class="py-1 pr-3">Contado</th>
+                        <th class="py-1 pr-3">Diferencia</th>
+                        <th class="py-1 pr-3">Observación</th>
+                    </tr>
+                </thead>
+                <tbody class="text-slate-800">
+                    {% for a in caja.arqueos.all %}
+                    <tr>
+                        <td class="py-0.5 pr-3">
+                            {{ a.fecha|date:"d/m/Y H:i" }}
+                        </td>
+                        <td class="py-0.5 pr-3">
+                            {{ a.usuario.get_full_name|default:a.usuario.username }}
+                        </td>
+                        <td class="py-0.5 pr-3 font-mono">
+                            ${{ a.monto_esperado|floatformat:0 }}
+                        </td>
+                        <td class="py-0.5 pr-3 font-mono">
+                            ${{ a.monto_contado|floatformat:0 }}
+                        </td>
+                        <td class="py-0.5 pr-3 font-mono
+                       {% if a.diferencia < 0 %}text-red-600
+                       {% elif a.diferencia > 0 %}text-amber-600
+                       {% else %}text-emerald-600{% endif %}">
+                            {{ a.diferencia|floatformat:0 }}
+                        </td>
+                        <td class="py-0.5 pr-3">
+                            {{ a.observacion|default:"—" }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-xs text-slate-600">
+            No se realizaron arqueos parciales en este turno.
+        </p>
+        {% endif %}
+    </section>
+
+    <!-- Firmas -->
+    <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 text-sm space-y-8">
+        <h2 class="text-base font-semibold text-slate-800">
+            Firmas
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
+            <div class="flex flex-col items-start">
+                <div class="w-full border-t border-slate-400 mt-10"></div>
+                <p class="mt-1 text-xs text-slate-700">
+                    Firma cajero(a): {{ cajero_nombre }}
+                </p>
+            </div>
+
+            <div class="flex flex-col items-start">
+                <div class="w-full border-t border-slate-400 mt-10"></div>
+                <p class="mt-1 text-xs text-slate-700">
+                    Firma supervisor(a): {{ supervisor_nombre }}
+                </p>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

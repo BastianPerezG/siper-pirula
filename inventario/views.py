@@ -9,7 +9,7 @@ from django.db import transaction
 from django.utils.safestring import mark_safe
 from django.contrib import messages
 from django.db.models import Q
-from core.utlis import registrar_bitacora_simple 
+from core.utils import registrar_bitacora_simple 
 from .models import (
     Producto, 
     MovimientoInventario, 

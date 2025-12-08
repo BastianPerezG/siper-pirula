@@ -1,15 +1,35 @@
 {% extends "../core/base.html" %}
 {% load static %}
 
-{% block title %}Registrar venta - SIPER Pirula{% endblock %}
+{# ---------------- TÍTULO DE LA PÁGINA ---------------- #}
+{% block title %}
+{% if modo_edicion %}Editar venta - SIPER Pirula{% else %}Registrar venta - SIPER Pirula{% endif %}
+{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Registrar venta</h1>
+<h1 class="text-2xl font-bold mb-4">
+    {% if modo_edicion %}Editar venta{% else %}Registrar venta{% endif %}
+</h1>
 
 <form method="post" class="space-y-6">
     {% csrf_token %}
 
-    {# --- Datos generales de la venta --- #}
+    {# --- Errores generales del formulario (non_field_errors) --- #}
+    {% if form.non_field_errors %}
+    <div class="border border-red-200 bg-red-50 text-red-700 text-sm rounded p-3 mb-2">
+        {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    {% if formset.non_form_errors %}
+    <div class="border border-red-200 bg-red-50 text-red-700 text-sm rounded p-3 mb-2">
+        {{ formset.non_form_errors }}
+    </div>
+    {% endif %}
+
+    {# ----------------------------------------------------------------- #}
+    {# DATOS GENERALES DE LA VENTA #}
+    {# ----------------------------------------------------------------- #}
     <section class="bg-white rounded-lg shadow-sm p-6">
         <h2 class="text-lg font-semibold mb-4 text-slate-700">Datos de la venta</h2>
 
@@ -48,32 +68,25 @@
         </div>
     </section>
 
-    {# --- Ítems --- #}
+    {# ----------------------------------------------------------------- #}
+    {# ÍTEMS #}
+    {# ----------------------------------------------------------------- #}
     <section class="bg-white rounded-lg shadow-sm p-6">
         <div class="flex items-center justify-between gap-4 mb-4">
             <h2 class="text-lg font-semibold text-slate-700">Ítems</h2>
 
             <div class="flex items-center gap-2">
                 <label class="text-sm text-slate-600">Escanear EAN</label>
-                <input
-                    type="text"
-                    id="ean-input"
-                    class="border rounded px-2 py-1 text-sm w-56"
-                    placeholder="EAN..."
-                    autocomplete="off"
-                >
-                <button
-                    type="button"
-                    id="btn-agregar"
-                    class="px-3 py-1.5 rounded bg-slate-900 text-white text-sm hover:bg-slate-800"
-                >
+                <input type="text" id="ean-input" class="border rounded px-2 py-1 text-sm w-56" placeholder="EAN..."
+                    autocomplete="off">
+                <button type="button" id="btn-agregar"
+                    class="inline-flex items-center px-3 py-1.5 rounded bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">
                     + Agregar ítem
                 </button>
             </div>
         </div>
 
         {{ formset.management_form }}
-        {{ formset.non_form_errors }}
 
         <div class="overflow-x-auto">
             <table id="items-table" class="min-w-full text-sm border border-slate-200">
@@ -82,13 +95,21 @@
                         <th class="px-3 py-2 text-left">Producto</th>
                         <th class="px-3 py-2 text-center w-24">Cantidad</th>
                         <th class="px-3 py-2 text-center w-28">Precio unitario</th>
+                        <th class="px-2 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Descuento (%)
+                        </th>
                         <th class="px-3 py-2 text-center w-28">Subtotal</th>
                         <th class="px-3 py-2 text-center w-16">Eliminar</th>
                     </tr>
                 </thead>
                 <tbody>
+                    {# Recorremos todos los formularios del formset #}
                     {% for f in formset %}
                     <tr class="item-row border-b border-slate-100">
+                        {# Campos ocultos (incluye id, etc.) -> necesarios para editar #}
+                        {% for hidden in f.hidden_fields %}
+                        {{ hidden }}
+                        {% endfor %}
+
                         <td class="px-3 py-2">
                             {{ f.producto }}
                             {{ f.producto.errors }}
@@ -101,18 +122,23 @@
                             {{ f.precio_unit }}
                             {{ f.precio_unit.errors }}
                         </td>
+                        <td class="px-2 py-2 align-top">
+                            {{ f.descuento_pct }}
+                            {% if f.descuento_pct.errors %}
+                            <p class="mt-1 text-xs text-red-600">
+                                {{ f.descuento_pct.errors|striptags }}
+                            </p>
+                            {% endif %}
+                        </td>
                         <td class="px-3 py-2 text-center">
                             <span class="subtotal-cell">0</span>
                         </td>
                         <td class="px-3 py-2 text-center">
-                            {# ocultamos el checkbox DELETE, dejamos sólo la X #}
+                            {# Ocultamos checkbox DELETE, dejamos sólo la X #}
                             <span class="hidden">
                                 {{ f.DELETE }}
                             </span>
-                            <button
-                                type="button"
-                                class="btn-eliminar text-red-600 hover:text-red-800 font-semibold"
-                            >
+                            <button type="button" class="btn-eliminar text-red-600 hover:text-red-800 font-semibold">
                                 ✕
                             </button>
                         </td>
@@ -127,230 +153,347 @@
         </p>
 
         <p class="mt-4 text-right text-base">
-            <strong>Total estimado: $<span id="total-venta">0</span></strong>
+            <span class="font-semibold text-slate-700">Total estimado:</span>
+            <span class="font-bold text-emerald-700 ml-1">$<span id="total-venta">0</span></span>
         </p>
     </section>
 
+    {# ----------------------------------------------------------------- #}
+    {# BOTONES DE ACCIÓN #}
+    {# ----------------------------------------------------------------- #}
     <div class="flex flex-wrap gap-3">
-        <button
-            type="submit"
-            class="px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
-        >
-            Guardar venta
+        <button type="submit" name="accion" value="cerrar"
+            class="inline-flex items-center px-4 py-2 rounded bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            {% if modo_edicion %}Guardar cambios y cerrar{% else %}Cobrar y cerrar{% endif %}
+        </button>
+
+        <button type="submit" name="accion" value="espera"
+            class="inline-flex items-center px-4 py-2 rounded bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400">
+            {% if modo_edicion %}Guardar cambios y dejar en espera{% else %}Enviar a espera{% endif %}
         </button>
 
         <a href="{% url 'ventas:venta_lista' %}"
-           class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+            class="inline-flex items-center px-4 py-2 rounded border border-slate-300 text-sm text-slate-700 hover:bg-slate-50">
             Volver a la lista
         </a>
 
         <a href="{% url 'core:dashboard' %}"
-           class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+            class="inline-flex items-center px-4 py-2 rounded border border-slate-300 text-sm text-slate-700 hover:bg-slate-50">
             Volver al inicio
         </a>
     </div>
 </form>
 {% endblock %}
 
+{# --------------------------------------------------------------------- #}
+{# JAVASCRIPT POS #}
+{# --------------------------------------------------------------------- #}
 {% block extra_js %}
 <script>
-(function() {
-    // JSON que viene desde la vista (con fallback a "{}" por si acaso)
-    const PRODUCTOS_EAN = JSON.parse('{{ productos_ean_json|default:"{}"|escapejs }}');
-    const PRECIOS = JSON.parse('{{ precios_json|default:"{}"|escapejs }}');
+    (function () {
+        // Prefijo real del formset (coincide con los IDs del management_form)
+        const FORMSET_PREFIX = "{{ formset.prefix }}";
 
-    function actualizarSubtotal(row) {
-        const cantidadInput = row.querySelector("input[name$='cantidad']");
-        const precioInput = row.querySelector("input[name$='precio_unit']");
-        const subtotalCell = row.querySelector(".subtotal-cell");
+        // Mapas enviados desde la vista (precios por id y productos por EAN)
+        const PRODUCTOS_EAN = JSON.parse('{{ productos_ean_json|default:"{}"|escapejs }}');
+        const PRECIOS = JSON.parse('{{ precios_json|default:"{}"|escapejs }}');
 
-        const cantidad = parseInt(cantidadInput?.value || "0") || 0;
-        const precio = parseInt(precioInput?.value || "0") || 0;
-        const subtotal = cantidad * precio;
+        /**
+         * Calcula y actualiza el subtotal de una fila (cantidad * precio).
+         */
+        function actualizarSubtotal(row) {
+            const cantidadInput = row.querySelector("input[name$='-cantidad']");
+            const precioInput = row.querySelector("input[name$='-precio_unit']");
+            const subtotalCell = row.querySelector(".subtotal-cell");
 
-        if (subtotalCell) {
-            subtotalCell.textContent = subtotal;
+            const cantidad = parseInt(cantidadInput?.value || "0", 10) || 0;
+            const precio = parseInt(precioInput?.value || "0", 10) || 0;
+            const subtotal = cantidad * precio;
+
+            if (subtotalCell) {
+                subtotalCell.textContent = subtotal;
+            }
         }
-    }
 
-    function recalcularTotal() {
-        let total = 0;
+        /**
+         * Recorre todas las filas visibles y no eliminadas
+         * y actualiza el total estimado de la venta.
+         */
+        function recalcularTotal() {
+            let total = 0;
 
-        document.querySelectorAll("#items-table tbody tr.item-row").forEach(row => {
-            if (row.style.display === "none") return;
+            document.querySelectorAll("#items-table tbody tr.item-row").forEach(row => {
+                if (row.style.display === "none") return;
 
-            const chkDelete = row.querySelector("input[type='checkbox'][name$='DELETE']");
-            if (chkDelete && chkDelete.checked) return;
+                const chkDelete = row.querySelector("input[type='checkbox'][name$='-DELETE']");
+                if (chkDelete && chkDelete.checked) return;
 
-            const cantidad = parseInt(
-                (row.querySelector("input[name$='cantidad']") || {}).value
-            ) || 0;
+                const cantidad = parseInt(
+                    (row.querySelector("input[name$='-cantidad']") || {}).value,
+                    10
+                ) || 0;
 
-            const precio = parseInt(
-                (row.querySelector("input[name$='precio_unit']") || {}).value
-            ) || 0;
+                const precio = parseInt(
+                    (row.querySelector("input[name$='-precio_unit']") || {}).value,
+                    10
+                ) || 0;
 
-            total += cantidad * precio;
-        });
+                total += cantidad * precio;
+            });
 
-        const totalSpan = document.getElementById("total-venta");
-        if (totalSpan) totalSpan.textContent = total;
-    }
+            const totalSpan = document.getElementById("total-venta");
+            if (totalSpan) {
+                totalSpan.textContent = total;
+            }
+        }
 
-    function attachRowEvents(row) {
-        const selectProducto = row.querySelector("select[name$='producto']");
-        const inputCantidad = row.querySelector("input[name$='cantidad']");
-        const inputPrecio = row.querySelector("input[name$='precio_unit']");
-        const chkDelete = row.querySelector("input[type='checkbox'][name$='DELETE']");
-        const btnEliminar = row.querySelector(".btn-eliminar");
+        /**
+         * Enlaza eventos a todos los campos de una fila:
+         * - cambio de producto
+         * - cambio de cantidad
+         * - cambio de precio
+         * - botón eliminar
+         */
+        function attachRowEvents(row) {
+            const selectProducto = row.querySelector("select[name$='-producto']");
+            const inputCantidad = row.querySelector("input[name$='-cantidad']");
+            const inputPrecio = row.querySelector("input[name$='-precio_unit']");
+            const chkDelete = row.querySelector("input[type='checkbox'][name$='-DELETE']");
+            const btnEliminar = row.querySelector(".btn-eliminar");
 
-        if (selectProducto) {
-            selectProducto.addEventListener("change", function () {
-                const prodId = this.value;
-                if (prodId && PRECIOS[prodId] !== undefined) {
-                    if (inputPrecio) inputPrecio.value = PRECIOS[prodId];
-                } else {
-                    if (inputPrecio) inputPrecio.value = "";
+            // Cuando cambia el producto, actualizamos precio y cantidad por defecto
+            if (selectProducto) {
+                selectProducto.addEventListener("change", function () {
+                    const prodId = this.value;
+
+                    if (prodId && PRECIOS[prodId] !== undefined) {
+                        if (inputPrecio) inputPrecio.value = PRECIOS[prodId];
+                    } else if (inputPrecio) {
+                        inputPrecio.value = "";
+                    }
+
+                    // Si no hay cantidad, la dejamos en 1 por defecto
+                    if (inputCantidad && (!inputCantidad.value || inputCantidad.value === "0")) {
+                        inputCantidad.value = 1;
+                    }
+
+                    actualizarSubtotal(row);
+                    recalcularTotal();
+                });
+            }
+
+            // Cuando cambia la cantidad, recalculamos subtotal y total
+            if (inputCantidad) {
+                inputCantidad.addEventListener("input", function () {
+                    actualizarSubtotal(row);
+                    recalcularTotal();
+                });
+            }
+
+            // Si por algún motivo se modifica el precio en el front
+            if (inputPrecio) {
+                inputPrecio.addEventListener("input", function () {
+                    actualizarSubtotal(row);
+                    recalcularTotal();
+                });
+            }
+
+            // Eliminar ítem: marcamos DELETE y ocultamos la fila
+            if (btnEliminar && chkDelete) {
+                btnEliminar.addEventListener("click", function () {
+                    chkDelete.checked = true;
+                    row.style.display = "none";
+                    recalcularTotal();
+                });
+            }
+
+            // Inicialización al cargar la fila
+            actualizarSubtotal(row);
+        }
+
+        /**
+         * Devuelve la primera fila "vacía":
+         * - sin producto seleccionado
+         * - no marcada para eliminar
+         */
+        function filaVaciaDisponible() {
+            return Array.from(document.querySelectorAll("#items-table tbody tr.item-row"))
+                .find(row => {
+                    const select = row.querySelector("select[name$='-producto']");
+                    const chkDelete = row.querySelector("input[type='checkbox'][name$='-DELETE']");
+
+                    return select && !select.value && (!chkDelete || !chkDelete.checked);
+                }) || null;
+        }
+
+        /**
+         * Busca una fila que ya tenga el producto indicado (por id),
+         * ignorando las filas marcadas para eliminar.
+         */
+        function filaConProducto(prodId) {
+            const filas = document.querySelectorAll("#items-table tbody tr.item-row");
+
+            for (const row of filas) {
+                if (row.style.display === "none") continue;
+
+                const select = row.querySelector("select[name$='-producto']");
+                const chkDelete = row.querySelector("input[type='checkbox'][name$='-DELETE']");
+
+                if (!select || !select.value) continue;
+                if (chkDelete && chkDelete.checked) continue;
+
+                if (String(select.value) === String(prodId)) {
+                    return row;
                 }
-                actualizarSubtotal(row);
-                recalcularTotal();
-            });
+            }
+            return null;
         }
 
-        if (inputCantidad) {
-            inputCantidad.addEventListener("input", function () {
-                actualizarSubtotal(row);
-                recalcularTotal();
-            });
+        /**
+         * Crea una nueva fila de ítem usando el formulario vacío (`empty_form`)
+         * y la añade al tbody. Actualiza TOTAL_FORMS del management form.
+         */
+        function agregarFila() {
+            const totalFormsInput = document.getElementById(`id_${FORMSET_PREFIX}-TOTAL_FORMS`);
+            const emptyRowTemplate = document.getElementById("empty-form-row");
+            if (!totalFormsInput || !emptyRowTemplate) return null;
+
+            const formIndex = parseInt(totalFormsInput.value, 10);
+
+            // Clonamos el HTML del prototipo y reemplazamos __prefix__
+            let newRowHtml = emptyRowTemplate.outerHTML.replace(/__prefix__/g, formIndex);
+
+            const tbody = document.querySelector("#items-table tbody");
+            const temp = document.createElement("tbody");
+            temp.innerHTML = newRowHtml;
+            const newRow = temp.querySelector("tr");
+
+            newRow.id = "";
+            newRow.style.display = "";
+            newRow.classList.add("border-b", "border-slate-100", "item-row");
+
+            tbody.appendChild(newRow);
+
+            // Aumentamos el contador de formularios
+            totalFormsInput.value = formIndex + 1;
+
+            attachRowEvents(newRow);
+            recalcularTotal();
+            return newRow;
         }
 
-        if (inputPrecio) {
-            inputPrecio.addEventListener("input", function () {
-                actualizarSubtotal(row);
-                recalcularTotal();
-            });
-        }
+        /**
+         * Rellena una fila con un producto concreto:
+         * - selecciona el producto en el <select>
+         * - setea cantidad por defecto (1 si está vacía)
+         * - actualiza precio y subtotal
+         */
+        function seleccionarProductoEnFila(row, productoId, incrementarCantidad) {
+            const select = row.querySelector("select[name$='-producto']");
+            const cantidad = row.querySelector("input[name$='-cantidad']");
+            const precio = row.querySelector("input[name$='-precio_unit']");
 
-        if (btnEliminar && chkDelete) {
-            btnEliminar.addEventListener("click", function () {
-                chkDelete.checked = true;
-                row.style.display = "none";
-                recalcularTotal();
-            });
-        }
+            if (!select) return;
 
-        // inicializar
-        actualizarSubtotal(row);
-    }
+            select.value = productoId;
+            select.dispatchEvent(new Event("change"));
 
-    function buscarFilaVacia() {
-        return Array.from(document.querySelectorAll("#items-table tbody tr.item-row"))
-            .find(row => {
-                const select = row.querySelector("select[name$='producto']");
-                const chkDelete = row.querySelector("input[type='checkbox'][name$='DELETE']");
-                return select && !select.value && (!chkDelete || !chkDelete.checked);
-            });
-    }
-
-    function agregarFila() {
-        const totalFormsInput = document.getElementById("id_items-TOTAL_FORMS");
-        const emptyRowTemplate = document.getElementById("empty-form-row");
-        if (!totalFormsInput || !emptyRowTemplate) return null;
-
-        const formIndex = parseInt(totalFormsInput.value);
-        let newRowHtml = emptyRowTemplate.outerHTML.replace(/__prefix__/g, formIndex);
-
-        const tbody = document.querySelector("#items-table tbody");
-        const temp = document.createElement("tbody");
-        temp.innerHTML = newRowHtml;
-        const newRow = temp.querySelector("tr");
-
-        newRow.id = "";
-        newRow.style.display = "";
-        newRow.classList.add("border-b", "border-slate-100", "item-row");
-
-        tbody.appendChild(newRow);
-
-        totalFormsInput.value = formIndex + 1;
-
-        attachRowEvents(newRow);
-        recalcularTotal();
-        return newRow;
-    }
-
-    function seleccionarProductoEnFila(row, productoId) {
-        const select = row.querySelector("select[name$='producto']");
-        const cantidad = row.querySelector("input[name$='cantidad']");
-        const precio = row.querySelector("input[name$='precio_unit']");
-
-        if (!select) return;
-
-        select.value = productoId;
-        select.dispatchEvent(new Event("change"));
-
-        if (cantidad && (!cantidad.value || cantidad.value === "0")) {
-            cantidad.value = 1;
-        }
-        if (precio && PRECIOS[productoId] !== undefined) {
-            precio.value = PRECIOS[productoId];
-        }
-
-        actualizarSubtotal(row);
-        recalcularTotal();
-    }
-
-    document.addEventListener("DOMContentLoaded", function () {
-        // Enganchar eventos a filas existentes
-        document.querySelectorAll("#items-table tbody tr.item-row").forEach(attachRowEvents);
-        recalcularTotal();
-
-        const btnAgregar = document.getElementById("btn-agregar");
-        if (btnAgregar) {
-            btnAgregar.addEventListener("click", function (e) {
-                e.preventDefault();
-                agregarFila();
-            });
-        }
-
-        const eanInput = document.getElementById("ean-input");
-        if (eanInput) {
-            // Sólo foco inicial, no robamos el foco al hacer click en otros lados
-            eanInput.focus();
-
-            eanInput.addEventListener("keydown", function (e) {
-                if (e.key !== "Enter") return;
-
-                e.preventDefault();
-                const ean = eanInput.value.trim();
-                eanInput.value = "";
-
-                const producto = PRODUCTOS_EAN[ean];
-                if (!producto) {
-                    alert("Producto no encontrado");
-                    return;
+            if (cantidad) {
+                let valorActual = parseInt(cantidad.value || "0", 10) || 0;
+                if (incrementarCantidad) {
+                    valorActual += 1;
+                } else if (valorActual === 0) {
+                    valorActual = 1;
                 }
+                cantidad.value = valorActual;
+            }
 
-                let fila = buscarFilaVacia();
-                if (!fila) {
-                    fila = agregarFila();
-                }
+            if (precio && PRECIOS[productoId] !== undefined) {
+                precio.value = PRECIOS[productoId];
+            }
 
-                if (fila) {
-                    seleccionarProductoEnFila(fila, String(producto.id));
-                }
+            actualizarSubtotal(row);
+            recalcularTotal();
+        }
 
-                // después de procesar, volvemos a enfocar el input para la siguiente pistoleada
+        /**
+         * Lógica principal al pistolear un EAN:
+         * - Si el producto ya existe en alguna fila → aumenta cantidad.
+         * - Si no existe → usa una fila vacía o crea una nueva.
+         */
+        function manejarScanEAN(ean) {
+            if (!ean) return;
+
+            const prod = PRODUCTOS_EAN[ean];
+            if (!prod) {
+                alert("Producto no encontrado");
+                return;
+            }
+            const prodId = String(prod.id);
+
+            // 1) Si ya hay una fila con este producto, sólo incrementamos la cantidad
+            let row = filaConProducto(prodId);
+            if (row) {
+                seleccionarProductoEnFila(row, prodId, true);
+                return;
+            }
+
+            // 2) Si no existe, usamos una fila vacía o creamos una nueva
+            row = filaVaciaDisponible() || agregarFila();
+            if (!row) return;
+
+            seleccionarProductoEnFila(row, prodId, false);
+        }
+
+        // ------------------------------------------------------------------
+        // Inicialización al cargar la página
+        // ------------------------------------------------------------------
+        document.addEventListener("DOMContentLoaded", function () {
+            // Enlazamos eventos a filas ya existentes (edición de venta)
+            document.querySelectorAll("#items-table tbody tr.item-row").forEach(attachRowEvents);
+            recalcularTotal();
+
+            // Botón "+ Agregar ítem"
+            const btnAgregar = document.getElementById("btn-agregar");
+            if (btnAgregar) {
+                btnAgregar.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    agregarFila();
+                });
+            }
+
+            // Campo para pistola de código de barras
+            const eanInput = document.getElementById("ean-input");
+            if (eanInput) {
+                // Foco inicial para facilitar el escaneo
                 eanInput.focus();
-            });
-        }
-    });
-})();
+
+                eanInput.addEventListener("keydown", function (e) {
+                    if (e.key !== "Enter") return;
+
+                    e.preventDefault();
+                    const ean = eanInput.value.trim();
+                    eanInput.value = "";
+
+                    manejarScanEAN(ean);
+
+                    // Devolvemos el foco para el siguiente escaneo
+                    eanInput.focus();
+                });
+            }
+        });
+    })();
 </script>
 
-{# Fila prototipo oculta para nuevos ítems #}
+{# Prototipo oculto de fila vacía para nuevos ítems (#empty-form-row) #}
 <table style="display:none;">
     <tbody>
         <tr id="empty-form-row" class="item-row" style="display:none;">
+            {# Hidden fields del empty_form (id, etc. si existieran) #}
+            {% for hidden in formset.empty_form.hidden_fields %}
+            {{ hidden }}
+            {% endfor %}
+
             <td class="px-3 py-2">
                 {{ formset.empty_form.producto }}
             </td>
@@ -367,9 +510,7 @@
                 <span class="hidden">
                     {{ formset.empty_form.DELETE }}
                 </span>
-                <button
-                    type="button"
-                    class="btn-eliminar text-red-600 hover:text-red-800 font-semibold">
+                <button type="button" class="btn-eliminar text-red-600 hover:text-red-800 font-semibold">
                     ✕
                 </button>
             </td>

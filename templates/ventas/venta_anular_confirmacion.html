@@ -1,0 +1,153 @@
+{% extends "core/base.html" %}
+
+{% block title %}Anular venta #{{ venta.id }} - SIPER Pirula{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-4 text-red-700">
+    Anular venta #{{ venta.id }}
+</h1>
+
+<section class="bg-white rounded-lg shadow-sm p-6 text-sm mb-6">
+    <p class="mb-4 text-slate-700">
+        Estás a punto de <strong>anular completamente</strong> esta venta. Al confirmar:
+    </p>
+    <ul class="list-disc list-inside text-slate-700 mb-4">
+        <li>La venta quedará marcada como <strong>ANULADA</strong>.</li>
+        <li>Se registrará una <strong>reversa de stock</strong> en inventario.</li>
+        <li>Se guardará el <strong>motivo de anulación</strong> en la bitácora.</li>
+    </ul>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+            <p class="text-slate-500 font-semibold">Fecha</p>
+            <p>{{ venta.fecha }}</p>
+        </div>
+        <div>
+            <p class="text-slate-500 font-semibold">Documento</p>
+            <p>
+                {{ venta.doc_tipo }}
+                {% if venta.doc_num %}#{{ venta.doc_num }}{% endif %}
+            </p>
+        </div>
+        <div>
+            <p class="text-slate-500 font-semibold">Medio de pago</p>
+            <p>{{ venta.medio_pago|default:"No especificado" }}</p>
+        </div>
+        <div>
+            <p class="text-slate-500 font-semibold">Total</p>
+            <p class="text-lg font-semibold text-red-700">
+                $ {{ venta.total }}
+            </p>
+        </div>
+    </div>
+</section>
+
+<section class="bg-white rounded-lg shadow-sm p-6 text-sm mb-6">
+    <h2 class="text-base font-semibold text-slate-800 mb-3">
+        Motivo de anulación
+    </h2>
+
+    <form method="post" id="anulacion-form" class="space-y-4">
+        {% csrf_token %}
+
+        <div>
+            <label for="motivo_base" class="block text-sm font-medium text-slate-700">
+                Motivo
+            </label>
+            <select id="motivo_base" name="motivo_base"
+                    class="mt-1 block w-full rounded-md border border-slate-300 shadow-sm text-sm
+                           focus:border-emerald-500 focus:ring-emerald-500">
+                <option value="">Seleccione un motivo…</option>
+                <option value="Error en el monto">Error en el monto</option>
+                <option value="Producto incorrecto">Producto incorrecto</option>
+                <option value="Venta duplicada">Venta duplicada</option>
+                <option value="Cliente canceló la compra">Cliente canceló la compra</option>
+                <option value="OTRO">Otro (especificar)</option>
+            </select>
+            <p class="text-slate-400 text-xs mt-1">
+                Selecciona el motivo principal de la anulación.
+            </p>
+        </div>
+
+        <div id="motivo-detalle-wrapper" class="hidden">
+            <label for="motivo_detalle" class="block text-sm font-medium text-slate-700">
+                Detalle del motivo
+            </label>
+            <textarea id="motivo_detalle"
+                      rows="3"
+                      class="mt-1 block w-full rounded-md border border-slate-300 shadow-sm text-sm
+                             focus:border-emerald-500 focus:ring-emerald-500"
+                      placeholder="Describe brevemente la razón de la anulación."></textarea>
+            <p class="text-slate-400 text-xs mt-1">
+                Solo obligatorio si escoges la opción <strong>Otro</strong>.
+            </p>
+        </div>
+
+        {# Campo oculto que es el que realmente leerá la vista: request.POST['motivo'] #}
+        <input type="hidden" id="motivo_final" name="motivo">
+
+        <div class="flex flex-wrap gap-3 pt-2">
+            <button type="submit"
+                    class="px-4 py-2 rounded bg-red-600 hover:bg-red-700 text-white text-sm">
+                Confirmar anulación
+            </button>
+
+            <a href="{% url 'ventas:venta_detalle' venta.pk %}"
+               class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+                Cancelar y volver al detalle
+            </a>
+        </div>
+    </form>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const selectMotivo = document.getElementById("motivo_base");
+    const detalleWrapper = document.getElementById("motivo-detalle-wrapper");
+    const detalleTextarea = document.getElementById("motivo_detalle");
+    const inputMotivoFinal = document.getElementById("motivo_final");
+    const form = document.getElementById("anulacion-form");
+
+    function toggleDetalle() {
+        if (selectMotivo.value === "OTRO") {
+            detalleWrapper.classList.remove("hidden");
+        } else {
+            detalleWrapper.classList.add("hidden");
+        }
+    }
+
+    // Estado inicial
+    toggleDetalle();
+
+    // Cuando cambia el select
+    selectMotivo.addEventListener("change", toggleDetalle);
+
+    // Antes de enviar el formulario, construimos el motivo final
+    form.addEventListener("submit", function (event) {
+        const base = selectMotivo.value;
+        const detalle = detalleTextarea.value.trim();
+
+        if (!base) {
+            event.preventDefault();
+            alert("Debe seleccionar un motivo para la anulación.");
+            return;
+        }
+
+        if (base === "OTRO" && !detalle) {
+            event.preventDefault();
+            alert("Debe especificar el motivo en el cuadro de texto.");
+            return;
+        }
+
+        if (base === "OTRO") {
+            inputMotivoFinal.value = "Otro: " + detalle;
+        } else {
+            inputMotivoFinal.value = base;
+        }
+    });
+});
+</script>
+{% endblock %}

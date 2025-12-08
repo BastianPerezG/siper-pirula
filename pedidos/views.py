@@ -14,7 +14,9 @@ from .models import Pedido
 from .forms import PedidoForm, PedidoItemFormSet
 from ventas.models import Venta, VentaItem
 from tienda.views import get_negocio_actual
-from core.utlis import registrar_bitacora_simple
+from core.utils import registrar_bitacora_simple
+
+
 def _generar_codigo():
     """Código corto tipo 'AB34XZ'."""
     return "".join(random.choices(string.ascii_uppercase + string.digits, k=6))

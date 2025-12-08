@@ -112,7 +112,8 @@ class Producto(models.Model):
                         tipo__in=[
                             MovimientoInventario.TIPO_SALIDA,
                             MovimientoInventario.TIPO_MERMA,
-                            MovimientoInventario.TIPO_RESERVA,  
+                            MovimientoInventario.TIPO_RESERVA,
+                            MovimientoInventario.TIPO_VENTA, 
                         ],
                         then=-F("cantidad")
                     ),
