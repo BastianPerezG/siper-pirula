@@ -95,8 +95,6 @@
                         <th class="px-3 py-2 text-left">Producto</th>
                         <th class="px-3 py-2 text-center w-24">Cantidad</th>
                         <th class="px-3 py-2 text-center w-28">Precio unitario</th>
-                        <th class="px-2 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Descuento (%)
-                        </th>
                         <th class="px-3 py-2 text-center w-28">Subtotal</th>
                         <th class="px-3 py-2 text-center w-16">Eliminar</th>
                     </tr>
@@ -121,14 +119,6 @@
                         <td class="px-3 py-2 text-center">
                             {{ f.precio_unit }}
                             {{ f.precio_unit.errors }}
-                        </td>
-                        <td class="px-2 py-2 align-top">
-                            {{ f.descuento_pct }}
-                            {% if f.descuento_pct.errors %}
-                            <p class="mt-1 text-xs text-red-600">
-                                {{ f.descuento_pct.errors|striptags }}
-                            </p>
-                            {% endif %}
                         </td>
                         <td class="px-3 py-2 text-center">
                             <span class="subtotal-cell">0</span>

@@ -1,20 +1,23 @@
 # ventas/views.py
 
-from django.core.serializers.json import DjangoJSONEncoder
 from django.shortcuts import render, redirect, get_object_or_404
-from django.views.generic import ListView, DetailView
+from django.urls import reverse_lazy
+from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
-from .models import Venta,VentaItem,Anulacion, CajaTurno, ArqueoParcial
-from .forms import VentaForm, VentaItemFormSet, AperturaCajaForm, ArqueoParcialForm, CierreCajaForm
+
+from core.mixins import RolRequeridoMixin
+from .models import PagoVenta, Venta,VentaItem,Anulacion, CajaTurno, ArqueoParcial, DescuentoReglaRol, CodigoAutorizacionDescuento, AuditoriaDescuento
+from .forms import AuditoriaDescuentoFiltroForm, CodigoAutorizacionDescuentoForm, DescuentoReglaRolForm, VentaCheckoutForm, VentaForm, VentaItemFormSet, AperturaCajaForm, ArqueoParcialForm, CierreCajaForm
 from inventario.models import Producto, MovimientoInventario
 from django.db import transaction   
 from core.utils import registrar_bitacora_simple
 from core.models import Negocio, PerfilUsuario
 from django.db.models import Sum, F, DecimalField, ExpressionWrapper
+from .utils import validar_y_auditar_descuento_ticket
 
 # Imports para el PDF
 from django.template.loader import render_to_string
@@ -57,7 +60,16 @@ class VentaDetalleView(LoginRequiredMixin, DetailView):
 
 @login_required
 def venta_crear_view(request):
-    """Crear una venta con ítems (POS simple con escáner EAN)."""
+    """
+    Crear una venta con ítems (POS simple con escáner EAN).
+
+    Flujo:
+      - "Cobrar y cerrar"  -> se crean la Venta y los ítems, y se redirige a checkout
+                             para registrar descuento de ticket + pago.
+      - "Enviar a espera"  -> la Venta queda ABIERTA (reservas de stock) y se envía
+                             a la lista de ventas en espera.
+    """
+
     negocio = request.user.perfilusuario.negocio
 
     caja = _caja_abierta(negocio)
@@ -68,19 +80,25 @@ def venta_crear_view(request):
             "Abre caja primero."
         )
         return redirect("ventas:caja_apertura")
-    
-    productos = Producto.objects.filter(negocio=negocio, activo=True).order_by("nombre")
+
+    productos = Producto.objects.filter(
+        negocio=negocio,
+        activo=True
+    ).order_by("nombre")
+
     precios = {str(p.id): int(p.precio) for p in productos}
     productos_ean = {
         p.ean: {"id": p.id, "precio": int(p.precio)}
-        for p in productos
-        if p.ean
+        for p in productos if p.ean
     }
 
     if request.method == "POST":
         form = VentaForm(request.POST)
-        formset = VentaItemFormSet(request.POST, form_kwargs={"negocio": negocio, "usuario": request.user})
-        accion = request.POST.get("accion", "cerrar")
+        formset = VentaItemFormSet(
+            request.POST,
+            form_kwargs={"negocio": negocio, "usuario": request.user}
+        )
+        accion = request.POST.get("accion", "cerrar")  # "cerrar" o "espera"
 
         if form.is_valid() and formset.is_valid():
             comentario_usuario = (form.cleaned_data.get("comentario") or "").strip()
@@ -88,16 +106,30 @@ def venta_crear_view(request):
             with transaction.atomic():
                 venta = form.save(commit=False)
                 venta.negocio = negocio
-                venta.estado = (
-                    Venta.EST_ABIERTA if accion == "espera" else Venta.EST_CERRADA
-                )
+
+                # Enviar a espera => ABIERTA (genera reservas)
+                # Cobrar y cerrar => CERRADA (genera salidas)
+                if accion == "espera":
+                    venta.estado = Venta.EST_ABIERTA
+                else:
+                    venta.estado = Venta.EST_CERRADA
+
                 venta.save()
 
                 items_validos = 0
-                items = formset.save(commit=False)
 
-                for item in items:
-                    if not item.producto or not item.cantidad or item.cantidad <= 0:
+                for item_form in formset:
+                    # El formset siempre trae filas vacías, las ignoramos
+                    if not item_form.cleaned_data:
+                        continue
+
+                    if item_form.cleaned_data.get("DELETE"):
+                        continue
+
+                    item = item_form.save(commit=False)
+
+                    # Saltar filas sin producto o sin cantidad válida
+                    if not item.producto_id or not item.cantidad or item.cantidad <= 0:
                         continue
 
                     item.venta = venta
@@ -105,23 +137,22 @@ def venta_crear_view(request):
                     item.save()
                     items_validos += 1
 
-                for obj in formset.deleted_objects:
-                    obj.delete()
-
                 if items_validos == 0:
                     transaction.set_rollback(True)
-                    form.add_error(None, "La venta debe tener al menos un producto.")
+                    form.add_error(
+                        None,
+                        "La venta debe tener al menos un producto válido."
+                    )
                 else:
+                    # Recalcular total y guardarlo
                     venta.monto_total = venta.total
                     venta.save(update_fields=["monto_total", "estado"])
 
-                    detalles_registro = {
-                        "items_vendidos": items_validos,
-                        "monto_total": str(venta.monto_total),
-                        "estado": venta.estado,
-                    }
-                    if comentario_usuario:
-                        detalles_registro["comentario_usuario"] = comentario_usuario
+                    detalles_registro = (
+                        f"Venta #{venta.pk} | "
+                        f"Total: ${venta.monto_total} | "
+                        f"Comentario: {comentario_usuario}"
+                    )
 
                     registrar_bitacora_simple(
                         usuario=request.user,
@@ -133,18 +164,22 @@ def venta_crear_view(request):
                     if accion == "espera":
                         messages.success(
                             request,
-                            f"Venta #{venta.pk} enviada a espera correctamente.",
+                            f"Venta #{venta.pk} enviada a espera correctamente."
                         )
                         return redirect("ventas:ventas_en_espera_lista")
                     else:
                         messages.success(
                             request,
-                            f"Venta #{venta.pk} creada y cerrada correctamente.",
+                            f"Venta #{venta.pk} creada. Continúa con el cobro."
                         )
-                        return redirect("ventas:venta_detalle", pk=venta.pk)
+                        # Ir directamente al checkout
+                        return redirect("ventas:venta_checkout", pk=venta.pk)
+
     else:
         form = VentaForm()
-        formset = VentaItemFormSet(form_kwargs={"negocio": negocio, "usuario": request.user})
+        formset = VentaItemFormSet(
+            form_kwargs={"negocio": negocio, "usuario": request.user}
+        )
 
     context = {
         "form": form,
@@ -153,6 +188,9 @@ def venta_crear_view(request):
         "productos_ean_json": json.dumps(productos_ean),
     }
     return render(request, "ventas/venta_form.html", context)
+
+
+
 
 
 @login_required
@@ -236,14 +274,15 @@ def venta_editar_view(request, pk):
 
                     item = item_form.save(commit=False)
 
-                    # Saltar filas vacías o sin datos suficientes
-                    if not item.producto or not item.cantidad or item.cantidad <= 0:
+                    producto = item_form.cleaned_data.get("producto")
+
+                    if not producto or not item.cantidad or item.cantidad <= 0:
                         continue
 
+                    item.producto = producto
                     item.venta = venta
-                    item.precio_unit = item.producto.precio
+                    item.precio_unit = producto.precio
                     item.save()
-                    items_validos += 1
 
                 if items_validos == 0:
                     # Si no quedó ningún ítem, revertimos todo
@@ -307,6 +346,123 @@ def venta_editar_view(request, pk):
         "modo_edicion": True,
     }
     return render(request, "ventas/venta_form.html", context)
+
+@login_required
+def venta_checkout_view(request, pk):
+    """
+    Registrar descuento de ticket y pago de una venta.
+
+    Se puede llamar tanto para:
+      - Ventas recién creadas por POS (estado CERRADA, sin pago asociado).
+      - Ventas en espera (estado ABIERTA, con reservas de stock).
+
+    Si la venta ya tiene un pago registrado, se redirige al detalle.
+    """
+    negocio = request.user.perfilusuario.negocio
+    venta = get_object_or_404(
+        Venta.objects.select_related("negocio"),
+        pk=pk,
+        negocio=negocio,
+    )
+
+    # No permitir checkout sobre ventas anuladas
+    if venta.estado == Venta.EST_ANULADA:
+        messages.error(request, "No es posible cobrar una venta anulada.")
+        return redirect("ventas:venta_detalle", pk=venta.pk)
+
+    # Si ya hay un pago registrado, no volver a cobrar
+    if venta.pagos.exists():
+        messages.info(request, "Esta venta ya tiene un pago registrado.")
+        return redirect("ventas:venta_detalle", pk=venta.pk)
+
+    total_bruto = venta.total
+
+    if request.method == "POST":
+        form = VentaCheckoutForm(
+            request.POST,
+            user=request.user,
+            total_bruto=total_bruto,
+        )
+
+        if form.is_valid():
+            tipo_desc = form.cleaned_data.get("tipo_descuento")
+            pct = form.cleaned_data.get("descuento_pct") or 0
+            monto_desc = form.cleaned_data.get("descuento_monto") or 0
+            motivo = (form.cleaned_data.get("motivo_descuento") or "").strip()
+            codigo = (form.cleaned_data.get("codigo_autorizacion") or "").strip()
+
+            # Normalizar: siempre tener un monto de descuento
+            if tipo_desc == VentaCheckoutForm.TIPO_PORCENTAJE and pct:
+                monto_desc = round(total_bruto * (pct / 100))
+
+            total_neto = max(total_bruto - monto_desc, 0)
+
+            with transaction.atomic():
+                # Si la venta estaba en espera, cerrar y transformar reservas en salidas
+                if venta.estado == Venta.EST_ABIERTA:
+                    venta.cerrar_y_actualizar_stock()
+
+                # Validar reglas de descuento y registrar auditoría
+                ok, msg_error = validar_y_auditar_descuento_ticket(
+                    user=request.user,
+                    venta=venta,
+                    total_bruto=total_bruto,
+                    pct_descuento=pct if tipo_desc == VentaCheckoutForm.TIPO_PORCENTAJE else None,
+                    monto_descuento=monto_desc,
+                    motivo=motivo,
+                    codigo_ingresado=codigo,
+                    request=request,
+                )
+                if not ok:
+                    transaction.set_rollback(True)
+                    form.add_error(None, msg_error)
+                else:
+                    # Actualizar monto_total y estado
+                    venta.monto_total = total_neto
+                    venta.estado = Venta.EST_CERRADA
+                    venta.medio_pago = form.cleaned_data["metodo_pago"]
+                    venta.save(update_fields=["monto_total", "estado", "medio_pago"])
+
+                    # Registrar pago
+                    PagoVenta.objects.create(
+                        venta=venta,
+                        metodo=form.cleaned_data["metodo_pago"],
+                        monto=form.cleaned_data["monto_pagado"],
+                        usuario_registra=request.user,
+                    )
+
+                    registrar_bitacora_simple(
+                        usuario=request.user,
+                        accion=f"Cobro / checkout venta #{venta.pk}",
+                        entidad_id=venta.pk,
+                        detalles=(
+                            f"Total bruto: ${total_bruto} | "
+                            f"Descuento ticket: ${monto_desc} | "
+                            f"Total neto: ${total_neto} | "
+                            f"Medio de pago: {venta.get_medio_pago_display()}"
+                        ),
+                    )
+
+                    messages.success(request, f"Venta #{venta.pk} cobrada correctamente.")
+                    return redirect("ventas:venta_detalle", pk=venta.pk)
+
+    else:
+        initial = {
+            "total_bruto": total_bruto,
+            "metodo_pago": venta.medio_pago or PagoVenta.MET_EFECTIVO,
+            "monto_pagado": total_bruto,
+        }
+        form = VentaCheckoutForm(
+            initial=initial,
+            user=request.user,
+            total_bruto=total_bruto,
+        )
+
+    context = {
+        "venta": venta,
+        "form": form,
+    }
+    return render(request, "ventas/venta_checkout.html", context)
 
 
 class VentaEnEsperaListaView(LoginRequiredMixin, ListView):
@@ -748,3 +904,142 @@ def caja_pdf_view(request, pk):
 
     return response
 
+
+class DescuentoReglaRolListaView(RolRequeridoMixin, ListView):
+    """
+    Lista de reglas de descuento por rol.
+    """
+    required_rol = "ADMIN"
+    model = DescuentoReglaRol
+    template_name = "ventas/descuento_reglas_lista.html"
+    context_object_name = "reglas"
+    ordering = ["rol"]
+
+
+class DescuentoReglaRolCreateView(RolRequeridoMixin, CreateView):
+    """
+    Crea una nueva regla de tope de descuento para un rol.
+    """
+    required_rol = "ADMIN"
+    model = DescuentoReglaRol
+    form_class = DescuentoReglaRolForm
+    template_name = "ventas/descuento_regla_form.html"
+    success_url = reverse_lazy("ventas:descuento_reglas")
+
+    def form_valid(self, form):
+        messages.success(self.request, "Regla de descuento creada correctamente.")
+        return super().form_valid(form)
+
+
+class DescuentoReglaRolUpdateView(RolRequeridoMixin, UpdateView):
+    """
+    Edita una regla existente.
+    """
+    required_rol = "ADMIN"
+    model = DescuentoReglaRol
+    form_class = DescuentoReglaRolForm
+    template_name = "ventas/descuento_regla_form.html"
+    success_url = reverse_lazy("ventas:descuento_reglas")
+
+    def form_valid(self, form):
+        messages.success(self.request, "Regla de descuento actualizada correctamente.")
+        return super().form_valid(form)
+
+
+class DescuentoReglaRolToggleActivoView(RolRequeridoMixin, View):
+    """
+    Activa/desactiva una regla con un botón en la lista.
+    No requiere plantilla propia; redirige de vuelta a la lista.
+    """
+    required_rol = "ADMIN"
+
+    def post(self, request, pk):
+        regla = get_object_or_404(DescuentoReglaRol, pk=pk)
+        regla.activo = not regla.activo
+        regla.save(update_fields=["activo"])
+        estado = "activada" if regla.activo else "desactivada"
+        messages.success(request, f"Regla para rol {regla.get_rol_display()} {estado}.")
+        return redirect("ventas:descuento_reglas")
+
+
+class CodigoAutorizacionListaView(RolRequeridoMixin, ListView):
+    """
+    Lista de códigos de autorización de descuentos.
+    """
+    required_rol = "ADMIN"
+    model = CodigoAutorizacionDescuento
+    template_name = "ventas/codigo_descuento_lista.html"
+    context_object_name = "codigos"
+    ordering = ["codigo"]
+
+
+class CodigoAutorizacionCreateView(RolRequeridoMixin, CreateView):
+    """
+    Crea un nuevo código de autorización.
+    """
+    required_rol = "ADMIN"
+    model = CodigoAutorizacionDescuento
+    form_class = CodigoAutorizacionDescuentoForm
+    template_name = "ventas/codigo_descuento_form.html"
+    success_url = reverse_lazy("ventas:codigo_descuento_lista")
+
+    def form_valid(self, form):
+        messages.success(self.request, "Código de autorización creado correctamente.")
+        return super().form_valid(form)
+
+
+class CodigoAutorizacionUpdateView(RolRequeridoMixin, UpdateView):
+    """
+    Edita un código de autorización existente.
+    """
+    required_rol = "ADMIN"
+    model = CodigoAutorizacionDescuento
+    form_class = CodigoAutorizacionDescuentoForm
+    template_name = "ventas/codigo_descuento_form.html"
+    success_url = reverse_lazy("ventas:codigo_descuento_lista")
+
+    def form_valid(self, form):
+        messages.success(self.request, "Código de autorización actualizado correctamente.")
+        return super().form_valid(form)
+
+
+
+class AuditoriaDescuentoListaView(RolRequeridoMixin, ListView):
+    """
+    Lista de eventos de auditoría de descuentos.
+
+    - Solo accesible para ADMIN (puedes ajustar el rol si quieres).
+    - Filtra por negocio del usuario logueado.
+    - Aplica filtros de fecha, cajero, autorizador y nivel.
+    """
+    required_rol = "ADMIN"
+    model = AuditoriaDescuento
+    template_name = "ventas/descuento_auditoria_lista.html"
+    context_object_name = "auditorias"
+    paginate_by = 50
+
+    def get_queryset(self):
+        # Partimos del queryset base definido en el modelo (ordenado por fecha_hora desc)
+        qs = super().get_queryset().select_related(
+            "venta",
+            "item__producto",
+            "usuario_aplica",
+            "usuario_autoriza",
+        )
+
+        # Filtramos por negocio del usuario (a través de la venta)
+        perfil = getattr(self.request.user, "perfilusuario", None)
+        if perfil and perfil.negocio_id:
+            qs = qs.filter(venta__negocio=perfil.negocio)
+
+        # Aplicamos filtros del formulario
+        self.filtro_form = AuditoriaDescuentoFiltroForm(self.request.GET or None)
+        qs = self.filtro_form.filtrar_queryset(qs)
+
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        # Pasamos el formulario al contexto para que la plantilla pueda renderizarlo
+        ctx["filtro_form"] = getattr(self, "filtro_form", AuditoriaDescuentoFiltroForm())
+        return ctx

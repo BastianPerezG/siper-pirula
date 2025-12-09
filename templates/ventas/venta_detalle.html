@@ -73,6 +73,20 @@
 </section>
 
 <div class="mt-6 flex flex-wrap gap-3">
+
+    {# Solo permitir checkout si la venta no está cerrada ni anulada #}
+    {% if venta.estado != venta.EST_CERRADA and venta.estado != venta.EST_ANULADA %}
+        <a href="{% url 'ventas:venta_checkout' venta.id %}"
+           class="px-4 py-2 rounded bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
+            Cobrar / aplicar descuento
+        </a>
+
+        <a href="{% url 'ventas:venta_editar' venta.id %}"
+           class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
+            Volver a editar ítems
+        </a>
+    {% endif %}
+
     <a href="{% url 'ventas:venta_lista' %}"
        class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
         Volver a la lista

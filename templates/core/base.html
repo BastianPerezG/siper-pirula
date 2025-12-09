@@ -188,10 +188,24 @@
                         <span class="text-[10px]">▾</span>
                     </button>
 
-                    <div
-                        class="absolute hidden group-hover:block pt-2 w-56 z-50 text-xs bg-slate-800 rounded shadow-lg overflow-hidden">
+                    <div class="absolute hidden group-hover:block pt-2 w-48 z-50 text-xs bg-slate-800 rounded shadow-lg overflow-hidden" > 
                         <a href="{% url 'core:usuarios_lista' %}" class="block px-4 py-2 hover:bg-slate-700">
-                            Usuarios del sistema
+                        👥 Usuarios del sistema
+                        </a>
+
+                        <a href="{% url 'ventas:descuento_reglas' %}"
+                            class="block px-4 py-2 hover:bg-slate-700">
+                            🎯 Reglas de descuento por rol
+                        </a>
+
+                        <a href="{% url 'ventas:codigo_descuento_lista' %}"
+                            class="block px-4 py-2 hover:bg-slate-700">
+                            🔐 Códigos de autorización de descuento
+                        </a>
+
+                        <a href="{% url 'ventas:descuento_auditoria' %}"
+                            class="block px-4 py-2 hover:bg-slate-700">
+                            📁 Auditoría de descuentos
                         </a>
                     </div>
                 </div>

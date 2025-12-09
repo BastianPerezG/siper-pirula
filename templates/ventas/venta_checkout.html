@@ -1,0 +1,224 @@
+{% extends "core/base.html" %}
+
+{% block title %}Checkout venta #{{ venta.id }} - SIPER Pirula{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+
+    <header class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">
+                Checkout venta #{{ venta.id }}
+            </h1>
+            <p class="text-slate-600 text-sm mt-1">
+                Revisa los ítems, aplica (si corresponde) un descuento de ticket y registra el pago.
+            </p>
+        </div>
+
+        <div class="bg-slate-900 text-slate-100 px-4 py-3 rounded-xl text-sm shadow">
+            <p class="text-xs uppercase tracking-wide text-slate-400">
+                Resumen
+            </p>
+            <p class="mt-1">
+                Total bruto:
+                <span class="font-semibold">${{ form.total_bruto.value|default:venta.total }}</span>
+            </p>
+            <p class="text-xs mt-1">
+                Estado actual:
+                <span class="font-semibold">
+                    {{ venta.get_estado_display }}
+                </span>
+            </p>
+        </div>
+    </header>
+
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+
+        <!-- Bloque 1: Ítems de la venta -->
+        <section class="bg-white rounded-xl shadow-sm p-4 sm:p-5">
+            <h2 class="text-lg font-semibold text-slate-700 mb-3">
+                Ítems de la venta
+            </h2>
+
+            <div class="overflow-x-auto -mx-4 sm:mx-0">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-slate-50 border-b border-slate-200">
+                        <tr class="text-left text-xs font-semibold text-slate-600">
+                            <th class="px-4 py-2">Producto</th>
+                            <th class="px-4 py-2 text-center">Cant.</th>
+                            <th class="px-4 py-2 text-right">P. unitario</th>
+                            <th class="px-4 py-2 text-right">Desc. item (%)</th>
+                            <th class="px-4 py-2 text-right">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in venta.items.all %}
+                        <tr class="border-b border-slate-100">
+                            <td class="px-4 py-2">
+                                {{ item.producto.nombre }}
+                            </td>
+                            <td class="px-4 py-2 text-center">
+                                {{ item.cantidad }}
+                            </td>
+                            <td class="px-4 py-2 text-right">
+                                ${{ item.precio_unit }}
+                            </td>
+                            <td class="px-4 py-2 text-right">
+                                {% if item.descuento_pct %}
+                                {{ item.descuento_pct }}%
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-2 text-right">
+                                ${{ item.subtotal }}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="px-4 py-3 text-center text-slate-500">
+                                Esta venta no tiene ítems registrados.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="mt-3 text-xs text-slate-500">
+                El total bruto corresponde a la suma de los subtotales de los ítems (considerando
+                cualquier descuento a nivel de ítem que ya se haya aplicado).
+            </p>
+        </section>
+
+        <!-- Bloque 2: Descuento sobre el ticket -->
+        <section class="bg-white rounded-xl shadow-sm p-4 sm:p-5 space-y-4">
+            <h2 class="text-lg font-semibold text-slate-700">
+                Descuento sobre el ticket
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                        Tipo de descuento
+                    </label>
+                    {{ form.tipo_descuento }}
+                    {% for error in form.tipo_descuento.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                        Descuento (%)
+                    </label>
+                    {{ form.descuento_pct }}
+                    {% if form.descuento_pct.help_text %}
+                    <p class="text-xs text-slate-500 mt-1">
+                        {{ form.descuento_pct.help_text }}
+                    </p>
+                    {% endif %}
+                    {% for error in form.descuento_pct.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                        Descuento ($)
+                    </label>
+                    {{ form.descuento_monto }}
+                    {% for error in form.descuento_monto.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                        Motivo del descuento
+                    </label>
+                    {{ form.motivo_descuento }}
+                    {% for error in form.motivo_descuento.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                        Código de autorización (si se requiere)
+                    </label>
+                    {{ form.codigo_autorizacion }}
+                    {% for error in form.codigo_autorizacion.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Bloque 3: Pago -->
+        <section class="bg-white rounded-xl shadow-sm p-4 sm:p-5 space-y-4">
+            <h2 class="text-lg font-semibold text-slate-700">
+                Pago
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                        Total bruto
+                    </label>
+                    {{ form.total_bruto }}
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                        Método de pago
+                    </label>
+                    {{ form.metodo_pago }}
+                    {% for error in form.metodo_pago.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                        Monto pagado
+                    </label>
+                    {{ form.monto_pagado }}
+                    {% for error in form.monto_pagado.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% if form.non_field_errors %}
+            <div class="mt-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2">
+                {% for error in form.non_field_errors %}
+                <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </section>
+
+        <!-- Botones -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <a href="{% url 'ventas:venta_editar' venta.id %}"
+                class="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm hover:bg-slate-50">
+                Volver a editar ítems
+            </a>
+
+            <div class="flex flex-wrap gap-3 justify-end">
+                <a href="{% url 'ventas:venta_lista' %}"
+                    class="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm hover:bg-slate-50">
+                    Cancelar / volver
+                    <button type="submit"
+                        class="inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                        Confirmar cobro
+                    </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

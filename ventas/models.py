@@ -198,20 +198,27 @@ class VentaItem(models.Model):
         """
         Validación de negocio: no permitir vender más cantidad
         que el stock disponible.
+
+        Maneja correctamente filas del formset sin producto.
         """
         super().clean()
 
-        # Validar stock
-        if self.producto and self.cantidad:
-            disponible = self.producto.stock_actual  # usa MovimientoInventario
+        # Validar stock SOLO si hay producto y cantidad
+        if self.producto_id and self.cantidad:
+            # Ahora es seguro acceder a self.producto
+            disponible = self.producto.stock_actual
             if self.cantidad > disponible:
                 raise ValidationError({
-                    "cantidad": f"No hay stock suficiente. Disponible: {disponible} unidades."
+                    "cantidad": (
+                        f"No hay stock suficiente. Disponible: "
+                        f"{disponible} unidades."
+                    )
                 })
 
         # (opcional) Validar rango del descuento
         if self.descuento_pct is not None:
-            if float(self.descuento_pct) < 0 or float(self.descuento_pct) > 100:
+            valor = float(self.descuento_pct)
+            if valor < 0 or valor > 100:
                 raise ValidationError({
                     "descuento_pct": "El descuento debe estar entre 0 y 100%."
                 })
@@ -275,6 +282,39 @@ class VentaItem(models.Model):
                     venta_item=self,
                 )
 
+class PagoVenta(models.Model):
+    MET_EFECTIVO = "EFECTIVO"
+    MET_DEBITO = "DEBITO"
+    MET_CREDITO = "CREDITO"
+    MET_TRANSFERENCIA = "TRANSFERENCIA"
+
+    METODOS = (
+        (MET_EFECTIVO, "Efectivo"),
+        (MET_DEBITO, "Tarjeta débito"),
+        (MET_CREDITO, "Tarjeta crédito"),
+        (MET_TRANSFERENCIA, "Transferencia bancaria"),
+    )
+
+    venta = models.ForeignKey(
+        Venta,
+        on_delete=models.CASCADE,
+        related_name="pagos",
+    )
+    metodo = models.CharField(max_length=20, choices=METODOS)
+    monto = models.PositiveIntegerField()
+
+    fecha_hora = models.DateTimeField(auto_now_add=True)
+    usuario_registra = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="pagos_registrados",
+    )
+
+    class Meta:
+        db_table = "pago_venta"
+
+    def __str__(self):
+        return f"Pago {self.metodo} ${self.monto} en venta #{self.venta_id}"
 
 
 class Anulacion(models.Model):
@@ -488,159 +528,99 @@ try:
     from core.models import PerfilUsuario
     ROL_CHOICES = PerfilUsuario.ROL_CHOICES
 except Exception:
-    # fallback por si prefieres dejarlo desacoplado
     ROL_CHOICES = [
-        ("ROL_CAJERO", "Cajero"),
-        ("ROL_MESON", "Mesón"),
-        ("ROL_ADMIN", "Administrador"),
+        ("CAJERO", "Cajero"),
+        ("SUPERVISOR", "Supervisor"),
+        ("ADMIN", "Administrador"),
     ]
+
 
 class DescuentoReglaRol(models.Model):
     """
-    Regla de tope de descuento según rol del usuario.
-    Controla:
-      - Máximo porcentaje y monto por ítem.
-      - Máximo porcentaje y monto por ticket completo.
+    Define el tope de descuento permitido por rol.
+    Por ahora usaremos solo `max_pct_ticket` (descuento sobre el total de la venta).
     """
-
-    rol = models.CharField(max_length=20, choices=ROL_CHOICES, unique=True)
-
-    # Topes por porcentaje
-    max_pct_item = models.DecimalField(
-        "Tope % por ítem",
+    rol = models.CharField(
+        max_length=20,
+        choices=PerfilUsuario.ROL_CHOICES,  # ajusta al nombre real de tu tuple
+        unique=True,
+    )
+    max_pct_ticket = models.DecimalField(
         max_digits=5,
         decimal_places=2,
         default=0,
-        help_text="Ej: 10.00 = 10% máximo que puede aplicar este rol a un ítem.",
+        help_text="Máximo % de descuento sobre el ticket que puede aplicar este rol.",
     )
-    max_pct_venta = models.DecimalField(
-        "Tope % por ticket",
-        max_digits=5,
-        decimal_places=2,
-        default=0,
-        help_text="Ej: 5.00 = 5% máximo sobre el total de la venta.",
-    )
-
-    # Topes por monto fijo (en pesos)
-    max_monto_item = models.PositiveIntegerField(
-        "Tope $ por ítem",
-        default=0,
-        help_text="Monto máximo de descuento en pesos por ítem.",
-    )
-    max_monto_venta = models.PositiveIntegerField(
-        "Tope $ por ticket",
-        default=0,
-        help_text="Monto máximo de descuento en pesos por venta.",
-    )
-
     activo = models.BooleanField(default=True)
 
     class Meta:
         db_table = "descuento_regla_rol"
-        verbose_name = "Regla de descuento por rol"
-        verbose_name_plural = "Reglas de descuento por rol"
 
     def __str__(self):
-        return f"Regla descuentos - {self.get_rol_display()}"
+        return f"Regla descuento rol {self.rol} (ticket {self.max_pct_ticket}%)"
+    
     
 class CodigoAutorizacionDescuento(models.Model):
     """
-    PIN de autorización para aprobar descuentos que superan el tope de un rol.
-    Lo asocias a un usuario con rol superior (SUPERVISOR / ADMIN).
+    Código tipo PIN que permite autorizar descuentos por encima del tope del cajero.
+    El código está asociado a un usuario 'superior' (supervisor/admin).
     """
-
-    usuario = models.ForeignKey(
+    codigo = models.CharField(max_length=20, unique=True)
+    usuario_autorizador = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="codigos_descuento",
+        null=True,     
+        blank=True,  
     )
-    codigo = models.CharField(
-        max_length=20,
-        help_text="PIN o código corto que se pedirá al cajero.",
-    )
-    descripcion = models.CharField(
-        max_length=200,
-        blank=True,
-        help_text="Ej: 'Código de supervisor turno tarde'.",
-    )
-    fecha_creacion = models.DateTimeField(auto_now_add=True)
-    fecha_expiracion = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="Opcional. Si se completa, el código no será válido después de esta fecha.",
-    )
-    activo = models.BooleanField(default=True)
-    max_usos = models.PositiveIntegerField(
+    max_pct_ticket = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
         default=0,
-        help_text="0 = ilimitado. Si es >0, limita la cantidad de usos.",
+        help_text="Tope máximo de descuento total que autoriza este código.",
     )
-    usos_realizados = models.PositiveIntegerField(default=0)
+    valido_hasta = models.DateTimeField(null=True, blank=True)
+    activo = models.BooleanField(default=True)
 
     class Meta:
         db_table = "codigo_autorizacion_descuento"
-        verbose_name = "Código de autorización de descuento"
-        verbose_name_plural = "Códigos de autorización de descuentos"
 
     def __str__(self):
-        return f"{self.codigo} ({self.usuario})"
+        return f"Código {self.codigo} ({self.usuario_autorizador})"
 
-    @property
-    def vigente(self) -> bool:
-        """
-        Indica si el código está activo y no ha expirado ni superado sus usos.
-        """
+    def esta_vigente(self):
         if not self.activo:
             return False
-        if self.fecha_expiracion and self.fecha_expiracion < timezone.now():
-            return False
-        if self.max_usos and self.usos_realizados >= self.max_usos:
+        if self.valido_hasta and timezone.now() > self.valido_hasta:
             return False
         return True
+
     
-from django.utils import timezone
-
-
 class AuditoriaDescuento(models.Model):
-    TIPO_PORCENTAJE = "PORCENTAJE"
-    TIPO_MONTO = "MONTO"
-    TIPO_CHOICES = [
-        (TIPO_PORCENTAJE, "Porcentaje"),
-        (TIPO_MONTO, "Monto fijo"),
-    ]
-
+    NIVEL_TICKET = "TICKET"
     NIVEL_ITEM = "ITEM"
-    NIVEL_VENTA = "VENTA"
-    NIVEL_CHOICES = [
-        (NIVEL_ITEM, "Producto / ítem"),
-        (NIVEL_VENTA, "Ticket completo"),
-    ]
 
-    ESTADO_OK = "OK"
-    ESTADO_RECHAZADO = "RECHAZADO"
-    ESTADO_INTENTO = "INTENTO_FALLIDO"
-    ESTADO_CHOICES = [
-        (ESTADO_OK, "Aplicado correctamente"),
-        (ESTADO_RECHAZADO, "Rechazado por reglas"),
-        (ESTADO_INTENTO, "Intento fallido (PIN incorrecto, etc.)"),
-    ]
-
-    # Contexto de la venta
-    venta = models.ForeignKey(
-        "Venta",
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name="auditorias_descuentos",
+    NIVELES = (
+        (NIVEL_TICKET, "Descuento sobre ticket"),
+        (NIVEL_ITEM, "Descuento sobre ítem"),
     )
-    venta_item = models.ForeignKey(
+
+    venta = models.ForeignKey(
+        Venta,
+        on_delete=models.CASCADE,
+        related_name="auditorias_descuento",
+        null=True,     
+        blank=True,     
+    )
+    item = models.ForeignKey(
         "VentaItem",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name="auditorias_descuentos",
+        related_name="auditorias_descuento",
     )
+    nivel = models.CharField(max_length=10, choices=NIVELES)
 
-    # Quién aplica y quién autoriza
     usuario_aplica = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -653,44 +633,17 @@ class AuditoriaDescuento(models.Model):
         blank=True,
         related_name="descuentos_autorizados",
     )
-    codigo_autorizacion = models.ForeignKey(
-        CodigoAutorizacionDescuento,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-    )
 
-    # Detalle del descuento
-    motivo = models.CharField(max_length=200)
-    tipo_descuento = models.CharField(max_length=20, choices=TIPO_CHOICES)
-    nivel = models.CharField(max_length=10, choices=NIVEL_CHOICES)
+    motivo = models.TextField()
+    porc_descuento = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    monto_descuento = models.PositiveIntegerField(default=0)
 
-    valor_porcentaje = models.DecimalField(
-        max_digits=5, decimal_places=2, null=True, blank=True
-    )
-    valor_monto = models.PositiveIntegerField(null=True, blank=True)
-
-    monto_original = models.PositiveIntegerField()
-    monto_final = models.PositiveIntegerField()
-
-    fecha_hora = models.DateTimeField(default=timezone.now)
-    estado = models.CharField(
-        max_length=20,
-        choices=ESTADO_CHOICES,
-        default=ESTADO_OK,
-    )
-
-    terminal = models.CharField(
-        max_length=100,
-        blank=True,
-        help_text="Ej: nombre del equipo, IP, etc.",
-    )
+    codigo_usado = models.CharField(max_length=20, blank=True)
+    fecha_hora = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "auditoria_descuento"
-        verbose_name = "Auditoría de descuento"
-        verbose_name_plural = "Auditoría de descuentos"
         ordering = ["-fecha_hora"]
 
     def __str__(self):
-        return f"[{self.fecha_hora:%Y-%m-%d %H:%M}] {self.usuario_aplica} - {self.tipo_descuento} {self.valor_porcentaje or self.valor_monto}"
+        return f"Descuento {self.nivel} en venta #{self.venta_id}"
