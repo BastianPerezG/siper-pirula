@@ -91,7 +91,7 @@
                         {% endif %}
                     </div>
                 </div>
-                        
+            {% endif %}            
                 {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
                 {# ----- Menú Operaciones ----- #}
                 <div class="relative group">
@@ -131,7 +131,7 @@
                         {% endif %}
                     </div>
                 </div>
-
+                {% endif%}
                 {# ----- Menú Pedidos ----- #}
                 <div class="relative group">
                     <button class="hover:text-amber-300 flex items-center gap-1">
@@ -300,7 +300,7 @@
     </footer>
 
     <!-- JS global -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+   <script src="https://code.jquery.com/jquery-3.7.1.min.js"
         integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -308,36 +308,53 @@
     {% block extra_js %}{% endblock %}
 
     <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+    
     <script>
-        // Instancia global de Notyf
-        const notyf = new Notyf({
-            duration: 4000,
-            position: { x: 'right', y: 'top' },
-            dismissible: true
-        });
+        // Esperamos a que el DOM esté completamente cargado (jQuery ready)
+        $(document).ready(function() {
+            
+            // Instancia global de Notyf
+            const notyf = new Notyf({
+                duration: 4000,
+                position: { x: 'right', y: 'top' },
+                dismissible: true
+            });
 
-        {% if messages %}
-        {% for message in messages %}
-        (function () {
-            const level = "{{ message.tags }}";  // success, error, info, warning…
+            {% if messages %}
+                {% for message in messages %}
+                    // 1. Usamos una IIFE para aislar el scope de 'level' y 'msg'
+                    (function () {
+                        // Obtenemos el nivel de tag de Django
+                        const level = "{{ message.tags }}"; 
+                        // Obtenemos el mensaje de Django, usando escapejs para seguridad
+                        const msg = "{{ message|escapejs }}";
 
-            // Mapeo simple: ajusta si quieres más fino
-            if (level.includes("error")) {
-                notyf.error("{{ message|escapejs }}");
-            } else if (level.includes("warning")) {
-                notyf.open({
-                    type: 'warning',
-                    message: "{{ message|escapejs }}"
-                });
-            } else {
-                // success, info, etc.
-                notyf.success("{{ message|escapejs }}");
-            }
-        })();
-        {% endfor %}
-        {% endif %}
+                        // 2. Mapeo más explícito de tags de Django a métodos de Notyf
+                        if (level.includes("error") || level.includes("danger")) {
+                            notyf.error(msg);
+                            
+                        } else if (level.includes("warning")) {
+                            notyf.open({
+                                type: 'warning',
+                                message: msg
+                            });
+                            
+                        } else if (level.includes("success")) {
+                            notyf.success(msg);
+                            
+                        } else {
+                            // Default: para 'info' u otros tags no mapeados
+                            notyf.open({
+                                type: 'info',
+                                message: msg
+                            });
+                        }
+                    })();
+                {% endfor %}
+            {% endif %}
+
+        }); // Fin de $(document).ready()
     </script>
-
 </body>
 
 </html>

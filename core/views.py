@@ -15,7 +15,7 @@ from django.shortcuts import render, get_object_or_404
 from django.utils.decorators import method_decorator
 from django.db.models import Q
 
-from core.utlis import registrar_bitacora_estructurada
+from core.utils import registrar_bitacora_estructurada
 from .mixins import RolRequeridoMixin, rol_requerido
 
 # Views Core

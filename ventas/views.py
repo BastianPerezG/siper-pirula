@@ -22,7 +22,7 @@ from .utils import validar_y_auditar_descuento_ticket
 # Imports para el PDF
 from django.template.loader import render_to_string
 from django.http import HttpResponse
-from xhtml2pdf import pisa
+#from xhtml2pdf import pisa
 
 from core.utils import registrar_bitacora_estructurada
 from core.models import Negocio
