@@ -16,7 +16,6 @@ def registrar_bitacora_simple(
         usuario = None
     
     try:
-        # 🔥 CORRECCIÓN CLAVE: Crear el objeto y asignarlo a 'registro' en una sola línea
         registro = BitacoraAccion.objects.create(
             usuario=usuario,
             accion=accion,
