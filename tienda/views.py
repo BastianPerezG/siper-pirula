@@ -4,6 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.contrib import messages
+from django.db.models import Q
 from core.models import Negocio
 from inventario.models import Producto, Categoria, Promo
 from pedidos.models import Pedido, PedidoItem, Cliente
@@ -250,15 +251,38 @@ def carrito_agregar(request, producto_id):
         activo=True,
     )
 
+    # Obtener cantidad del formulario (por defecto 1)
+    cantidad = int(request.POST.get("cantidad", 1))
+    if cantidad < 1:
+        cantidad = 1
+
+    # Validar stock disponible
+    stock_disp = max(producto.stock_actual, 0)
+    if stock_disp <= 0:
+        messages.error(request, "No hay stock disponible para este producto.")
+        next_url = request.META.get("HTTP_REFERER")
+        if next_url:
+            return redirect(next_url)
+        return redirect("tienda:home")
+
+    # Limitar cantidad al stock disponible
+    if cantidad > stock_disp:
+        cantidad = stock_disp
+        messages.warning(request, f"Solo hay {stock_disp} unidad(es) disponible(s).")
+
     cart = _get_cart(request)
     key = f"PROD-{producto.id}"
 
     entrada = cart.get(key, {"cantidad": 0})
-    entrada["cantidad"] = int(entrada["cantidad"]) + 1
+    entrada["cantidad"] = int(entrada["cantidad"]) + cantidad
     cart[key] = entrada
 
     _save_cart(request, cart)
-    messages.success(request, f"{producto.nombre} agregado al carrito.")
+
+    if cantidad == 1:
+        messages.success(request, f"{producto.nombre} agregado al carrito.")
+    else:
+        messages.success(request, f"{cantidad} x {producto.nombre} agregado(s) al carrito.")
 
     next_url = request.META.get("HTTP_REFERER")
     if next_url:
@@ -278,12 +302,99 @@ def carrito_eliminar_view(request, item_id):
 
 
 @require_POST
+def carrito_actualizar_item(request):
+    """
+    Actualiza la cantidad de un item específico del carrito vía AJAX.
+    Retorna JSON con el nuevo subtotal y total.
+    """
+    item_key = request.POST.get("item_key")
+    cantidad = request.POST.get("cantidad")
+
+    if not item_key or not cantidad:
+        return JsonResponse({"error": "Faltan parámetros"}, status=400)
+
+    try:
+        cantidad = int(cantidad)
+    except (ValueError, TypeError):
+        return JsonResponse({"error": "Cantidad inválida"}, status=400)
+
+    if cantidad <= 0:
+        return JsonResponse({"error": "La cantidad debe ser mayor a 0"}, status=400)
+
+    # Parsear la clave del carrito
+    try:
+        tipo, raw_id = item_key.split("-", 1)
+        item_id = int(raw_id)
+    except ValueError:
+        return JsonResponse({"error": "Clave de item inválida"}, status=400)
+
+    cart = _get_cart(request)
+
+    # --- Productos normales ---
+    if tipo == "PROD":
+        try:
+            producto = Producto.objects.get(pk=item_id, activo=True)
+        except Producto.DoesNotExist:
+            return JsonResponse({"error": "Producto no encontrado"}, status=404)
+
+        stock_disp = max(producto.stock_actual, 0)
+        if stock_disp <= 0:
+            return JsonResponse({"error": "Sin stock disponible"}, status=400)
+
+        if cantidad > stock_disp:
+            cantidad = stock_disp
+
+        precio_unit = Decimal(producto.precio)
+        cart[item_key] = {"cantidad": cantidad}
+
+    # --- Promos / combos ---
+    elif tipo == "PROMO":
+        try:
+            promo = Promo.objects.get(pk=item_id, activo=True)
+        except Promo.DoesNotExist:
+            return JsonResponse({"error": "Promoción no encontrada"}, status=404)
+
+        # Calcular packs máximos
+        max_packs = None
+        for promo_item in promo.items.select_related("producto"):
+            p = promo_item.producto
+            stock_p = max(p.stock_actual, 0)
+            posible = stock_p // promo_item.cantidad if promo_item.cantidad > 0 else 0
+            if max_packs is None:
+                max_packs = posible
+            else:
+                max_packs = min(max_packs, posible)
+
+        if max_packs is None or max_packs <= 0:
+            return JsonResponse({"error": "Sin stock suficiente para esta promoción"}, status=400)
+
+        if cantidad > max_packs:
+            cantidad = max_packs
+
+        precio_unit = Decimal(promo.precio_combo)
+        cart[item_key] = {"cantidad": cantidad}
+    else:
+        return JsonResponse({"error": "Tipo de item inválido"}, status=400)
+
+    # Guardar carrito actualizado
+    _save_cart(request, cart)
+
+    # Calcular nuevo subtotal y total general
+    subtotal = precio_unit * cantidad
+    items, total = _build_cart_items(cart)
+
+    return JsonResponse({
+        "success": True,
+        "subtotal": float(subtotal),
+        "total": float(total),
+        "cantidad": cantidad,
+    })
+
+
+@require_POST
 def carrito_actualizar(request):
     """
-    Actualiza cantidades del carrito.
-
-    Espera inputs con nombre:  cant_<KEY>
-    donde KEY es la clave del carrito, ej. "PROD-5" o "PROMO-1".
+    Actualiza cantidades del carrito (usado solo para redirecciones).
     """
     cart = _get_cart(request)
     nuevo_cart = {}
@@ -296,7 +407,6 @@ def carrito_actualizar(request):
         if not item_key:
             continue
 
-        # cantidad enviada
         try:
             cantidad = int(value)
         except (ValueError, TypeError):
@@ -305,7 +415,6 @@ def carrito_actualizar(request):
         if cantidad <= 0:
             continue
 
-        # clave del carrito -> tipo + id
         try:
             tipo, raw_id = item_key.split("-", 1)
             item_id = int(raw_id)
@@ -335,7 +444,6 @@ def carrito_actualizar(request):
             except Promo.DoesNotExist:
                 continue
 
-            # calculamos packs máximos
             max_packs = None
             for promo_item in promo.items.select_related("producto"):
                 p = promo_item.producto
@@ -368,6 +476,9 @@ def carrito_actualizar(request):
 def carrito_ver(request):
     negocio = get_negocio_actual()
     cart = _get_cart(request)
+    
+    # Debug: verificar que el carrito se esté recuperando correctamente
+    # Si el carrito está vacío pero debería tener items, podría ser un problema de sesión
     items, total = _build_cart_items(cart)
 
     context = {
@@ -599,18 +710,79 @@ def logout_cliente_view(request):
 
 def productos_list_view(request):
     negocio = get_negocio_actual()
+    
+    # Obtener parámetros de búsqueda y filtro
+    q = request.GET.get("q", "").strip()
+    categoria_slug = request.GET.get("categoria", "").strip()
+    
+    # Query base
     productos_qs = Producto.objects.filter(
         negocio=negocio,
         activo=True,
+    )
+    
+    # Filtro por categoría
+    categoria = None
+    if categoria_slug:
+        try:
+            categoria = Categoria.objects.get(
+                slug=categoria_slug,
+                negocio=negocio,
+                activo=True
+            )
+            productos_qs = productos_qs.filter(categoria=categoria)
+        except Categoria.DoesNotExist:
+            pass
+    
+    # Filtro por búsqueda mejorada (busca en múltiples campos y por palabras)
+    if q:
+        # Dividir la búsqueda en palabras individuales
+        palabras = q.split()
+        
+        # Crear un Q object que busque cada palabra en múltiples campos
+        query = Q()
+        for palabra in palabras:
+            # Buscar en nombre, SKU, EAN, formato y unidad de venta
+            query |= (
+                Q(nombre__icontains=palabra) |
+                Q(sku__icontains=palabra) |
+                Q(ean__icontains=palabra) |
+                Q(formato__icontains=palabra) |
+                Q(unidad_de_venta__icontains=palabra)
+            )
+        
+        # También buscar la frase completa (por si alguien busca "vino tinto" exacto)
+        query |= (
+            Q(nombre__icontains=q) |
+            Q(sku__icontains=q) |
+            Q(ean__icontains=q) |
+            Q(formato__icontains=q) |
+            Q(unidad_de_venta__icontains=q)
+        )
+        
+        productos_qs = productos_qs.filter(query).distinct()
+    
+    # Ordenar
+    productos_qs = productos_qs.order_by("nombre")
+    
+    # Obtener todas las categorías para el filtro
+    categorias = Categoria.objects.filter(
+        negocio=negocio,
+        activo=True,
     ).order_by("nombre")
-
+    
+    # Paginación
     paginator = Paginator(productos_qs, 12)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
     context = {
         "negocio": negocio,
+        "productos": page_obj,  # El template itera sobre page_obj directamente
         "page_obj": page_obj,
+        "categorias": categorias,
+        "categoria": categoria,
+        "q": q,
     }
     return render(request, "tienda/producto_lista.html", context)
 
@@ -642,11 +814,26 @@ def sugerencias_productos(request):
 
     resultados = []
     if len(q) >= 2:
+        # Dividir la búsqueda en palabras
+        palabras = q.split()
+        
+        # Crear query mejorada para sugerencias
+        query = Q()
+        for palabra in palabras:
+            query |= (
+                Q(nombre__icontains=palabra) |
+                Q(sku__icontains=palabra) |
+                Q(ean__icontains=palabra) |
+                Q(formato__icontains=palabra)
+            )
+        
+        # También buscar la frase completa
+        query |= Q(nombre__icontains=q)
+        
         productos = Producto.objects.filter(
             negocio=negocio,
             activo=True,
-            nombre__icontains=q,
-        ).order_by("nombre")[:8]
+        ).filter(query).distinct().order_by("nombre")[:8]
 
         for p in productos:
             resultados.append(
@@ -764,6 +951,43 @@ def webpay_retorno_view(request):
 # ------------------------------------------------------------------
 
 
+def promo_detalle(request, promo_id):
+    """Vista para mostrar el detalle de una promoción."""
+    negocio = get_negocio_actual()
+    promo = get_object_or_404(
+        Promo,
+        pk=promo_id,
+        negocio=negocio,
+        activo=True,
+    )
+
+    # Calcular máximo de packs disponibles según stock
+    max_packs = None
+    for promo_item in promo.items.select_related("producto"):
+        p = promo_item.producto
+        stock_p = max(p.stock_actual, 0)
+        posible = stock_p // promo_item.cantidad if promo_item.cantidad > 0 else 0
+        if max_packs is None:
+            max_packs = posible
+        else:
+            max_packs = min(max_packs, posible)
+
+    if max_packs is None:
+        max_packs = 0
+
+    cart = _get_cart(request)
+    key = f"PROMO-{promo.id}"
+    cantidad_en_carrito = int(cart.get(key, {}).get("cantidad", 0))
+
+    context = {
+        "promo": promo,
+        "cantidad_en_carrito": cantidad_en_carrito,
+        "max_packs": max_packs,
+    }
+    return render(request, "tienda/promo_detalle.html", context)
+
+
+@require_POST
 def promo_agregar_carrito_view(request, promo_id):
     negocio = get_negocio_actual()
     promo = get_object_or_404(
@@ -773,14 +997,48 @@ def promo_agregar_carrito_view(request, promo_id):
         activo=True,
     )
 
+    # Obtener cantidad del formulario (por defecto 1)
+    cantidad = int(request.POST.get("cantidad", 1))
+    if cantidad < 1:
+        cantidad = 1
+
+    # Calcular máximo de packs disponibles según stock
+    max_packs = None
+    for promo_item in promo.items.select_related("producto"):
+        p = promo_item.producto
+        stock_p = max(p.stock_actual, 0)
+        posible = stock_p // promo_item.cantidad if promo_item.cantidad > 0 else 0
+        if max_packs is None:
+            max_packs = posible
+        else:
+            max_packs = min(max_packs, posible)
+
+    if max_packs is None:
+        max_packs = 0
+
+    # Limitar cantidad al máximo disponible
+    if cantidad > max_packs:
+        cantidad = max_packs
+        messages.warning(request, f"Solo hay {max_packs} pack(s) disponible(s).")
+
+    if cantidad <= 0:
+        messages.error(request, "No hay stock suficiente para esta promoción.")
+        next_url = request.META.get("HTTP_REFERER")
+        if next_url:
+            return redirect(next_url)
+        return redirect("tienda:home")
+
     cart = _get_cart(request)
     key = f"PROMO-{promo.id}"
     entrada = cart.get(key, {"cantidad": 0})
-    entrada["cantidad"] = int(entrada["cantidad"]) + 1
+    entrada["cantidad"] = int(entrada["cantidad"]) + cantidad
     cart[key] = entrada
     _save_cart(request, cart)
 
-    messages.success(request, f"{promo.nombre} agregado al carrito.")
+    if cantidad == 1:
+        messages.success(request, f"{promo.nombre} agregado al carrito.")
+    else:
+        messages.success(request, f"{cantidad} x {promo.nombre} agregado(s) al carrito.")
 
     next_url = request.META.get("HTTP_REFERER")
     if next_url:

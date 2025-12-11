@@ -108,8 +108,16 @@
                             Punto de venta (POS)
                         </a>
                         <a href="{% url 'ventas:venta_lista' %}" class="block px-4 py-2 hover:bg-slate-700">
-                            Historial de ventas
+                            Todas las ventas
                         </a>
+                        <a href="{% url 'ventas:ventas_en_espera_lista' %}" class="block px-4 py-2 hover:bg-slate-700">
+                            Ventas en espera
+                        </a>
+                        {% if request.user.perfilusuario.rol == 'ADMIN' %}
+                        <a href="{% url 'ventas:pago_pendiente_lista' %}" class="block px-4 py-2 hover:bg-slate-700">
+                            Pagos pendientes
+                        </a>
+                        {% endif %}
 
                         <div class="border-t border-slate-700 my-1"></div>
 
@@ -210,6 +218,14 @@
                     </div>
                 </div>
                 {% endif %}
+
+                {# ----- Botón Tienda (todos los usuarios) ----- #}
+                <a href="{% url 'tienda:home' %}" 
+                   target="_blank"
+                   class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold transition-colors">
+                    🛒 Ver tienda
+                    <span class="text-[10px]">↗</span>
+                </a>
             </nav>
 
             <!-- Menú simple en mobile -->

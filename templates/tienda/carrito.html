@@ -10,9 +10,7 @@
   </h1>
 
   {% if items %}
-  <form method="post" action="{% url 'tienda:carrito_actualizar' %}" class="space-y-6">
-    {% csrf_token %}
-
+  <div class="space-y-6">
     <div class="overflow-x-auto bg-white rounded-2xl shadow-sm border border-slate-200">
       <table class="min-w-full text-left text-xs sm:text-sm">
         <thead class="bg-slate-50">
@@ -31,7 +29,7 @@
         </thead>
         <tbody class="divide-y divide-slate-100">
           {% for item in items %}
-          <tr class="border-b last:border-b-0">
+          <tr class="border-b last:border-b-0" data-item-key="{{ item.key }}" data-precio-unit="{{ item.precio_unit }}">
             <td class="px-3 sm:px-4 py-2 align-middle">
               {% if item.tipo == "PROMO" %}
               <span class="text-xs font-semibold text-emerald-600 mr-2">Promo</span>
@@ -39,12 +37,16 @@
               {{ item.nombre }}
             </td>
             <td class="text-center">
-              <input type="number" name="cant_{{ item.key }}" value="{{ item.cantidad }}" min="1" 
-              {% if item.max_cantidad %}max="{{ item.max_cantidad }}" {% endif %}
-                class="cantidad-input w-20 sm:w-24 text-center border rounded-lg px-2 py-1" />
+              <input type="number" 
+                     name="cant_{{ item.key }}" 
+                     value="{{ item.cantidad }}" 
+                     min="1" 
+                     {% if item.max_cantidad %}max="{{ item.max_cantidad }}" {% endif %}
+                     data-item-key="{{ item.key }}"
+                     class="cantidad-input w-20 sm:w-24 text-center border rounded-lg px-2 py-1" />
             </td>
             <td class="px-3 sm:px-4 py-2 text-right align-middle">
-              <span class="subtotal">$ {{ item.subtotal|floatformat:0 }}</span>
+              <span class="subtotal" data-item-key="{{ item.key }}">$ {{ item.subtotal|floatformat:0 }}</span>
             </td>
             <td class="px-3 sm:px-4 py-2 text-right align-middle">
               <a href="{% url 'tienda:carrito_eliminar' item.key %}"
@@ -70,25 +72,25 @@
     </div>
 
     <div class="flex flex-col sm:flex-row justify-between gap-3 mt-6">
-      <button type="submit" name="go_shop" value="1"
+      <a href="{% url 'tienda:productos' %}"
         class="px-4 py-2 rounded-full border border-slate-300 text-slate-700 hover:bg-slate-50 text-center">
         Seguir comprando
-      </button>
+      </a>
 
       <div class="flex gap-3">
-        <button type="submit" class="px-4 py-2 rounded-full border border-slate-300 text-slate-700 hover:bg-slate-50">
-          Actualizar cantidades
-        </button>
-
-        <button type="submit" name="go_checkout" value="1"
-          class="px-5 py-2 rounded-full bg-slate-900 text-white hover:bg-slate-800 text-center">
-          Continuar a checkout
-        </button>
+        <form method="post" action="{% url 'tienda:carrito_actualizar' %}" id="checkout-form" class="inline">
+          {% csrf_token %}
+          {% for item in items %}
+            <input type="hidden" name="cant_{{ item.key }}" value="{{ item.cantidad }}" class="hidden-cantidad-input" data-item-key="{{ item.key }}">
+          {% endfor %}
+          <button type="submit" name="go_checkout" value="1"
+            class="px-5 py-2 rounded-full bg-slate-900 text-white hover:bg-slate-800 text-center">
+            Continuar a checkout
+          </button>
+        </form>
       </div>
     </div>
-
-
-  </form>
+  </div>
 
   {% else %}
   <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-center text-slate-600">
@@ -99,7 +101,13 @@
 
 <script>
   document.querySelectorAll('.cantidad-input').forEach(input => {
-    input.addEventListener('change', function () {
+    let timeoutId;
+    
+    input.addEventListener('input', function () {
+      // Limpiar timeout anterior
+      clearTimeout(timeoutId);
+      
+      // Validar inmediatamente
       let val = parseInt(this.value || '0');
       const max = parseInt(this.getAttribute('max') || '0');
 
@@ -111,28 +119,105 @@
       }
       this.value = val;
 
+      // Actualizar subtotal visualmente inmediatamente
       const fila = this.closest('tr');
-      const precio = parseInt(fila.dataset.precio || '0');
-      const subtotal = fila.querySelector('.subtotal');
-
-      if (subtotal) {
-        const nuevo = precio * val;
-        subtotal.textContent = "$ " + nuevo;
+      const precioUnit = parseFloat(fila.dataset.precioUnit || '0');
+      const subtotalEl = fila.querySelector('.subtotal');
+      
+      if (subtotalEl && precioUnit > 0) {
+        const nuevoSubtotal = precioUnit * val;
+        subtotalEl.textContent = "$ " + Math.round(nuevoSubtotal).toLocaleString('es-CL');
       }
 
+      // Calcular total general visualmente
       calcularTotalGeneral();
+
+      // Guardar en servidor después de 500ms sin cambios (debounce)
+      timeoutId = setTimeout(() => {
+        actualizarCantidadEnServidor(this);
+      }, 500);
+    });
+
+    // También actualizar al perder el foco
+    input.addEventListener('blur', function () {
+      clearTimeout(timeoutId);
+      actualizarCantidadEnServidor(this);
     });
   });
+
+  function actualizarCantidadEnServidor(input) {
+    const itemKey = input.dataset.itemKey;
+    const cantidad = parseInt(input.value || '0');
+    
+    if (!itemKey || cantidad <= 0) {
+      return;
+    }
+
+    // Mostrar indicador de carga
+    const fila = input.closest('tr');
+    const subtotalEl = fila.querySelector('.subtotal');
+    const originalText = subtotalEl.textContent;
+    subtotalEl.textContent = "Actualizando...";
+
+    // Actualizar input hidden para el formulario de checkout
+    const hiddenInput = document.querySelector(`.hidden-cantidad-input[data-item-key="${itemKey}"]`);
+    if (hiddenInput) {
+      hiddenInput.value = cantidad;
+    }
+
+    // Obtener CSRF token del formulario de checkout
+    const csrfToken = document.querySelector('#checkout-form [name=csrfmiddlewaretoken]')?.value || '';
+    
+    if (!csrfToken) {
+      console.error('No se encontró el token CSRF');
+      subtotalEl.textContent = originalText;
+      return;
+    }
+    
+    // Llamar a la API
+    fetch("{% url 'tienda:carrito_actualizar_item' %}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': csrfToken
+      },
+      body: `item_key=${encodeURIComponent(itemKey)}&cantidad=${cantidad}`
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Actualizar subtotal con el valor del servidor
+        const subtotalEl = fila.querySelector('.subtotal');
+        subtotalEl.textContent = "$ " + Math.round(data.subtotal).toLocaleString('es-CL');
+        
+        // Actualizar total general
+        const totalEl = document.getElementById("total-general");
+        if (totalEl) {
+          totalEl.textContent = "$ " + Math.round(data.total).toLocaleString('es-CL');
+        }
+      } else {
+        // Error: restaurar valor anterior
+        subtotalEl.textContent = originalText;
+        alert(data.error || "Error al actualizar la cantidad");
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      subtotalEl.textContent = originalText;
+      alert("Error al actualizar la cantidad. Por favor, recarga la página.");
+    });
+  }
 
   function calcularTotalGeneral() {
     let total = 0;
     document.querySelectorAll('.subtotal').forEach(s => {
-      const num = parseInt(s.textContent.replace("$", "").trim() || '0');
+      const text = s.textContent.replace("$", "").replace(/\./g, "").trim();
+      const num = parseFloat(text) || 0;
       if (!isNaN(num)) total += num;
     });
     const totalEl = document.getElementById("total-general");
     if (totalEl) {
-      totalEl.textContent = "$ " + total;
+      totalEl.textContent = "$ " + Math.round(total).toLocaleString('es-CL');
     }
   }
 </script>

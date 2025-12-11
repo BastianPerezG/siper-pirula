@@ -65,12 +65,102 @@
 
         <p class="mt-4 text-right text-base">
             <span class="font-semibold">Total:</span>
-            <span class="font-bold">$ {{ venta.total }}</span>
+            <span class="font-bold">$ {{ venta.monto_total|default:venta.total|floatformat:0 }}</span>
         </p>
+        {% if venta.estado == "CERRADA" and venta.monto_total != venta.total %}
+        <p class="mt-2 text-right text-sm text-slate-500">
+            <span>Total bruto (sin descuento):</span>
+            <span>$ {{ venta.total|floatformat:0 }}</span>
+        </p>
+        {% endif %}
     {% else %}
         <p class="text-sm text-slate-500">No hay ítems en esta venta.</p>
     {% endif %}
 </section>
+
+<!-- Sección de Pagos -->
+{% if venta.pagos.exists %}
+<section class="bg-white rounded-lg shadow-sm p-6 mb-6">
+    <h2 class="text-lg font-semibold mb-4">Pagos registrados</h2>
+    
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm border border-slate-200">
+            <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                    <th class="px-3 py-2 text-left">Método</th>
+                    <th class="px-3 py-2 text-right">Monto</th>
+                    <th class="px-3 py-2 text-right">Vuelto</th>
+                    <th class="px-3 py-2 text-center">Estado</th>
+                    <th class="px-3 py-2 text-left">Fecha</th>
+                    <th class="px-3 py-2 text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pago in venta.pagos.all %}
+                <tr class="border-b border-slate-100">
+                    <td class="px-3 py-2">
+                        {{ pago.get_metodo_display }}
+                        {% if pago.es_transferencia and pago.codigo_referencia %}
+                        <br>
+                        <span class="text-xs text-slate-500">Ref: {{ pago.codigo_referencia }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-3 py-2 text-right font-semibold">
+                        ${{ pago.monto|floatformat:0 }}
+                    </td>
+                    <td class="px-3 py-2 text-right">
+                        {% if pago.vuelto > 0 %}
+                        <span class="text-emerald-600">${{ pago.vuelto|floatformat:0 }}</span>
+                        {% else %}
+                        <span class="text-slate-400">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-3 py-2 text-center">
+                        {% if pago.estado == "PENDIENTE" %}
+                        <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                            Pendiente
+                        </span>
+                        {% elif pago.estado == "COMPLETADO" %}
+                        <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                            Completado
+                        </span>
+                        {% elif pago.estado == "RECHAZADO" %}
+                        <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                            Rechazado
+                        </span>
+                        {% else %}
+                        <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                            {{ pago.get_estado_display }}
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-3 py-2 text-sm text-slate-600">
+                        {{ pago.fecha_hora|date:"d/m/Y H:i" }}
+                    </td>
+                    <td class="px-3 py-2 text-center">
+                        {% if pago.esta_pendiente and user.perfilusuario.rol == "ADMIN" %}
+                        <a href="{% url 'ventas:pago_confirmar' pago.pk %}"
+                           class="text-xs text-emerald-700 hover:text-emerald-900 font-medium">
+                            Confirmar
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% for pago in venta.pagos.all %}
+        {% if pago.estado == "PENDIENTE" %}
+        <div class="mt-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-4 py-2">
+            <p class="font-semibold">⚠️ Atención:</p>
+            <p>Esta venta tiene pagos pendientes de confirmación.</p>
+        </div>
+        {% endif %}
+    {% endfor %}
+</section>
+{% endif %}
 
 <div class="mt-6 flex flex-wrap gap-3">
 
@@ -96,5 +186,13 @@
        class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
         Volver al inicio
     </a>
+    
+    {% if venta.estado == "CERRADA" %}
+    <a href="{% url 'ventas:venta_nota_imprimir' venta.pk %}"
+       target="_blank"
+       class="px-4 py-2 rounded bg-slate-700 text-white text-sm font-semibold hover:bg-slate-800">
+        🖨️ Imprimir nota de venta
+    </a>
+    {% endif %}
 </div>
 {% endblock %}

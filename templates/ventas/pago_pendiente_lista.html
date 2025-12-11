@@ -1,0 +1,180 @@
+{% extends "../core/base.html" %}
+
+{% block title %}Pagos Pendientes - SIPER Pirula{% endblock %}
+
+{% block content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <h1 class="text-2xl font-bold">Pagos Pendientes de Confirmación</h1>
+</div>
+
+<!-- Tabs de navegación -->
+<div class="mb-6 border-b border-slate-200">
+    <nav class="flex space-x-1" aria-label="Tabs">
+        <a href="{% url 'ventas:venta_lista' %}"
+           class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
+            Todas las ventas
+        </a>
+        <a href="{% url 'ventas:ventas_en_espera_lista' %}"
+           class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
+            En espera (sin pagar)
+        </a>
+        <a href="{% url 'ventas:pago_pendiente_lista' %}"
+           class="border-blue-500 text-blue-600 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
+            Pagos pendientes
+        </a>
+    </nav>
+</div>
+
+<!-- Filtros y búsqueda -->
+<div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+    <form method="get" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Búsqueda -->
+            <div>
+                <label for="q" class="block text-xs font-semibold text-slate-700 mb-1">
+                    Buscar
+                </label>
+                <input type="text" 
+                       name="q" 
+                       id="q"
+                       value="{{ q }}"
+                       placeholder="ID de venta o número de documento..."
+                       class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+            </div>
+            
+            <!-- Método de pago -->
+            <div>
+                <label for="metodo" class="block text-xs font-semibold text-slate-700 mb-1">
+                    Método de pago
+                </label>
+                <select name="metodo" 
+                        id="metodo"
+                        class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    <option value="">Todos</option>
+                    {% for codigo, nombre in metodos_pago %}
+                    <option value="{{ codigo }}" {% if metodo == codigo %}selected{% endif %}>{{ nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="flex flex-wrap gap-3 pt-2 border-t border-slate-200">
+            <button type="submit"
+                    class="inline-flex items-center px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors">
+                🔍 Buscar
+            </button>
+            <a href="{% url 'ventas:pago_pendiente_lista' %}"
+               class="inline-flex items-center px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm hover:bg-slate-50 transition-colors">
+                Limpiar filtros
+            </a>
+        </div>
+    </form>
+</div>
+
+{% if pagos_pendientes %}
+<div class="bg-white rounded-lg shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Venta</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Método</th>
+                    <th class="px-4 py-3 text-right font-semibold text-slate-700">Monto</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Referencia</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Banco</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Registrado por</th>
+                    <th class="px-4 py-3 text-left font-semibold text-slate-700">Fecha</th>
+                    <th class="px-4 py-3 text-center font-semibold text-slate-700">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pago in pagos_pendientes %}
+                <tr class="border-b border-slate-100 hover:bg-slate-50">
+                    <td class="px-4 py-3">
+                        <a href="{% url 'ventas:venta_detalle' pago.venta.pk %}" 
+                           class="text-emerald-700 hover:underline font-medium">
+                            #{{ pago.venta.pk }}
+                        </a>
+                        <br>
+                        <span class="text-xs text-slate-500">
+                            {{ pago.venta.doc_tipo }} {{ pago.venta.doc_num|default:"—" }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        {{ pago.get_metodo_display }}
+                    </td>
+                    <td class="px-4 py-3 text-right font-semibold">
+                        ${{ pago.monto|floatformat:0 }}
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if pago.codigo_referencia %}
+                        <span class="font-mono text-xs bg-slate-100 px-2 py-1 rounded">
+                            {{ pago.codigo_referencia }}
+                        </span>
+                        {% else %}
+                        <span class="text-slate-400">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if pago.banco %}
+                        {{ pago.banco }}
+                        {% else %}
+                        <span class="text-slate-400">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3">
+                        {{ pago.usuario_registra.get_full_name|default:pago.usuario_registra.username }}
+                    </td>
+                    <td class="px-4 py-3 text-slate-600">
+                        {{ pago.fecha_hora|date:"d/m/Y H:i" }}
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        <a href="{% url 'ventas:pago_confirmar' pago.pk %}"
+                           class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
+                            Confirmar
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% if is_paginated %}
+    <div class="px-4 py-3 border-t border-slate-200 bg-slate-50">
+        <div class="flex items-center justify-between">
+            <div class="text-sm text-slate-600">
+                Mostrando {{ page_obj.start_index }} a {{ page_obj.end_index }} de {{ paginator.count }} pagos
+            </div>
+            <div class="flex gap-2">
+                {% if page_obj.has_previous %}
+                <a href="?{% if q %}q={{ q }}&{% endif %}{% if metodo %}metodo={{ metodo }}&{% endif %}page={{ page_obj.previous_page_number }}"
+                   class="px-3 py-1.5 rounded border border-slate-300 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+                    ← Anterior
+                </a>
+                {% endif %}
+                
+                <span class="px-3 py-1.5 text-sm text-slate-600">
+                    Página {{ page_obj.number }} de {{ paginator.num_pages }}
+                </span>
+                
+                {% if page_obj.has_next %}
+                <a href="?{% if q %}q={{ q }}&{% endif %}{% if metodo %}metodo={{ metodo }}&{% endif %}page={{ page_obj.next_page_number }}"
+                   class="px-3 py-1.5 rounded border border-slate-300 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+                    Siguiente →
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<div class="bg-white rounded-lg shadow-sm p-8 text-center">
+    <p class="text-slate-600 text-lg">No hay pagos pendientes de confirmación.</p>
+    <p class="text-slate-500 text-sm mt-2">Todos los pagos han sido confirmados.</p>
+</div>
+{% endif %}
+
+{% endblock %}
+

@@ -1,0 +1,181 @@
+{% extends "tienda/base_public.html" %}
+
+{% block title %}{{ promo.nombre }} - SIPER Pirula{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+  <a href="{% url 'tienda:home' %}"
+     class="inline-flex items-center text-xs sm:text-sm text-slate-600 hover:text-slate-900 mb-4">
+    ← Volver a inicio
+  </a>
+
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+    <div class="flex flex-col sm:flex-row">
+      <div class="sm:w-1/2 bg-slate-50 flex items-center justify-center p-6">
+        {% if promo.imagen %}
+          <img src="{{ promo.imagen.url }}"
+               alt="{{ promo.nombre }}"
+               class="w-full h-full object-contain max-h-96">
+        {% else %}
+          <div class="w-full h-full flex items-center justify-center text-5xl text-slate-300">
+            🎁
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="sm:w-1/2 px-4 sm:px-6 py-5 sm:py-6 flex flex-col gap-4">
+        <div>
+          <span class="text-xs uppercase tracking-wide text-emerald-600 font-semibold">
+            Promoción
+          </span>
+          <h1 class="text-xl sm:text-2xl font-bold text-slate-900 mt-1">
+            {{ promo.nombre }}
+          </h1>
+        </div>
+
+        {% if promo.descripcion %}
+          <p class="text-sm text-slate-700">
+            {{ promo.descripcion }}
+          </p>
+        {% endif %}
+
+        <div class="mt-2">
+          <p class="text-xs uppercase tracking-wide text-slate-500">
+            Precio del combo
+          </p>
+          <p class="text-2xl font-bold text-slate-900">
+            $ {{ promo.precio_combo|floatformat:0 }}
+          </p>
+          {% if promo.precio_referencial and promo.precio_normal %}
+            <p class="text-sm text-slate-400 line-through mt-1">
+              $ {{ promo.precio_normal|floatformat:0 }}
+            </p>
+            {% if promo.ahorro %}
+              <p class="text-xs text-emerald-600 font-medium mt-1">
+                Ahorro: $ {{ promo.ahorro|floatformat:0 }}
+              </p>
+            {% endif %}
+          {% endif %}
+        </div>
+
+        {% if promo.items.all %}
+          <div class="mt-4 border-t border-slate-200 pt-4">
+            <p class="text-xs uppercase tracking-wide text-slate-500 mb-2">
+              Productos incluidos
+            </p>
+            <ul class="space-y-2">
+              {% for item in promo.items.all %}
+                <li class="flex items-center justify-between text-sm">
+                  <span class="text-slate-700">
+                    {{ item.cantidad }} x {{ item.producto.nombre }}
+                  </span>
+                  {% if item.producto.precio %}
+                    <span class="text-slate-500 text-xs">
+                      ${{ item.producto.precio|floatformat:0 }} c/u
+                    </span>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+
+        <div class="mt-auto pt-4 border-t border-slate-200">
+          <form method="post" action="{% url 'tienda:promo_agregar_carrito' promo.id %}" class="space-y-3">
+            {% csrf_token %}
+            
+            <div class="flex items-center gap-3">
+              <label for="cantidad" class="text-sm font-medium text-slate-700 whitespace-nowrap">
+                Cantidad:
+              </label>
+              <div class="flex items-center gap-2 flex-1">
+                <button type="button" 
+                        onclick="decrementarCantidad()"
+                        class="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 font-semibold">
+                  −
+                </button>
+                <input type="number" 
+                       id="cantidad" 
+                       name="cantidad" 
+                       value="1" 
+                       min="1" 
+                       {% if max_packs %}max="{{ max_packs }}"{% endif %}
+                       class="w-20 text-center border border-slate-300 rounded-lg px-2 py-1.5 text-sm font-medium"
+                       onchange="validarCantidad()">
+                <button type="button" 
+                        onclick="incrementarCantidad()"
+                        class="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 font-semibold">
+                  +
+                </button>
+              </div>
+              {% if max_packs %}
+                <span class="text-xs text-slate-500">
+                  Máx: {{ max_packs }}
+                </span>
+              {% endif %}
+            </div>
+
+            {% if max_packs == 0 %}
+              <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p class="text-sm text-red-700">
+                  ⚠️ No hay stock suficiente para esta promoción.
+                </p>
+              </div>
+            {% else %}
+              <button type="submit"
+                      class="w-full inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
+                Agregar al carrito
+              </button>
+            {% endif %}
+          </form>
+          
+          {% if cantidad_en_carrito > 0 %}
+            <p class="mt-2 text-xs text-slate-500 text-center">
+              Ya tienes {{ cantidad_en_carrito }} en el carrito.
+            </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function validarCantidad() {
+    const input = document.getElementById('cantidad');
+    let valor = parseInt(input.value) || 1;
+    const max = parseInt(input.getAttribute('max')) || 999;
+    
+    if (valor < 1) {
+      valor = 1;
+    }
+    if (valor > max) {
+      valor = max;
+    }
+    
+    input.value = valor;
+  }
+
+  function incrementarCantidad() {
+    const input = document.getElementById('cantidad');
+    const max = parseInt(input.getAttribute('max')) || 999;
+    let valor = parseInt(input.value) || 1;
+    
+    if (valor < max) {
+      valor++;
+      input.value = valor;
+    }
+  }
+
+  function decrementarCantidad() {
+    const input = document.getElementById('cantidad');
+    let valor = parseInt(input.value) || 1;
+    
+    if (valor > 1) {
+      valor--;
+      input.value = valor;
+    }
+  }
+</script>
+{% endblock %}
+

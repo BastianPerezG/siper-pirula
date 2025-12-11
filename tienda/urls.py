@@ -14,10 +14,12 @@ urlpatterns = [
     ),
     path("productos/", views.productos_list_view, name="productos"),
     path("producto/<int:producto_id>/", views.producto_detalle, name="producto_detalle"),
+    path("promo/<int:promo_id>/", views.promo_detalle, name="promo_detalle"),
     # carrito
     path("carrito/", views.carrito_ver, name="carrito_ver"),
     path("carrito/agregar/<int:producto_id>/", views.carrito_agregar, name="carrito_agregar"),
     path("carrito/actualizar/", views.carrito_actualizar, name="carrito_actualizar"),
+    path("carrito/actualizar-item/", views.carrito_actualizar_item, name="carrito_actualizar_item"),
     path("carrito/eliminar/<str:item_id>/", views.carrito_eliminar_view, name="carrito_eliminar"),
     path("carrito/vaciar/", views.carrito_vaciar, name="carrito_vaciar"),
     # checkout

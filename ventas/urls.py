@@ -13,6 +13,7 @@ from .views import (
     VentaEnEsperaListaView, 
     CajaTurnoListaView, 
     CajaTurnoDetalleView,
+    PagoPendienteListaView,
     )
 from . import views
 
@@ -52,4 +53,12 @@ urlpatterns = [
 
     # Auditoría de descuentos
     path("descuentos/auditoria/",AuditoriaDescuentoListaView.as_view(),name="descuento_auditoria"),
+    
+    # --- Gestión de Pagos Pendientes ---
+    path("pagos/pendientes/", views.PagoPendienteListaView.as_view(), name="pago_pendiente_lista"),
+    path("pagos/<int:pk>/confirmar/", views.pago_confirmar_view, name="pago_confirmar"),
+    
+    # --- Datos bancarios y notas de venta ---
+    path("<int:pk>/datos-bancarios/", views.venta_datos_bancarios_view, name="venta_datos_bancarios"),
+    path("<int:pk>/nota-imprimir/", views.venta_nota_imprimir_view, name="venta_nota_imprimir"),
 ]

@@ -1,0 +1,164 @@
+{% extends "../core/base.html" %}
+
+{% block title %}Datos Bancarios - Venta #{{ venta.id }} - SIPER Pirula{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <header class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">
+                Datos para Transferencia Bancaria
+            </h1>
+            <p class="text-slate-600 text-sm mt-1">
+                Venta #{{ venta.id }} - Total: ${{ venta.monto_total|default:venta.total|floatformat:0 }}
+            </p>
+        </div>
+        <a href="{% url 'ventas:venta_detalle' venta.pk %}"
+           class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm hover:bg-slate-50">
+            Volver al detalle
+        </a>
+    </header>
+
+    {% if negocio.tiene_datos_bancarios %}
+    <div class="bg-white rounded-xl shadow-sm p-6 space-y-6">
+        <!-- Información de la venta -->
+        <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+            <h2 class="text-lg font-semibold text-slate-800 mb-3">Resumen de la venta</h2>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <p class="text-slate-500 font-semibold">Número de venta</p>
+                    <p class="text-slate-800 font-medium">#{{ venta.id }}</p>
+                </div>
+                <div>
+                    <p class="text-slate-500 font-semibold">Total a pagar</p>
+                    <p class="text-slate-800 font-bold text-lg">${{ venta.monto_total|default:venta.total|floatformat:0 }}</p>
+                </div>
+                <div>
+                    <p class="text-slate-500 font-semibold">Fecha</p>
+                    <p class="text-slate-800">{{ venta.fecha|date:"d/m/Y H:i" }}</p>
+                </div>
+                <div>
+                    <p class="text-slate-500 font-semibold">Documento</p>
+                    <p class="text-slate-800">{{ venta.doc_tipo }} {{ venta.doc_num|default:"—" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Datos bancarios -->
+        <div class="border-t border-slate-200 pt-6">
+            <h2 class="text-lg font-semibold text-slate-800 mb-4">
+                Datos bancarios para transferencia
+            </h2>
+            
+            <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-5 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs font-semibold text-emerald-800 uppercase tracking-wide mb-1">Banco</p>
+                        <p class="text-lg font-bold text-emerald-900">{{ negocio.banco_nombre }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-semibold text-emerald-800 uppercase tracking-wide mb-1">Tipo de cuenta</p>
+                        <p class="text-lg font-bold text-emerald-900">{{ negocio.banco_tipo_cuenta|default:"—" }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-semibold text-emerald-800 uppercase tracking-wide mb-1">Número de cuenta</p>
+                        <p class="text-lg font-bold text-emerald-900 font-mono">{{ negocio.banco_numero_cuenta }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-semibold text-emerald-800 uppercase tracking-wide mb-1">RUT del titular</p>
+                        <p class="text-lg font-bold text-emerald-900 font-mono">{{ negocio.banco_rut_titular }}</p>
+                    </div>
+                    <div class="md:col-span-2">
+                        <p class="text-xs font-semibold text-emerald-800 uppercase tracking-wide mb-1">Nombre del titular</p>
+                        <p class="text-lg font-bold text-emerald-900">{{ negocio.banco_nombre_titular }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- QR Code (Información de referencia) -->
+        <div class="border-t border-slate-200 pt-6">
+            <h2 class="text-lg font-semibold text-slate-800 mb-4">
+                Código QR de referencia
+            </h2>
+            {% if qr_image_base64 %}
+            <div class="bg-white border-2 border-slate-300 rounded-lg p-8 text-center">
+                <div class="flex justify-center mb-4">
+                    <div class="bg-white p-4 rounded-lg shadow-md inline-block">
+                        <img src="data:image/png;base64,{{ qr_image_base64 }}" 
+                             alt="Código QR con datos bancarios"
+                             class="w-64 h-64 mx-auto"
+                             style="max-width: 300px; max-height: 300px;">
+                    </div>
+                </div>
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left text-sm text-blue-800 mb-4">
+                    <p class="font-semibold mb-2">ℹ️ Información importante sobre el QR:</p>
+                    <ul class="list-disc list-inside space-y-1 text-xs">
+                        <li>Este QR contiene los datos bancarios en formato de texto legible</li>
+                        <li>Las apps bancarias chilenas (BancoEstado, Banco de Chile, etc.) no usan un estándar unificado para QR de transferencias</li>
+                        <li>Puedes escanearlo para ver los datos rápidamente, pero deberás ingresarlos manualmente en tu app bancaria</li>
+                        <li>Alternativamente, usa los datos bancarios mostrados arriba para realizar la transferencia</li>
+                    </ul>
+                </div>
+                <p class="text-xs text-slate-500">
+                    El código QR es solo una referencia rápida. Para realizar la transferencia, ingresa los datos manualmente en tu app bancaria.
+                </p>
+            </div>
+            {% elif qr_error %}
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p class="text-sm text-red-800 font-semibold mb-2">⚠️ Error al generar código QR</p>
+                <p class="text-xs text-red-700">{{ qr_error }}</p>
+                <p class="text-xs text-red-600 mt-2">
+                    Por favor, utiliza los datos bancarios mostrados arriba para realizar la transferencia manualmente.
+                </p>
+            </div>
+            {% else %}
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p class="text-sm text-amber-800">
+                    ⚠️ El código QR no está disponible. Por favor, utiliza los datos bancarios mostrados arriba para realizar la transferencia manualmente.
+                </p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Instrucciones -->
+        <div class="border-t border-slate-200 pt-6">
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p class="font-semibold text-amber-800 mb-2">⚠️ Instrucciones importantes:</p>
+                <ul class="text-sm text-amber-700 space-y-1 list-disc list-inside">
+                    <li>Realiza la transferencia por el monto exacto: <strong>${{ venta.monto_total|default:venta.total|floatformat:0 }}</strong></li>
+                    <li>Una vez realizada la transferencia, el cajero confirmará el pago manualmente</li>
+                    <li>Guarda el comprobante de transferencia hasta que se confirme el pago</li>
+                    <li>El pago quedará pendiente hasta su confirmación</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="border-t border-slate-200 pt-6 flex flex-wrap gap-3">
+            <a href="{% url 'ventas:venta_nota_imprimir' venta.pk %}"
+               target="_blank"
+               class="inline-flex items-center px-4 py-2 rounded-lg bg-slate-700 text-white text-sm font-semibold hover:bg-slate-800 transition-colors">
+                🖨️ Imprimir nota de venta
+            </a>
+            <a href="{% url 'ventas:venta_detalle' venta.pk %}"
+               class="inline-flex items-center px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm hover:bg-slate-50 transition-colors">
+                Volver al detalle
+            </a>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-red-50 border border-red-200 rounded-lg p-6">
+        <p class="text-red-800 font-semibold mb-2">⚠️ Datos bancarios no configurados</p>
+        <p class="text-red-700 text-sm">
+            El negocio no tiene datos bancarios configurados. Por favor, contacta al administrador para configurarlos.
+        </p>
+        <a href="{% url 'ventas:venta_detalle' venta.pk %}"
+           class="inline-block mt-4 px-4 py-2 rounded-lg border border-red-300 text-red-700 text-sm hover:bg-red-100">
+            Volver al detalle
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+

@@ -3,13 +3,100 @@
 {% block title %}Ventas - SIPER Pirula{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Ventas</h1>
-
-<div class="mb-4">
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <h1 class="text-2xl font-bold">Ventas</h1>
     <a href="{% url 'ventas:venta_crear' %}"
-        class="inline-flex items-center px-3 py-1.5 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700">
-        Registrar nueva venta
+        class="inline-flex items-center px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors">
+        + Registrar nueva venta
     </a>
+</div>
+
+<!-- Tabs de navegación -->
+<div class="mb-6 border-b border-slate-200">
+    <nav class="flex space-x-1" aria-label="Tabs">
+        <a href="{% url 'ventas:venta_lista' %}"
+           class="{% if not request.GET.filtro %}border-emerald-500 text-emerald-600{% else %}border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300{% endif %} whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
+            Todas las ventas
+        </a>
+        <a href="{% url 'ventas:ventas_en_espera_lista' %}"
+           class="{% if request.resolver_match.url_name == 'ventas_en_espera_lista' %}border-amber-500 text-amber-600{% else %}border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300{% endif %} whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
+            En espera (sin pagar)
+        </a>
+        {% if user.perfilusuario.rol == "ADMIN" %}
+        <a href="{% url 'ventas:pago_pendiente_lista' %}"
+           class="{% if request.resolver_match.url_name == 'pago_pendiente_lista' %}border-blue-500 text-blue-600{% else %}border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300{% endif %} whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
+            Pagos pendientes
+        </a>
+        {% endif %}
+    </nav>
+</div>
+
+<!-- Formulario de filtros y búsqueda -->
+<div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+    <form method="get" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Búsqueda -->
+            <div>
+                <label for="{{ filtro_form.q.id_for_label }}" class="block text-xs font-semibold text-slate-700 mb-1">
+                    {{ filtro_form.q.label }}
+                </label>
+                {{ filtro_form.q }}
+            </div>
+            
+            <!-- Estado -->
+            <div>
+                <label for="{{ filtro_form.estado.id_for_label }}" class="block text-xs font-semibold text-slate-700 mb-1">
+                    {{ filtro_form.estado.label }}
+                </label>
+                {{ filtro_form.estado }}
+            </div>
+            
+            <!-- Método de pago -->
+            <div>
+                <label for="{{ filtro_form.metodo_pago.id_for_label }}" class="block text-xs font-semibold text-slate-700 mb-1">
+                    {{ filtro_form.metodo_pago.label }}
+                </label>
+                {{ filtro_form.metodo_pago }}
+            </div>
+            
+            <!-- Tipo de documento -->
+            <div>
+                <label for="{{ filtro_form.doc_tipo.id_for_label }}" class="block text-xs font-semibold text-slate-700 mb-1">
+                    {{ filtro_form.doc_tipo.label }}
+                </label>
+                {{ filtro_form.doc_tipo }}
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Fecha desde -->
+            <div>
+                <label for="{{ filtro_form.fecha_desde.id_for_label }}" class="block text-xs font-semibold text-slate-700 mb-1">
+                    {{ filtro_form.fecha_desde.label }}
+                </label>
+                {{ filtro_form.fecha_desde }}
+            </div>
+            
+            <!-- Fecha hasta -->
+            <div>
+                <label for="{{ filtro_form.fecha_hasta.id_for_label }}" class="block text-xs font-semibold text-slate-700 mb-1">
+                    {{ filtro_form.fecha_hasta.label }}
+                </label>
+                {{ filtro_form.fecha_hasta }}
+            </div>
+        </div>
+        
+        <div class="flex flex-wrap gap-3 pt-2 border-t border-slate-200">
+            <button type="submit"
+                    class="inline-flex items-center px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors">
+                🔍 Buscar
+            </button>
+            <a href="{% url 'ventas:venta_lista' %}"
+               class="inline-flex items-center px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm hover:bg-slate-50 transition-colors">
+                Limpiar filtros
+            </a>
+        </div>
+    </form>
 </div>
 
 <div class="bg-white shadow-sm rounded-lg overflow-hidden">
@@ -52,7 +139,9 @@
                     {% endif %}
                 </td>
                 <td class="px-4 py-2">{{ venta.medio_pago }}</td>
-                <td class="px-4 py-2 text-right">$ {{ venta.total }}</td>
+                <td class="px-4 py-2 text-right">
+                    $ {{ venta.monto_total|default:venta.total|floatformat:0 }}
+                </td>
                 <td class="px-4 py-2 text-right">
                     <a href="{% url 'ventas:venta_detalle' venta.pk %}"
                         class="text-emerald-700 hover:underline text-sm">
@@ -76,12 +165,44 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5" class="px-4 py-4 text-center text-slate-500">
-                    No hay ventas registradas.
+                <td colspan="7" class="px-4 py-4 text-center text-slate-500">
+                    {% if request.GET %}
+                        No se encontraron ventas con los filtros aplicados.
+                    {% else %}
+                        No hay ventas registradas.
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+
+<!-- Paginación -->
+{% if is_paginated %}
+<div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white px-4 py-3 rounded-lg shadow-sm">
+    <div class="text-sm text-slate-600">
+        Mostrando {{ page_obj.start_index }} a {{ page_obj.end_index }} de {{ paginator.count }} ventas
+    </div>
+    <div class="flex gap-2">
+        {% if page_obj.has_previous %}
+        <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}"
+           class="px-3 py-1.5 rounded border border-slate-300 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+            ← Anterior
+        </a>
+        {% endif %}
+        
+        <span class="px-3 py-1.5 text-sm text-slate-600">
+            Página {{ page_obj.number }} de {{ paginator.num_pages }}
+        </span>
+        
+        {% if page_obj.has_next %}
+        <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}"
+           class="px-3 py-1.5 rounded border border-slate-300 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+            Siguiente →
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 {% endblock %}
