@@ -1,0 +1,53 @@
+{% extends "core/base.html" %}
+{% load core_log_tags %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Historial de Bitácora del Sistema</h1>
+<hr class="mb-4">
+
+<div class="mb-6 flex space-x-2 overflow-x-auto pb-2 border-b border-gray-200">
+    
+    <a href="{% url 'core:admin_bitacoras' %}" 
+       class="px-4 py-2 text-sm font-medium rounded-lg transition duration-150 whitespace-nowrap
+       {% if not area_activa %} bg-blue-600 text-white shadow-md {% else %} text-gray-700 bg-gray-100 hover:bg-gray-200 {% endif %}">
+        Todos los Registros
+    </a>
+    
+    {% for area in areas_funcionales %}
+        <a href="{% url 'core:admin_bitacoras' %}?area={{ area }}"
+           class="px-4 py-2 text-sm font-medium rounded-lg transition duration-150 whitespace-nowrap
+           {% if area_activa == area %} bg-blue-600 text-white shadow-md {% else %} text-gray-700 bg-gray-100 hover:bg-gray-200 {% endif %}">
+            {{ area|capfirst }}
+        </a>
+    {% endfor %}
+</div>
+{% if area_activa %}
+    <h3 class="text-xl font-semibold mb-4 border-l-4 border-blue-500 pl-2">
+        Mostrando Registros del Área: <span class="text-blue-600">{{ area_activa|capfirst }}</span>
+    </h3>
+{% endif %}
+
+<div class="space-y-4">
+    {% for log in logs %}
+        <div class="flex items-start bg-white p-3 border rounded shadow-sm">
+            
+            <div class="flex-shrink-0 w-32 text-xs font-mono text-gray-500 pr-4 border-r border-gray-200 pt-1">
+                {{ log.fecha_hora|date:"d M Y" }}<br>
+                <span class="font-bold text-gray-700">{{ log.fecha_hora|time:"H:i:s" }}</span>
+            </div>
+            
+            <div class="flex-grow pl-4">
+                {% render_log_entry log %} 
+            </div>
+        </div>
+    {% empty %}
+        <div class="text-center p-8 bg-gray-50 border rounded text-gray-500">
+            {% if area_activa %}
+                No se encontraron registros de bitácora para el área de **{{ area_activa|capfirst }}**.
+            {% else %}
+                No hay registros de bitácora disponibles.
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>
+{% endblock%}

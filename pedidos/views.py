@@ -14,9 +14,8 @@ from .models import Pedido
 from .forms import PedidoForm, PedidoItemFormSet
 from ventas.models import Venta, VentaItem
 from tienda.views import get_negocio_actual
-from core.utils import registrar_bitacora_simple
 
-
+from core.utils import registrar_bitacora_estructurada
 def _generar_codigo():
     """Código corto tipo 'AB34XZ'."""
     return "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
@@ -142,7 +141,7 @@ def pedido_cambiar_estado_view(request, pk, nuevo_estado):
             detalles_del_registro['accion_inventario'] = mensaje_reversa
         
         # Llamada a la función de registro
-        registrar_bitacora_simple(
+        registrar_bitacora_estructurada(
             usuario=request.user,
             accion=accion_descripcion,
             entidad_id=pedido.pk,

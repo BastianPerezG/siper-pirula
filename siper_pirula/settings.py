@@ -35,7 +35,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.humanize",
     # nuestras apps:
-    "core", "inventario", "pedidos", "ventas", "tienda","reportes"
+    "core", "inventario", "pedidos", "ventas", "tienda","reportes",
 ]
 
 

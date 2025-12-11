@@ -209,6 +209,10 @@
                             class="block px-4 py-2 hover:bg-slate-700">
                             📁 Auditoría de descuentos
                         </a>
+                        <a href="{% url 'core:admin_bitacoras' %}"
+                            class="block px-4 py-2 hover:bg-slate-700">
+                            Bitácoras del sistema
+                        </a>
                     </div>
                 </div>
                 {% endif %}
@@ -246,22 +250,17 @@
                         {% endif %}
                     </div>
                 </div>
-                <a href="{% url 'core:logout_interno' %}"
-                    class="px-3 py-1 rounded bg-red-600 hover:bg-red-500 text-xs sm:text-sm">
-                    Salir
-                </a>
+                <form method="post" action="{% url 'core:logout_interno' %}">
+                    {% csrf_token %} 
+                    <button type="submit" 
+                            class="px-3 py-1 rounded bg-red-600 hover:bg-red-500 text-xs sm:text-sm">
+                        Salir
+                    </button>
+                </form>
+                {% else %}
+                {# ====================== NAV SIN LOGIN ====================== #}
+                {% endif %}
             </div>
-
-            {% else %}
-            {# ====================== NAV SIN LOGIN ====================== #}
-            <div class="flex items-center gap-3 text-xs sm:text-sm">
-                <a href="{% url 'core:login_interno' %}"
-                    class="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500">
-                    Ingresar
-                </a>
-            </div>
-            {% endif %}
-        </div>
     </header>
 
     <!-- Contenido principal -->

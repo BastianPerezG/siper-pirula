@@ -96,6 +96,10 @@ class BitacoraAccion(models.Model):
         default=dict,
         verbose_name="Detalles en Json"
     )
+    tipo_accion = models.CharField(max_length=50, 
+                                   help_text="Ej: CREATION, EDITION, DELETION, LOGIN")
+    nombre_modelo = models.CharField(max_length=50,
+                                    help_text="Ej: Inventario, Venta, Usuario, Caja")
     class Meta:
         verbose_name = "Registro de Bitácora Simple"
         verbose_name_plural = "Bitácora de Acciones Simples"

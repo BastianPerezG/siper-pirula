@@ -7,7 +7,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
 from django.contrib.auth.models import User
 
-from .models import PerfilUsuario, Negocio
+from .models import PerfilUsuario, Negocio, BitacoraAccion
 from .forms import UsuarioCrearForm, UsuarioEditarForm
 from .mixins import RolRequeridoMixin, rol_requerido
 
@@ -15,6 +15,7 @@ from django.shortcuts import render, get_object_or_404
 from django.utils.decorators import method_decorator
 from django.db.models import Q
 
+from core.utlis import registrar_bitacora_estructurada
 from .mixins import RolRequeridoMixin, rol_requerido
 
 # Views Core
@@ -44,6 +45,23 @@ def login_interno_view(request):
                     "Contacta a un administrador."
                 )
             else:
+                detalles_registro = {
+                    'usuario_id': user.pk,
+                    'rol_principal': perfil.rol, # Asumiendo que 'perfil.rol' existe
+                    # Opcional: registrar la IP del cliente
+                    'ip_address': request.META.get('REMOTE_ADDR'), 
+                }
+                
+                registrar_bitacora_estructurada(
+                    usuario=user,
+                    nombre_modelo='Sesion',      # Modelo que representa la acción del sistema
+                    tipo_accion='LOGIN',          # Acción específica para el inicio de sesión
+                    accion=f"Inicio de sesión exitoso por el usuario: {user.username} con ID: {user.pk}",
+                    entidad_id=user.pk,           # La entidad afectada es el propio usuario
+                    detalles=detalles_registro
+                )
+                
+                # --- 🔥 FIN DEL REGISTRO DE BITÁCORA 🔥 ---
                 login(request, user)
                 messages.success(request, "Sesión iniciada correctamente.")
                 next_url = request.GET.get("next") or reverse_lazy("core:dashboard")
@@ -160,3 +178,37 @@ def usuario_toggle_activo_view(request, pk):
     estado_txt = "activado" if perfil.activo else "desactivado"
     messages.info(request, f"Usuario {perfil.user.username} {estado_txt}.")
     return redirect("core:usuarios_lista")
+
+
+class BitacoraListView(ListView):
+    model = BitacoraAccion
+    template_name = 'core/bitacora/bitacoras.html'
+    context_object_name = 'logs'
+    paginate_by = 50 
+
+    # Definimos las áreas funcionales disponibles para el filtro
+    AREAS_FUNCIONALES = [
+        'Venta', 'Inventario', 'Sesion', 'PedidoOnline', 'Caja', 'Usuario','Log'
+    ]
+
+    def get_queryset(self):
+        # 1. Obtener el QuerySet base (todos los registros)
+        queryset = super().get_queryset().select_related('usuario').order_by('-fecha_hora')
+        
+        # 2. Leer el parámetro de filtro 'area' de la URL
+        filtro_area = self.request.GET.get('area')
+        
+        if filtro_area and filtro_area in self.AREAS_FUNCIONALES:
+            # 3. Aplicar el filtro si se especificó un área válida
+            queryset = queryset.filter(nombre_modelo__iexact=filtro_area)
+            
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # 4. Pasar las áreas disponibles y el filtro activo a la plantilla
+        context['areas_funcionales'] = self.AREAS_FUNCIONALES
+        context['area_activa'] = self.request.GET.get('area')
+        
+        return context

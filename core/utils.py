@@ -1,31 +1,40 @@
-from core.models import BitacoraAccion
+# core/utils.py
 
-def registrar_bitacora_simple(
-    usuario, 
-    accion: str, 
+from core.models import BitacoraAccion
+from django.contrib.auth.models import User
+from typing import Optional, Dict
+
+def registrar_bitacora_estructurada(
+    usuario: Optional[User], 
+    accion: str, # Esto será el título o resumen
+    tipo_accion: str, # Ejemplo: 'CREATION', 'EDITION'
+    nombre_modelo: str, # Ejemplo: 'Inventario', 'Usuario'
     entidad_id, 
-    detalles: dict = None
+    detalles: Dict = None
 ):
-    """Crea un registro de acción en la tabla de bitácora."""
+    """
+    Crea un registro de acción estructurado para permitir un renderizado dinámico.
+    """
     
     if detalles is None:
         detalles = {}
         
-    # Maneja usuarios no autenticados (importante si registras acciones internas)
+    # Maneja usuarios no autenticados
     if usuario and not usuario.is_authenticated:
         usuario = None
     
     try:
         registro = BitacoraAccion.objects.create(
             usuario=usuario,
-            accion=accion,
+            accion=accion, # El título
+            tipo_accion=tipo_accion, # El nuevo campo clave
+            nombre_modelo=nombre_modelo, # El nuevo campo clave
             entidad_id=str(entidad_id),
             detalles=detalles
         )
         
-        # Ahora puedes imprimir el PK del objeto que acabas de crear
-        print(f"✅ ¡BITÁCORA REGISTRADA EXITOSAMENTE!: ID {registro.pk} | Acción: {registro.accion}")
+        print(f"✅ BITÁCORA ESTRUCTURADA REGISTRADA: ID {registro.pk} | Acción: {registro.accion} | Modelo: {registro.nombre_modelo}")
         
     except Exception as e:
-        # Se debe loggear el error, pero permitir que la transacción continúe.
-        print(f"❌ ERROR AL REGISTRAR BITÁCORA SIMPLE: {e}")
+        # Se debe loggear el error
+        print(f"❌ ERROR AL REGISTRAR BITÁCORA ESTRUCTURADA: {e}")

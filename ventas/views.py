@@ -14,7 +14,7 @@ from .models import PagoVenta, Venta,VentaItem,Anulacion, CajaTurno, ArqueoParci
 from .forms import AuditoriaDescuentoFiltroForm, CodigoAutorizacionDescuentoForm, DescuentoReglaRolForm, VentaCheckoutForm, VentaForm, VentaItemFormSet, AperturaCajaForm, ArqueoParcialForm, CierreCajaForm
 from inventario.models import Producto, MovimientoInventario
 from django.db import transaction   
-from core.utils import registrar_bitacora_simple
+
 from core.models import Negocio, PerfilUsuario
 from django.db.models import Sum, F, DecimalField, ExpressionWrapper
 from .utils import validar_y_auditar_descuento_ticket
@@ -24,6 +24,8 @@ from django.template.loader import render_to_string
 from django.http import HttpResponse
 from xhtml2pdf import pisa
 
+from core.utils import registrar_bitacora_estructurada
+from core.models import Negocio
 
 import json # Necesario para json.dumps en el contexto
 
@@ -144,18 +146,31 @@ def venta_crear_view(request):
                         "La venta debe tener al menos un producto válido."
                     )
                 else:
-                    # Recalcular total y guardarlo
-                    venta.monto_total = venta.total
-                    venta.save(update_fields=["monto_total", "estado"])
 
-                    detalles_registro = (
-                        f"Venta #{venta.pk} | "
-                        f"Total: ${venta.monto_total} | "
-                        f"Comentario: {comentario_usuario}"
-                    )
+                    # 'venta.total' ejecuta la suma de los subtotales de los ítems
+                    venta.monto_total = venta.total 
+                    
+                    # Esto congela el total en la base de datos (Inmutabilidad histórica)
+                    venta.save(update_fields=['monto_total','estado'])
+                    detalles_registro = {
+                        'items_vendidos': items_validos,
+                        'monto_total': str(venta.monto_total), 
+                        'id_venta': venta.pk,
+                    }
+                    if comentario_usuario:
+                        detalles_registro['comentario_usuario'] = comentario_usuario
+                        
+                    # --- 🔥 REGISTRO DE BITÁCORA 🔥 ---
+                    registrar_bitacora_estructurada(
 
-                    registrar_bitacora_simple(
                         usuario=request.user,
+                        
+                        # 🟢 AÑADIDO: Para categorizar el objeto
+                        nombre_modelo='Venta',
+                        
+                        # 🟢 AÑADIDO: La acción específica es CREACION
+                        tipo_accion='CREACION', 
+                        
                         accion=f"Creación de Venta POS #{venta.pk}",
                         entidad_id=venta.pk,
                         detalles=detalles_registro,
@@ -305,7 +320,7 @@ def venta_editar_view(request, pk):
                     if comentario_usuario:
                         detalles_registro["comentario_usuario"] = comentario_usuario
 
-                    registrar_bitacora_simple(
+                    registrar_bitacora_estructurada(
                         usuario=request.user,
                         accion=f"Edición de Venta #{venta.pk}",
                         entidad_id=venta.pk,
@@ -431,7 +446,7 @@ def venta_checkout_view(request, pk):
                         usuario_registra=request.user,
                     )
 
-                    registrar_bitacora_simple(
+                    registrar_bitacora_estructurada(
                         usuario=request.user,
                         accion=f"Cobro / checkout venta #{venta.pk}",
                         entidad_id=venta.pk,
@@ -501,7 +516,7 @@ def venta_cobrar_view(request, pk):
         with transaction.atomic():
             venta.cerrar_y_actualizar_stock()
 
-            registrar_bitacora_simple(
+            registrar_bitacora_estructurada(
                 usuario=request.user,
                 accion=f"Cobro y cierre de Venta en espera #{venta.pk}",
                 entidad_id=venta.pk,
@@ -566,7 +581,7 @@ def venta_anular_view(request, pk):
                 'items_revertidos': venta.items.count(),
                 'usuario_anulador_id': str(request.user.pk),
             }
-            registrar_bitacora_simple(
+            registrar_bitacora_estructurada(
                 usuario=request.user,
                 accion=f"Anulación completa de Venta POS #{venta.pk}",
                 entidad_id=venta.pk,
@@ -596,7 +611,7 @@ def caja_apertura_view(request):
             caja.estado = CajaTurno.EST_ABIERTA
             caja.save()
 
-            registrar_bitacora_simple(
+            registrar_bitacora_estructurada(
                 usuario=request.user,
                 accion="Apertura de caja",
                 entidad_id=caja.pk,
@@ -689,7 +704,7 @@ def caja_cierre_view(request):
             caja.estado = CajaTurno.EST_CERRADA
             caja.save()
 
-            registrar_bitacora_simple(
+            registrar_bitacora_estructurada(
                 usuario=request.user,
                 accion="Cierre de caja",
                 entidad_id=caja.pk,
