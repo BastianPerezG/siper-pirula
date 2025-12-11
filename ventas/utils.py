@@ -32,26 +32,27 @@ def validar_y_auditar_descuento_ticket(
     motivo,
     codigo_ingresado,
     request=None,
-) -> bool:
+) -> tuple[bool, str]:
     """
     Valida:
     - motivo obligatorio si hay descuento
     - tope por rol
     - si excede tope → requiere código válido
     Registra auditoría si el descuento se aplica.
-    Devuelve True si está todo OK, False si hay error (y muestra mensaje).
+    Devuelve (True, "") si está todo OK, (False, mensaje_error) si hay error.
     """
     pct = Decimal(pct_descuento or 0)
     monto = int(monto_descuento or 0)
 
     if pct <= 0 and monto <= 0:
         # Sin descuento → nada que hacer
-        return True
+        return (True, "")
 
     if not motivo.strip():
+        msg = "Debes ingresar un motivo para el descuento."
         if request:
-            messages.error(request, "Debes ingresar un motivo para el descuento.")
-        return False
+            messages.error(request, msg)
+        return (False, msg)
 
     # Normalizamos: si hay % calculamos monto; si hay monto calculamos %
     if pct > 0 and monto == 0:
@@ -67,33 +68,33 @@ def validar_y_auditar_descuento_ticket(
     # ¿Supera tope? → requiere código
     if pct > tope_rol:
         if not codigo_ingresado:
+            msg = (
+                f"Tu rol permite hasta {tope_rol}% de descuento. "
+                "Debes ingresar un código de autorización para aplicar más."
+            )
             if request:
-                messages.error(
-                    request,
-                    f"Tu rol permite hasta {tope_rol}% de descuento. "
-                    "Debes ingresar un código de autorización para aplicar más.",
-                )
-            return False
+                messages.error(request, msg)
+            return (False, msg)
 
         try:
             codigo = CodigoAutorizacionDescuento.objects.get(codigo=codigo_ingresado)
         except CodigoAutorizacionDescuento.DoesNotExist:
+            msg = "Código de autorización inválido."
             if request:
-                messages.error(request, "Código de autorización inválido.")
-            return False
+                messages.error(request, msg)
+            return (False, msg)
 
         if not codigo.esta_vigente():
+            msg = "El código de autorización no está vigente."
             if request:
-                messages.error(request, "El código de autorización no está vigente.")
-            return False
+                messages.error(request, msg)
+            return (False, msg)
 
         if pct > codigo.max_pct_ticket:
+            msg = f"El código solo autoriza hasta {codigo.max_pct_ticket}% de descuento."
             if request:
-                messages.error(
-                    request,
-                    f"El código solo autoriza hasta {codigo.max_pct_ticket}% de descuento.",
-                )
-            return False
+                messages.error(request, msg)
+            return (False, msg)
 
         usuario_autoriza = codigo.usuario_autorizador
         codigo_usado = codigo.codigo
@@ -110,4 +111,4 @@ def validar_y_auditar_descuento_ticket(
         codigo_usado=codigo_usado,
     )
 
-    return True
+    return (True, "")

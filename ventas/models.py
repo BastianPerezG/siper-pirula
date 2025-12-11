@@ -89,6 +89,56 @@ class Venta(models.Model):
     def __str__(self):
         return f"Venta #{self.id} - {self.fecha}"
 
+    def generar_numero_documento(self):
+        """
+        Genera automáticamente el número de documento basado en el tipo y negocio.
+        Formato: BOL-0001, FACT-0001, etc.
+        Solo genera número si el tipo no es SIN_DOC y no tiene número asignado.
+        """
+        if self.doc_tipo == self.DOC_SIN_DOC:
+            return None
+        
+        if self.doc_num:
+            # Si ya tiene número, no lo regeneramos
+            return self.doc_num
+        
+        # Determinar el prefijo según el tipo
+        if self.doc_tipo == self.DOC_BOLETA:
+            prefijo = "BOL"
+        elif self.doc_tipo == self.DOC_FACTURA:
+            prefijo = "FACT"
+        else:
+            prefijo = "DOC"
+        
+        # Obtener todas las ventas de este tipo y negocio con números válidos
+        ventas_con_numero = Venta.objects.filter(
+            negocio=self.negocio,
+            doc_tipo=self.doc_tipo
+        ).exclude(
+            doc_num__isnull=True
+        ).exclude(
+            doc_num=""
+        ).values_list('doc_num', flat=True)
+        
+        # Buscar el número más alto
+        ultimo_numero = 0
+        for doc_num in ventas_con_numero:
+            try:
+                # Intentar extraer el número (ej: "BOL-0001" -> 1)
+                if doc_num.startswith(prefijo + '-'):
+                    partes = doc_num.split('-')
+                    if len(partes) == 2:
+                        numero = int(partes[1])
+                        if numero > ultimo_numero:
+                            ultimo_numero = numero
+            except (ValueError, IndexError):
+                # Si no tiene el formato esperado, ignorar
+                continue
+        
+        # Generar el nuevo número
+        nuevo_numero = ultimo_numero + 1
+        return f"{prefijo}-{nuevo_numero:04d}"
+
     @property
     def total(self):
         """
@@ -295,6 +345,19 @@ class PagoVenta(models.Model):
         (MET_TRANSFERENCIA, "Transferencia bancaria"),
     )
 
+    # Estados del pago
+    ESTADO_PENDIENTE = "PENDIENTE"
+    ESTADO_COMPLETADO = "COMPLETADO"
+    ESTADO_RECHAZADO = "RECHAZADO"
+    ESTADO_ANULADO = "ANULADO"
+
+    ESTADOS = (
+        (ESTADO_PENDIENTE, "Pendiente"),
+        (ESTADO_COMPLETADO, "Completado"),
+        (ESTADO_RECHAZADO, "Rechazado"),
+        (ESTADO_ANULADO, "Anulado"),
+    )
+
     venta = models.ForeignKey(
         Venta,
         on_delete=models.CASCADE,
@@ -302,19 +365,126 @@ class PagoVenta(models.Model):
     )
     metodo = models.CharField(max_length=20, choices=METODOS)
     monto = models.PositiveIntegerField()
-
+    
+    # Estado del pago
+    estado = models.CharField(
+        max_length=15,
+        choices=ESTADOS,
+        default=ESTADO_COMPLETADO,
+        help_text="Estado del pago. Pendiente para transferencias no confirmadas."
+    )
+    
+    # Vuelto (solo para efectivo)
+    vuelto = models.PositiveIntegerField(
+        default=0,
+        help_text="Vuelto entregado al cliente (solo para pagos en efectivo)"
+    )
+    
+    # Campos para transferencia bancaria
+    codigo_referencia = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="Código o número de referencia de la transferencia"
+    )
+    banco = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Banco desde donde se realizó la transferencia"
+    )
+    cuenta_origen = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="Número de cuenta desde donde se realizó la transferencia"
+    )
+    titular_transferencia = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        help_text="Nombre del titular de la cuenta origen"
+    )
+    
+    # Campos para tarjetas (integración futura)
+    referencia_transaccion = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Referencia de transacción de la pasarela de pago"
+    )
+    token_tarjeta = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        help_text="Token de la transacción (para auditoría, no almacenar datos sensibles)"
+    )
+    ultimos_digitos = models.CharField(
+        max_length=4,
+        blank=True,
+        null=True,
+        help_text="Últimos 4 dígitos de la tarjeta"
+    )
+    
+    # Auditoría
     fecha_hora = models.DateTimeField(auto_now_add=True)
     usuario_registra = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="pagos_registrados",
     )
+    fecha_confirmacion = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="Fecha en que se confirmó el pago (para transferencias)"
+    )
+    usuario_confirma = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="pagos_confirmados",
+        blank=True,
+        null=True,
+        help_text="Usuario que confirmó el pago"
+    )
+    observaciones = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Observaciones o notas sobre el pago"
+    )
 
     class Meta:
         db_table = "pago_venta"
+        ordering = ["-fecha_hora"]
 
     def __str__(self):
-        return f"Pago {self.metodo} ${self.monto} en venta #{self.venta_id}"
+        estado_str = self.get_estado_display()
+        return f"Pago {self.get_metodo_display()} ${self.monto} - {estado_str} (Venta #{self.venta_id})"
+    
+    def es_efectivo(self):
+        """Retorna True si el método de pago es efectivo"""
+        return self.metodo == self.MET_EFECTIVO
+    
+    def es_transferencia(self):
+        """Retorna True si el método de pago es transferencia"""
+        return self.metodo == self.MET_TRANSFERENCIA
+    
+    def es_tarjeta(self):
+        """Retorna True si el método de pago es tarjeta (débito o crédito)"""
+        return self.metodo in [self.MET_DEBITO, self.MET_CREDITO]
+    
+    def esta_pendiente(self):
+        """Retorna True si el pago está pendiente de confirmación"""
+        return self.estado == self.ESTADO_PENDIENTE
+    
+    def confirmar(self, usuario):
+        """Confirma un pago pendiente (para transferencias)"""
+        if self.estado != self.ESTADO_PENDIENTE:
+            raise ValidationError("Solo se pueden confirmar pagos pendientes")
+        
+        self.estado = self.ESTADO_COMPLETADO
+        self.fecha_confirmacion = timezone.now()
+        self.usuario_confirma = usuario
+        self.save(update_fields=["estado", "fecha_confirmacion", "usuario_confirma"])
 
 
 class Anulacion(models.Model):

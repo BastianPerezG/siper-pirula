@@ -44,34 +44,44 @@
   </div>
 
   <!-- Filtros (chips + buscador) -->
-<form method="get" class="mb-5 flex flex-col sm:flex-row gap-3 sm:items-center">
-  <select name="categoria"
-          class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-full sm:w-56">
-    <option value="">Todas las categorías</option>
-    {% for cat in categorias %}
-      <option value="{{ cat.slug }}"
-        {% if categoria and categoria.slug == cat.slug %}selected{% endif %}>
-        {{ cat.nombre }}
-      </option>
-    {% endfor %}
-  </select>
+  {% if categorias %}
+  <form method="get" class="mb-5 flex flex-col sm:flex-row gap-3 sm:items-center">
+    <select name="categoria"
+            class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-full sm:w-56"
+            onchange="this.form.submit()">
+      <option value="">Todas las categorías</option>
+      {% for cat in categorias %}
+        <option value="{{ cat.slug }}"
+          {% if categoria and categoria.slug == cat.slug %}selected{% endif %}>
+          {{ cat.nombre }}
+        </option>
+      {% endfor %}
+    </select>
 
-  <input type="text"
-         name="q"
-         value="{{ q }}"
-         placeholder="Buscar producto..."
-         class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-full sm:w-64">
+    <input type="text"
+           name="q"
+           value="{{ q }}"
+           placeholder="Buscar producto..."
+           class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-full sm:w-64">
 
-  <button type="submit"
-          class="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">
-    Buscar
-  </button>
-</form>
+    <button type="submit"
+            class="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">
+      Buscar
+    </button>
+    
+    {% if categoria or q %}
+    <a href="{% url 'tienda:productos' %}"
+       class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm">
+      Limpiar filtros
+    </a>
+    {% endif %}
+  </form>
+  {% endif %}
 
   <!-- Grid de productos -->
-  {% if productos %}
+  {% if page_obj %}
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-    {% for producto in productos %}
+    {% for producto in page_obj %}
     <div
       class="bg-white rounded-2xl shadow-sm hover:shadow-md border border-slate-100 flex flex-col transition-shadow duration-200">
       {% if producto.imagen %}

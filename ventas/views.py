@@ -1,5 +1,7 @@
 # ventas/views.py
 
+from decimal import Decimal
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView
@@ -8,10 +10,12 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
+from django.core.exceptions import ValidationError, PermissionDenied
+from django.views.decorators.csrf import csrf_exempt
 
 from core.mixins import RolRequeridoMixin
 from .models import PagoVenta, Venta,VentaItem,Anulacion, CajaTurno, ArqueoParcial, DescuentoReglaRol, CodigoAutorizacionDescuento, AuditoriaDescuento
-from .forms import AuditoriaDescuentoFiltroForm, CodigoAutorizacionDescuentoForm, DescuentoReglaRolForm, VentaCheckoutForm, VentaForm, VentaItemFormSet, AperturaCajaForm, ArqueoParcialForm, CierreCajaForm
+from .forms import AuditoriaDescuentoFiltroForm, CodigoAutorizacionDescuentoForm, DescuentoReglaRolForm, VentaCheckoutForm, VentaForm, VentaItemFormSet, AperturaCajaForm, ArqueoParcialForm, CierreCajaForm, VentaFiltroForm
 from inventario.models import Producto, MovimientoInventario
 from django.db import transaction   
 
@@ -22,8 +26,8 @@ from .utils import validar_y_auditar_descuento_ticket
 # Imports para el PDF
 from django.template.loader import render_to_string
 from django.http import HttpResponse
-#from xhtml2pdf import pisa
-
+from xhtml12pdf import pisa
+from qrcode import *
 from core.utils import registrar_bitacora_estructurada
 from core.models import Negocio
 
@@ -47,7 +51,53 @@ class VentaListaView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         negocio = self.request.user.perfilusuario.negocio
-        return Venta.objects.filter(negocio=negocio).order_by("-fecha")
+        qs = Venta.objects.filter(negocio=negocio)
+        
+        # Aplicar filtros del formulario
+        form = VentaFiltroForm(self.request.GET)
+        if form.is_valid():
+            # Búsqueda por texto (ID o número de documento)
+            q = form.cleaned_data.get("q", "").strip()
+            if q:
+                # Buscar por ID o número de documento
+                try:
+                    # Intentar buscar por ID
+                    venta_id = int(q)
+                    qs = qs.filter(id=venta_id)
+                except ValueError:
+                    # Si no es un número, buscar por número de documento
+                    qs = qs.filter(doc_num__icontains=q)
+            
+            # Filtro por estado
+            estado = form.cleaned_data.get("estado")
+            if estado:
+                qs = qs.filter(estado=estado)
+            
+            # Filtro por método de pago
+            metodo_pago = form.cleaned_data.get("metodo_pago")
+            if metodo_pago:
+                qs = qs.filter(medio_pago=metodo_pago)
+            
+            # Filtro por tipo de documento
+            doc_tipo = form.cleaned_data.get("doc_tipo")
+            if doc_tipo:
+                qs = qs.filter(doc_tipo=doc_tipo)
+            
+            # Filtro por rango de fechas
+            fecha_desde = form.cleaned_data.get("fecha_desde")
+            fecha_hasta = form.cleaned_data.get("fecha_hasta")
+            if fecha_desde:
+                qs = qs.filter(fecha__date__gte=fecha_desde)
+            if fecha_hasta:
+                qs = qs.filter(fecha__date__lte=fecha_hasta)
+        
+        return qs.order_by("-fecha")
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Agregar el formulario de filtros al contexto
+        context["filtro_form"] = VentaFiltroForm(self.request.GET)
+        return context
 
 
 class VentaDetalleView(LoginRequiredMixin, DetailView):
@@ -109,13 +159,15 @@ def venta_crear_view(request):
                 venta = form.save(commit=False)
                 venta.negocio = negocio
 
-                # Enviar a espera => ABIERTA (genera reservas)
-                # Cobrar y cerrar => CERRADA (genera salidas)
-                if accion == "espera":
-                    venta.estado = Venta.EST_ABIERTA
-                else:
-                    venta.estado = Venta.EST_CERRADA
-
+                # IMPORTANTE: Todas las ventas nuevas se crean como ABIERTA
+                # - "Enviar a espera" => ABIERTA (genera reservas, queda en espera)
+                # - "Cobrar y cerrar" => ABIERTA (genera reservas, luego va al checkout)
+                # El checkout es quien cierra la venta después de aplicar descuentos y registrar pagos
+                venta.estado = Venta.EST_ABIERTA
+                
+                # Generar número de documento automáticamente
+                venta.doc_num = venta.generar_numero_documento()
+                
                 venta.save()
 
                 items_validos = 0
@@ -268,9 +320,17 @@ def venta_editar_view(request, pk):
                 # 1) Actualizamos datos generales de la venta
                 venta = form.save(commit=False)
                 venta.negocio = negocio
-                venta.estado = (
-                    Venta.EST_ABIERTA if accion == "espera" else Venta.EST_CERRADA
-                )
+                
+                # IMPORTANTE: Todas las ventas editadas se mantienen como ABIERTA
+                # - "Guardar y dejar en espera" => ABIERTA (queda en espera)
+                # - "Guardar y cerrar" => ABIERTA (luego va al checkout)
+                # El checkout es quien cierra la venta después de aplicar descuentos y registrar pagos
+                venta.estado = Venta.EST_ABIERTA
+                
+                # Generar número de documento si no existe
+                if not venta.doc_num:
+                    venta.doc_num = venta.generar_numero_documento()
+                
                 venta.save()
 
                 # 2) Eliminamos TODOS los movimientos de inventario de esta venta
@@ -298,6 +358,7 @@ def venta_editar_view(request, pk):
                     item.venta = venta
                     item.precio_unit = producto.precio
                     item.save()
+                    items_validos += 1
 
                 if items_validos == 0:
                     # Si no quedó ningún ítem, revertimos todo
@@ -334,11 +395,12 @@ def venta_editar_view(request, pk):
                         )
                         return redirect("ventas:ventas_en_espera_lista")
                     else:
+                        # "Guardar y cerrar" → redirigir al checkout para aplicar descuentos y registrar pago
                         messages.success(
                             request,
-                            f"Venta #{venta.pk} actualizada y cerrada correctamente.",
+                            f"Venta #{venta.pk} actualizada. Continúa con el cobro.",
                         )
-                        return redirect("ventas:venta_detalle", pk=venta.pk)
+                        return redirect("ventas:venta_checkout", pk=venta.pk)
 
         # Si llega aquí es que form o formset no son válidos
         messages.error(
@@ -367,9 +429,15 @@ def venta_checkout_view(request, pk):
     """
     Registrar descuento de ticket y pago de una venta.
 
-    Se puede llamar tanto para:
-      - Ventas recién creadas por POS (estado CERRADA, sin pago asociado).
+    Se puede llamar para:
+      - Ventas recién creadas por POS (estado ABIERTA, sin pago asociado).
       - Ventas en espera (estado ABIERTA, con reservas de stock).
+
+    IMPORTANTE: Esta vista es la responsable de:
+      - Aplicar descuentos de ticket
+      - Registrar el/los pago(s)
+      - Cerrar la venta (cambiar estado a CERRADA)
+      - Convertir reservas en salidas de stock
 
     Si la venta ya tiene un pago registrado, se redirige al detalle.
     """
@@ -401,23 +469,27 @@ def venta_checkout_view(request, pk):
 
         if form.is_valid():
             tipo_desc = form.cleaned_data.get("tipo_descuento")
-            pct = form.cleaned_data.get("descuento_pct") or 0
+            pct = form.cleaned_data.get("descuento_pct")
             monto_desc = form.cleaned_data.get("descuento_monto") or 0
             motivo = (form.cleaned_data.get("motivo_descuento") or "").strip()
             codigo = (form.cleaned_data.get("codigo_autorizacion") or "").strip()
 
             # Normalizar: siempre tener un monto de descuento
             if tipo_desc == VentaCheckoutForm.TIPO_PORCENTAJE and pct:
-                monto_desc = round(total_bruto * (pct / 100))
+                # Convertir pct a float para el cálculo
+                pct_float = float(pct)
+                if pct_float > 0:
+                    monto_desc = int(round(total_bruto * (pct_float / 100)))
+            elif tipo_desc == VentaCheckoutForm.TIPO_MONTO:
+                monto_desc = int(monto_desc or 0)
+            else:
+                # TIPO_NINGUNO
+                monto_desc = 0
 
-            total_neto = max(total_bruto - monto_desc, 0)
+            total_neto = max(int(total_bruto) - monto_desc, 0)
 
             with transaction.atomic():
-                # Si la venta estaba en espera, cerrar y transformar reservas en salidas
-                if venta.estado == Venta.EST_ABIERTA:
-                    venta.cerrar_y_actualizar_stock()
-
-                # Validar reglas de descuento y registrar auditoría
+                # Validar reglas de descuento y registrar auditoría ANTES de cerrar
                 ok, msg_error = validar_y_auditar_descuento_ticket(
                     user=request.user,
                     venta=venta,
@@ -432,19 +504,84 @@ def venta_checkout_view(request, pk):
                     transaction.set_rollback(True)
                     form.add_error(None, msg_error)
                 else:
-                    # Actualizar monto_total y estado
-                    venta.monto_total = total_neto
+                    # Convertir reservas en salidas si la venta estaba ABIERTA
+                    # (NO usamos cerrar_y_actualizar_stock() porque sobrescribe monto_total sin descuento)
+                    if venta.estado == Venta.EST_ABIERTA:
+                        from inventario.models import MovimientoInventario
+                        for item in venta.items.all():
+                            # Buscar reservas asociadas a este item
+                            reservas = MovimientoInventario.objects.filter(
+                                venta_item=item,
+                                tipo=MovimientoInventario.TIPO_RESERVA,
+                            )
+                            
+                            if reservas.exists():
+                                # Convertir reservas a salidas
+                                for mov in reservas:
+                                    mov.tipo = MovimientoInventario.TIPO_SALIDA
+                                    comentario_base = mov.comentario or ""
+                                    extra = f" → Venta cobrada #{venta.pk}"
+                                    mov.comentario = (comentario_base + extra).strip()
+                                    mov.save(update_fields=["tipo", "comentario"])
+                            else:
+                                # Si no hay reservas, crear salida directa (venta directa sin pedido)
+                                MovimientoInventario.objects.create(
+                                    producto=item.producto,
+                                    tipo=MovimientoInventario.TIPO_SALIDA,
+                                    cantidad=item.cantidad,
+                                    comentario=f"Venta #{venta.pk}",
+                                    venta_item=item,
+                                )
+                    
+                    # Actualizar monto_total CON descuento aplicado y cerrar la venta
+                    venta.monto_total = Decimal(str(total_neto))
                     venta.estado = Venta.EST_CERRADA
                     venta.medio_pago = form.cleaned_data["metodo_pago"]
                     venta.save(update_fields=["monto_total", "estado", "medio_pago"])
 
-                    # Registrar pago
-                    PagoVenta.objects.create(
+                    metodo_pago = form.cleaned_data["metodo_pago"]
+                    
+                    # Para todos los métodos, procesar normalmente
+                    # Efectivo: completado inmediatamente
+                    # Transferencia: pendiente (mostrar datos bancarios)
+                    # Tarjeta: pendiente (confirmar manualmente después de usar máquina Transbank)
+                    monto_pagado = form.cleaned_data["monto_pagado"]
+                    vuelto = form.cleaned_data.get("vuelto", 0)
+                    
+                    # Determinar estado del pago
+                    if metodo_pago == PagoVenta.MET_EFECTIVO:
+                        estado_pago = PagoVenta.ESTADO_COMPLETADO  # Efectivo completado inmediatamente
+                    else:
+                        # Transferencia y tarjeta quedan pendientes hasta confirmación manual
+                        estado_pago = PagoVenta.ESTADO_PENDIENTE
+                    
+                    pago = PagoVenta.objects.create(
                         venta=venta,
-                        metodo=form.cleaned_data["metodo_pago"],
-                        monto=form.cleaned_data["monto_pagado"],
+                        metodo=metodo_pago,
+                        monto=monto_pagado,
+                        estado=estado_pago,
+                        vuelto=vuelto,
                         usuario_registra=request.user,
                     )
+                    
+                    # Campos específicos según método de pago
+                    if metodo_pago == PagoVenta.MET_TRANSFERENCIA:
+                        pago.codigo_referencia = form.cleaned_data.get("codigo_referencia_transferencia", "").strip()
+                        pago.banco = form.cleaned_data.get("banco_transferencia", "").strip()
+                        pago.cuenta_origen = form.cleaned_data.get("cuenta_origen_transferencia", "").strip()
+                        pago.titular_transferencia = form.cleaned_data.get("titular_transferencia", "").strip()
+                        pago.save(update_fields=["codigo_referencia", "banco", "cuenta_origen", "titular_transferencia"])
+                    elif metodo_pago in [PagoVenta.MET_DEBITO, PagoVenta.MET_CREDITO]:
+                        # Para tarjeta, guardar datos opcionales que el cajero puede ingresar
+                        pago.ultimos_digitos = form.cleaned_data.get("ultimos_digitos_tarjeta", "").strip()
+                        pago.referencia_transaccion = form.cleaned_data.get("referencia_transaccion", "").strip()
+                        pago.save(update_fields=["ultimos_digitos", "referencia_transaccion"])
+                    
+                    # Observaciones si existen
+                    observaciones = form.cleaned_data.get("observaciones_pago", "").strip()
+                    if observaciones:
+                        pago.observaciones = observaciones
+                        pago.save(update_fields=["observaciones"])
 
                     registrar_bitacora_estructurada(
                         usuario=request.user,
@@ -454,12 +591,28 @@ def venta_checkout_view(request, pk):
                             f"Total bruto: ${total_bruto} | "
                             f"Descuento ticket: ${monto_desc} | "
                             f"Total neto: ${total_neto} | "
-                            f"Medio de pago: {venta.get_medio_pago_display()}"
+                            f"Medio de pago: {venta.get_medio_pago_display()} | "
+                            f"Monto pagado: ${monto_pagado} | "
+                            f"Vuelto: ${vuelto} | "
+                            f"Estado pago: {pago.get_estado_display()}"
                         ),
                     )
 
-                    messages.success(request, f"Venta #{venta.pk} cobrada correctamente.")
-                    return redirect("ventas:venta_detalle", pk=venta.pk)
+                    # Redirigir según método de pago
+                    if metodo_pago == PagoVenta.MET_EFECTIVO:
+                        messages.success(request, f"Venta #{venta.pk} cobrada correctamente.")
+                        return redirect("ventas:venta_detalle", pk=venta.pk)
+                    elif metodo_pago == PagoVenta.MET_TRANSFERENCIA:
+                        # Redirigir a página con datos bancarios y QR
+                        messages.info(request, "Venta registrada. Muestra los datos bancarios al cliente.")
+                        return redirect("ventas:venta_datos_bancarios", pk=venta.pk)
+                    else:  # Tarjeta
+                        # Redirigir a detalle para que el cajero confirme después de usar máquina Transbank
+                        messages.info(
+                            request,
+                            "Venta registrada. Procesa el pago con la máquina Transbank y luego confirma el pago."
+                        )
+                        return redirect("ventas:venta_detalle", pk=venta.pk)
 
     else:
         initial = {
@@ -492,11 +645,23 @@ class VentaEnEsperaListaView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         negocio = self.request.user.perfilusuario.negocio
-        return (
-            Venta.objects
-            .filter(negocio=negocio, estado=Venta.EST_ABIERTA)
-            .order_by("fecha")
-        )
+        qs = Venta.objects.filter(negocio=negocio, estado=Venta.EST_ABIERTA)
+        
+        # Aplicar búsqueda simple
+        q = self.request.GET.get("q", "").strip()
+        if q:
+            try:
+                venta_id = int(q)
+                qs = qs.filter(id=venta_id)
+            except ValueError:
+                qs = qs.filter(doc_num__icontains=q)
+        
+        return qs.order_by("fecha")
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["q"] = self.request.GET.get("q", "")
+        return context
 
 @login_required
 def venta_cobrar_view(request, pk):
@@ -1058,3 +1223,218 @@ class AuditoriaDescuentoListaView(RolRequeridoMixin, ListView):
         # Pasamos el formulario al contexto para que la plantilla pueda renderizarlo
         ctx["filtro_form"] = getattr(self, "filtro_form", AuditoriaDescuentoFiltroForm())
         return ctx
+
+
+class PagoPendienteListaView(RolRequeridoMixin, ListView):
+    """
+    Lista de pagos pendientes de confirmación (transferencias).
+    Solo accesible para ADMIN.
+    """
+    roles_requeridos = ["ADMIN"]
+    model = PagoVenta
+    template_name = "ventas/pago_pendiente_lista.html"
+    context_object_name = "pagos_pendientes"
+    paginate_by = 25
+
+    def get_queryset(self):
+        negocio = self.request.user.perfilusuario.negocio
+        qs = (
+            PagoVenta.objects
+            .filter(
+                venta__negocio=negocio,
+                estado=PagoVenta.ESTADO_PENDIENTE
+            )
+            .select_related("venta", "usuario_registra")
+        )
+        
+        # Aplicar búsqueda
+        q = self.request.GET.get("q", "").strip()
+        if q:
+            try:
+                venta_id = int(q)
+                qs = qs.filter(venta_id=venta_id)
+            except ValueError:
+                # Buscar por número de documento de la venta
+                qs = qs.filter(venta__doc_num__icontains=q)
+        
+        # Filtro por método de pago
+        metodo = self.request.GET.get("metodo", "")
+        if metodo:
+            qs = qs.filter(metodo=metodo)
+        
+        return qs.order_by("-fecha_hora")
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["q"] = self.request.GET.get("q", "")
+        context["metodo"] = self.request.GET.get("metodo", "")
+        context["metodos_pago"] = PagoVenta.METODOS
+        return context
+
+
+@login_required
+def pago_confirmar_view(request, pk):
+    """
+    Confirma un pago pendiente (transferencia).
+    Solo ADMIN puede confirmar.
+    """
+    # Verificar que sea ADMIN
+    perfil = getattr(request.user, "perfilusuario", None)
+    if not perfil or perfil.rol != "ADMIN":
+        raise PermissionDenied("Solo los administradores pueden confirmar pagos pendientes.")
+    
+    pago = get_object_or_404(
+        PagoVenta.objects.select_related("venta"),
+        pk=pk,
+        estado=PagoVenta.ESTADO_PENDIENTE
+    )
+    
+    # Verificar que el pago pertenezca al negocio del usuario
+    if pago.venta.negocio != request.user.perfilusuario.negocio:
+        raise PermissionDenied("No tienes permisos para confirmar este pago.")
+    
+    if request.method == "POST":
+        with transaction.atomic():
+            try:
+                pago.confirmar(request.user)
+                
+                registrar_bitacora_estructurada(
+                    usuario=request.user,
+                    accion=f"Confirmación de pago #{pago.pk} - Venta #{pago.venta.pk}",
+                    entidad_id=pago.venta.pk,
+                    detalles=(
+                        f"Método: {pago.get_metodo_display()} | "
+                        f"Monto: ${pago.monto} | "
+                        f"Código referencia: {pago.codigo_referencia or 'N/A'}"
+                    ),
+                )
+                
+                messages.success(
+                    request,
+                    f"Pago de ${pago.monto} confirmado correctamente para la venta #{pago.venta.pk}."
+                )
+                return redirect("ventas:venta_detalle", pk=pago.venta.pk)
+            except ValidationError as e:
+                messages.error(request, str(e))
+                return redirect("ventas:venta_detalle", pk=pago.venta.pk)
+    
+    # GET: mostrar confirmación
+    context = {
+        "pago": pago,
+        "venta": pago.venta,
+    }
+    return render(request, "ventas/pago_confirmar.html", context)
+
+
+@login_required
+def venta_datos_bancarios_view(request, pk):
+    """
+    Muestra los datos bancarios del negocio para que el cliente realice la transferencia.
+    Incluye QR con la información de pago.
+    """
+    import io
+    import base64
+    import json
+    
+    negocio = request.user.perfilusuario.negocio
+    venta = get_object_or_404(
+        Venta.objects.select_related("negocio"),
+        pk=pk,
+        negocio=negocio,
+    )
+    
+    # Buscar el pago pendiente de transferencia
+    pago = venta.pagos.filter(
+        metodo=PagoVenta.MET_TRANSFERENCIA,
+        estado=PagoVenta.ESTADO_PENDIENTE
+    ).first()
+    
+    if not pago:
+        messages.error(request, "No se encontró un pago pendiente de transferencia para esta venta.")
+        return redirect("ventas:venta_detalle", pk=venta.pk)
+    
+    # Generar código QR con los datos bancarios
+    # Nota: Los bancos chilenos no usan un estándar unificado para QR de transferencias.
+    # Generamos un QR con texto plano legible que el usuario puede copiar manualmente
+    # o que algunas apps pueden leer como información de contacto.
+    qr_image_base64 = None
+    qr_error = None
+    
+    if negocio.tiene_datos_bancarios():
+        try:
+            import qrcode
+            
+            # Crear el contenido del QR en formato de texto plano legible
+            # Formato simple que puede ser leído por humanos y algunas apps
+            monto = int(venta.monto_total or venta.total)
+            
+            # Formato de texto plano con información estructurada
+            qr_lines = [
+                f"TRANSFERENCIA BANCARIA",
+                f"",
+                f"Banco: {negocio.banco_nombre or 'N/A'}",
+                f"Tipo Cuenta: {negocio.banco_tipo_cuenta or 'N/A'}",
+                f"Numero Cuenta: {negocio.banco_numero_cuenta or 'N/A'}",
+                f"RUT: {negocio.banco_rut_titular or 'N/A'}",
+                f"Titular: {negocio.banco_nombre_titular or 'N/A'}",
+                f"",
+                f"Monto: ${monto:,}",
+                f"Concepto: Venta #{venta.id} - {negocio.nombre}",
+            ]
+            
+            qr_string = "\n".join(qr_lines)
+            
+            # Generar QR con mayor tamaño para mejor legibilidad
+            qr = qrcode.QRCode(
+                version=None,  # Auto-detect version
+                error_correction=qrcode.constants.ERROR_CORRECT_M,  # Mayor corrección de errores
+                box_size=8,
+                border=4,
+            )
+            qr.add_data(qr_string)
+            qr.make(fit=True)
+            
+            # Crear imagen (qrcode usa PIL/Pillow por defecto)
+            img = qr.make_image(fill_color="black", back_color="white")
+            
+            # Convertir a base64 para mostrar en el template
+            buffer = io.BytesIO()
+            img.save(buffer, format='PNG')
+            buffer.seek(0)
+            qr_image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            
+        except ImportError as e:
+            # Si no está instalada la librería
+            qr_error = f"Librería qrcode no instalada: {e}"
+        except Exception as e:
+            # Si hay algún error en la generación
+            qr_error = f"Error generando QR: {str(e)}"
+    
+    context = {
+        "venta": venta,
+        "pago": pago,
+        "negocio": negocio,
+        "qr_image_base64": qr_image_base64,
+        "qr_error": qr_error,
+    }
+    return render(request, "ventas/venta_datos_bancarios.html", context)
+
+
+@login_required
+def venta_nota_imprimir_view(request, pk):
+    """
+    Genera una nota de venta (boleta térmica) con el detalle de la compra.
+    """
+    negocio = request.user.perfilusuario.negocio
+    venta = get_object_or_404(
+        Venta.objects.select_related("negocio", "pedido")
+        .prefetch_related("items__producto"),
+        pk=pk,
+        negocio=negocio,
+    )
+    
+    context = {
+        "venta": venta,
+        "negocio": negocio,
+    }
+    return render(request, "ventas/venta_nota_imprimir.html", context)

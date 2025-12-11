@@ -3,18 +3,55 @@
 {% block title %}Ventas en espera - SIPER Pirula{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Ventas en espera</h1>
-
-<div class="mb-4 flex flex-wrap gap-3 items-center">
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <h1 class="text-2xl font-bold">Ventas en espera</h1>
     <a href="{% url 'ventas:venta_crear' %}"
-        class="inline-flex items-center px-3 py-1.5 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700">
-        Registrar nueva venta
+        class="inline-flex items-center px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors">
+        + Registrar nueva venta
     </a>
+</div>
 
-    <a href="{% url 'ventas:venta_lista' %}"
-        class="inline-flex items-center px-3 py-1.5 rounded border border-slate-300 text-sm hover:bg-slate-50">
-        Ver todas las ventas
-    </a>
+<!-- Tabs de navegación -->
+<div class="mb-6 border-b border-slate-200">
+    <nav class="flex space-x-1" aria-label="Tabs">
+        <a href="{% url 'ventas:venta_lista' %}"
+           class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
+            Todas las ventas
+        </a>
+        <a href="{% url 'ventas:ventas_en_espera_lista' %}"
+           class="border-amber-500 text-amber-600 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
+            En espera (sin pagar)
+        </a>
+        {% if user.perfilusuario.rol == "ADMIN" %}
+        <a href="{% url 'ventas:pago_pendiente_lista' %}"
+           class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
+            Pagos pendientes
+        </a>
+        {% endif %}
+    </nav>
+</div>
+
+<!-- Búsqueda simple -->
+<div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+    <form method="get" class="flex gap-3">
+        <div class="flex-1">
+            <input type="text" 
+                   name="q" 
+                   value="{{ q }}"
+                   placeholder="Buscar por ID o número de documento..."
+                   class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+        </div>
+        <button type="submit"
+                class="inline-flex items-center px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors">
+            🔍 Buscar
+        </button>
+        {% if q %}
+        <a href="{% url 'ventas:ventas_en_espera_lista' %}"
+           class="inline-flex items-center px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm hover:bg-slate-50 transition-colors">
+            Limpiar
+        </a>
+        {% endif %}
+    </form>
 </div>
 
 <div class="bg-white shadow-sm rounded-lg overflow-hidden">
@@ -69,11 +106,43 @@
             {% empty %}
             <tr>
                 <td colspan="6" class="px-4 py-4 text-center text-slate-500">
-                    No hay ventas en espera en este momento.
+                    {% if q %}
+                        No se encontraron ventas en espera con la búsqueda "{{ q }}".
+                    {% else %}
+                        No hay ventas en espera en este momento.
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+
+<!-- Paginación -->
+{% if is_paginated %}
+<div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white px-4 py-3 rounded-lg shadow-sm">
+    <div class="text-sm text-slate-600">
+        Mostrando {{ page_obj.start_index }} a {{ page_obj.end_index }} de {{ paginator.count }} ventas
+    </div>
+    <div class="flex gap-2">
+        {% if page_obj.has_previous %}
+        <a href="?{% if q %}q={{ q }}&{% endif %}page={{ page_obj.previous_page_number }}"
+           class="px-3 py-1.5 rounded border border-slate-300 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+            ← Anterior
+        </a>
+        {% endif %}
+        
+        <span class="px-3 py-1.5 text-sm text-slate-600">
+            Página {{ page_obj.number }} de {{ paginator.num_pages }}
+        </span>
+        
+        {% if page_obj.has_next %}
+        <a href="?{% if q %}q={{ q }}&{% endif %}page={{ page_obj.next_page_number }}"
+           class="px-3 py-1.5 rounded border border-slate-300 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+            Siguiente →
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 {% endblock %}

@@ -37,21 +37,25 @@
   {% if promos %}
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
     {% for promo in promos %}
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-      {# Imagen de la promo #}
-      {% if promo.imagen %}
-      <div class="h-40 w-full overflow-hidden">
-        <img src="{{ promo.imagen.url }}" alt="{{ promo.nombre }}" class="w-full h-full object-cover">
-      </div>
-      {% else %}
-      <div class="h-40 w-full flex items-center justify-center bg-slate-50 text-slate-400 text-sm">
-        Sin imagen
-      </div>
-      {% endif %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+      {# Imagen de la promo - clicable #}
+      <a href="{% url 'tienda:promo_detalle' promo.id %}" class="block">
+        {% if promo.imagen %}
+        <div class="h-40 w-full overflow-hidden">
+          <img src="{{ promo.imagen.url }}" alt="{{ promo.nombre }}" class="w-full h-full object-cover hover:scale-105 transition-transform duration-200">
+        </div>
+        {% else %}
+        <div class="h-40 w-full flex items-center justify-center bg-slate-50 text-slate-400 text-sm">
+          Sin imagen
+        </div>
+        {% endif %}
+      </a>
 
       <div class="p-4 flex-1 flex flex-col">
         <h3 class="text-lg font-semibold text-slate-800 mb-1">
-          {{ promo.nombre }}
+          <a href="{% url 'tienda:promo_detalle' promo.id %}" class="hover:text-emerald-600 transition-colors">
+            {{ promo.nombre }}
+          </a>
         </h3>
 
         {% if promo.descripcion %}

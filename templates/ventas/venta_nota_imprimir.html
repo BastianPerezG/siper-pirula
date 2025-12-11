@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nota de Venta #{{ venta.id }}</title>
+    <style>
+        @media print {
+            @page {
+                size: 80mm auto;
+                margin: 0;
+            }
+            body {
+                margin: 0;
+                padding: 10px;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            max-width: 80mm;
+            margin: 0 auto;
+            padding: 10px;
+            background: white;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        .header h1 {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .header p {
+            margin: 2px 0;
+            font-size: 10px;
+        }
+        .section {
+            margin: 10px 0;
+        }
+        .section-title {
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 11px;
+            border-bottom: 1px solid #000;
+            padding-bottom: 2px;
+            margin-bottom: 5px;
+        }
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+            font-size: 11px;
+        }
+        .item-name {
+            flex: 1;
+            margin-right: 5px;
+        }
+        .item-details {
+            text-align: right;
+            white-space: nowrap;
+        }
+        .total-row {
+            border-top: 1px dashed #000;
+            padding-top: 5px;
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px dashed #000;
+            font-size: 10px;
+        }
+        .divider {
+            border-top: 1px dashed #000;
+            margin: 10px 0;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .btn-print {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 1000;
+        }
+        .btn-print:hover {
+            background: #059669;
+        }
+    </style>
+</head>
+<body>
+    <button onclick="window.print()" class="btn-print no-print">🖨️ Imprimir</button>
+
+    <div class="header">
+        <h1>{{ negocio.nombre|upper }}</h1>
+        {% if negocio.rut %}
+        <p>RUT: {{ negocio.rut }}</p>
+        {% endif %}
+        {% if negocio.direccion %}
+        <p>{{ negocio.direccion }}</p>
+        {% endif %}
+        {% if negocio.telefono %}
+        <p>Tel: {{ negocio.telefono }}</p>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <div class="section-title">NOTA DE VENTA</div>
+        <div class="item-row">
+            <span>N°: {{ venta.id }}</span>
+            <span>{{ venta.fecha|date:"d/m/Y H:i" }}</span>
+        </div>
+        <div class="item-row">
+            <span>{{ venta.doc_tipo }}: {{ venta.doc_num|default:"—" }}</span>
+        </div>
+        {% if venta.comentario %}
+        <div class="item-row">
+            <span>Obs: {{ venta.comentario }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section">
+        <div class="section-title">DETALLE</div>
+        {% for item in venta.items.all %}
+        <div class="item-row">
+            <div class="item-name">
+                {{ item.producto.nombre }}
+                {% if item.descuento_pct %}
+                <br><span style="font-size: 9px;">(Desc: {{ item.descuento_pct }}%)</span>
+                {% endif %}
+            </div>
+            <div class="item-details">
+                {{ item.cantidad }} x ${{ item.precio_unit|floatformat:0 }}
+            </div>
+        </div>
+        <div class="item-row" style="font-size: 10px; margin-left: 10px;">
+            <span>Subtotal:</span>
+            <span>${{ item.subtotal|floatformat:0 }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section">
+        <div class="item-row">
+            <span>Total bruto:</span>
+            <span>${{ venta.total|floatformat:0 }}</span>
+        </div>
+        {% if venta.monto_total != venta.total %}
+        <div class="item-row" style="color: #dc2626;">
+            <span>Descuento ticket:</span>
+            <span id="descuento-calc">-</span>
+        </div>
+        <script>
+            // Calcular descuento en JavaScript
+            (function() {
+                const totalBruto = parseFloat('{{ venta.total|floatformat:0 }}'.replace(/\./g, '')) || 0;
+                const totalNeto = parseFloat('{{ venta.monto_total|floatformat:0 }}'.replace(/\./g, '')) || 0;
+                const descuento = totalBruto - totalNeto;
+                const descuentoEl = document.getElementById('descuento-calc');
+                if (descuentoEl && descuento > 0) {
+                    descuentoEl.textContent = '-$' + descuento.toLocaleString('es-CL');
+                }
+            })();
+        </script>
+        {% endif %}
+        <div class="total-row">
+            <span>TOTAL:</span>
+            <span>${{ venta.monto_total|default:venta.total|floatformat:0 }}</span>
+        </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section">
+        <div class="section-title">FORMA DE PAGO</div>
+        <div class="item-row">
+            <span>{{ venta.get_medio_pago_display }}</span>
+        </div>
+        {% for pago in venta.pagos.all %}
+        <div class="item-row" style="font-size: 10px;">
+            <span>{{ pago.get_metodo_display }}: ${{ pago.monto|floatformat:0 }}</span>
+            {% if pago.vuelto > 0 %}
+            <span>Vuelto: ${{ pago.vuelto|floatformat:0 }}</span>
+            {% endif %}
+        </div>
+        {% if pago.estado == "PENDIENTE" %}
+        <div class="item-row" style="font-size: 9px; color: #f59e0b;">
+            <span>⚠️ PENDIENTE DE CONFIRMACIÓN</span>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <div class="footer">
+        <p>Gracias por su compra</p>
+        <p style="font-size: 9px; margin-top: 5px;">
+            Sistema SIPER Pirula
+        </p>
+    </div>
+
+    <script>
+        // Auto-imprimir si se abre en nueva ventana
+        if (window.opener) {
+            window.onload = function() {
+                setTimeout(function() {
+                    window.print();
+                }, 250);
+            };
+        }
+    </script>
+</body>
+</html>
+

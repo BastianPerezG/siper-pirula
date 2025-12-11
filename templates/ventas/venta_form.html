@@ -40,22 +40,9 @@
                 </label>
                 {{ form.doc_tipo }}
                 {{ form.doc_tipo.errors }}
-            </div>
-
-            <div>
-                <label class="block text-slate-600 font-medium mb-1">
-                    Número documento
-                </label>
-                {{ form.doc_num }}
-                {{ form.doc_num.errors }}
-            </div>
-
-            <div>
-                <label class="block text-slate-600 font-medium mb-1">
-                    Medio de pago
-                </label>
-                {{ form.medio_pago }}
-                {{ form.medio_pago.errors }}
+                <p class="text-xs text-slate-500 mt-1">
+                    El número de documento se generará automáticamente al guardar.
+                </p>
             </div>
 
             <div class="md:col-span-2">
