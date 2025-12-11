@@ -91,7 +91,8 @@
                         {% endif %}
                     </div>
                 </div>
-
+                        
+                {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
                 {# ----- Menú Operaciones ----- #}
                 <div class="relative group">
                     <button class="hover:text-amber-300 flex items-center gap-1">
@@ -131,7 +132,6 @@
                     </div>
                 </div>
 
-
                 {# ----- Menú Pedidos ----- #}
                 <div class="relative group">
                     <button class="hover:text-amber-300 flex items-center gap-1">
@@ -149,6 +149,7 @@
                         </a>
                     </div>
                 </div>
+                        {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
 
                 {# ----- Menú Reportes ----- #}
                 <div class="relative group">
@@ -161,7 +162,8 @@
                         class="absolute hidden group-hover:block pt-2 w-48 z-50 text-xs bg-slate-800 rounded shadow-lg overflow-hidden">
                         {# Reportes principales visibles para ADMIN y CAJERO #}
                         {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
-                        <a href="{% url 'reportes:ventas' %}" class="block px-4 py-2 hover:bg-slate-700">
+                        <a href="{% url 'reportes:ventas' %}"
+                            class="block px-4 py-2 hover:bg-slate-700">
                             Ventas
                         </a>
                         <a href="{% url 'reportes:dia-hora' %}" class="block px-4 py-2 hover:bg-slate-700">
@@ -176,9 +178,9 @@
                         <a href="{% url 'reportes:reporte_quiebres' %}" class="block px-4 py-2 hover:bg-slate-700">
                             Stock / quiebres
                         </a>
-                        {% endif %}
                     </div>
                 </div>
+                        {% endif %}
 
                 {# ----- Menú Administración (solo ADMIN) ----- #}
                 {% if request.user.perfilusuario.rol == 'ADMIN' %}
@@ -228,16 +230,19 @@
 
 
             <!-- Info de usuario + salir -->
-            <div class="flex items-center gap-3 text-xs sm:text-sm">
+            <div class="flex items-center gap-3 text-xs sm:text-sm shrink-0">
                 <div class="text-right leading-tight hidden sm:block">
-                    <div class="font-semibold">
+                    <p class="text-xs uppercase tracking-wide text-slate-400">
+                        Sesión actual
+                    </p>
+                    <p class="font-semibold">
                         {{ request.user.get_full_name|default:request.user.username }}
                     </div>
                     <div class="text-amber-300 text-[11px]">
                         {% if request.user.perfilusuario %}
-                        {{ request.user.perfilusuario.get_rol_display }}
+                            {{ request.user.perfilusuario.get_rol_display }}
                         {% else %}
-                        Sin perfil
+                            Sin perfil
                         {% endif %}
                     </div>
                 </div>
@@ -250,7 +255,8 @@
             {% else %}
             {# ====================== NAV SIN LOGIN ====================== #}
             <div class="flex items-center gap-3 text-xs sm:text-sm">
-                <a href="{% url 'core:login_interno' %}" class="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500">
+                <a href="{% url 'core:login_interno' %}"
+                    class="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500">
                     Ingresar
                 </a>
             </div>

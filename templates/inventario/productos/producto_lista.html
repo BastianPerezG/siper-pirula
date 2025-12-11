@@ -17,11 +17,12 @@
             class="px-3 py-1.5 rounded border border-slate-300 text-sm hover:bg-slate-50">
             ⬅ Volver al panel
         </a>
-
+        {% if request.user.perfilusuario.rol == 'ADMIN'%}
         <a href="{% url 'inventario:producto_crear' %}"
             class="px-3 py-1.5 rounded bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
             + Nuevo producto
         </a>
+        {% endif %}
     </div>
 </div>
 
@@ -118,6 +119,7 @@
                             class="text-emerald-600 hover:text-emerald-800 font-medium">
                             Ver
                         </a>
+                        {% if request.user.perfilusuario.rol == 'ADMIN' %}
                         <a href="{% url 'inventario:producto_editar' p.pk %}"
                             class="text-slate-600 hover:text-slate-900 text-sm">
                             Editar
@@ -134,6 +136,7 @@
                             </button>
                             {% endif %}
                         </form>
+                        {% endif %}
                     </div>
                 </td>
             </tr>
