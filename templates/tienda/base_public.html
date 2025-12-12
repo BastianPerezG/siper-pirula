@@ -4,6 +4,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SIPER Pirula · Tienda{% endblock %}</title>
 
     <!-- Tailwind CDN (como en base interna) -->
@@ -15,34 +16,45 @@
 <body class="bg-slate-100 min-h-screen flex flex-col">
 
     <header class="bg-slate-900 text-slate-100">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-            <a href="{% url 'tienda:home' %}" class="font-bold text-lg tracking-wide">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+            <a href="{% url 'tienda:home' %}" class="font-bold text-base sm:text-lg tracking-wide">
                 SIPER Pirula
             </a>
 
-            <nav class="flex items-center gap-4 text-sm">
-                <a href="{% url 'tienda:home' %}" class="hover:text-amber-300">
+            <nav class="hidden sm:flex items-center gap-3 sm:gap-4 text-xs sm:text-sm">
+                <a href="{% url 'tienda:home' %}" class="hover:text-amber-300 whitespace-nowrap">
                     Inicio
                 </a>
 
-                <a href="{% url 'tienda:carrito_ver' %}" class="hover:text-amber-300">
+                <a href="{% url 'tienda:carrito_ver' %}" class="hover:text-amber-300 whitespace-nowrap">
                     Carrito
                 </a>
 
                 {% if request.user.is_authenticated %}
-                <span class="text-xs text-slate-300">
+                <span class="text-xs text-slate-300 hidden md:inline">
                     Hola, {{ request.user.username }}
                 </span>
-                <a href="{% url 'tienda:logout' %}" class="hover:text-amber-300 text-xs">
+                <a href="{% url 'tienda:logout' %}" class="hover:text-amber-300 text-xs whitespace-nowrap">
                     Cerrar sesión
                 </a>
                 {% else %}
-                <a href="{% url 'tienda:login' %}" class="hover:text-amber-300 text-xs">
+                <a href="{% url 'tienda:login' %}" class="hover:text-amber-300 text-xs whitespace-nowrap">
                     Iniciar sesión
                 </a>
-                <a href="{% url 'tienda:registro' %}" class="hover:text-amber-300 text-xs">
+                <a href="{% url 'tienda:registro' %}" class="hover:text-amber-300 text-xs whitespace-nowrap">
                     Registrarme
                 </a>
+                {% endif %}
+            </nav>
+
+            <!-- Menú móvil -->
+            <nav class="sm:hidden flex items-center gap-2 text-xs">
+                <a href="{% url 'tienda:home' %}" class="hover:text-amber-300">Inicio</a>
+                <a href="{% url 'tienda:carrito_ver' %}" class="hover:text-amber-300">Carrito</a>
+                {% if request.user.is_authenticated %}
+                <a href="{% url 'tienda:logout' %}" class="hover:text-amber-300">Salir</a>
+                {% else %}
+                <a href="{% url 'tienda:login' %}" class="hover:text-amber-300">Login</a>
                 {% endif %}
             </nav>
 
@@ -69,13 +81,52 @@
     </main>
 
     <footer class="bg-slate-900 text-slate-400 text-xs">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between gap-2 text-center sm:text-left">
             <span>SIPER Pirula · Tienda</span>
             <span>Retiro en local</span>
         </div>
     </footer>
 
     {% block extra_js %}{% endblock %}
+
+    <!-- Popup de verificación de edad -->
+    {% if not request.session.mayor_edad_verificado %}
+    <div id="ageVerificationModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 sm:p-8">
+            <div class="text-center">
+                <div class="mb-4">
+                    <svg class="mx-auto h-16 w-16 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-900 mb-4">
+                    ¿Eres mayor de 18 años?
+                </h2>
+                <p class="text-sm text-slate-600 mb-6">
+                    La venta de bebidas alcohólicas es exclusiva para mayores de 18 años.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <form method="post" action="{% url 'tienda:verificar_edad' %}" class="flex-1">
+                        {% csrf_token %}
+                        <input type="hidden" name="mayor_edad" value="si">
+                        <button type="submit" 
+                                class="w-full rounded-full bg-emerald-600 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors">
+                            Sí, soy mayor de 18
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'tienda:verificar_edad' %}" class="flex-1">
+                        {% csrf_token %}
+                        <input type="hidden" name="mayor_edad" value="no">
+                        <button type="submit" 
+                                class="w-full rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white hover:bg-red-700 transition-colors">
+                            No
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </body>
 
 </html>

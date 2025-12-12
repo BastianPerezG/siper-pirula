@@ -12,6 +12,9 @@ from django.db.models import Q
 from core.models import Negocio
 from core.utils import registrar_bitacora_estructurada
 from core.models import BitacoraAccion
+from core.mixins import RolRequeridoMixin, rol_requerido 
+
+
 from .models import (
     Producto, 
     MovimientoInventario, 
@@ -64,7 +67,8 @@ def get_negocio_actual(request):
 
 # --- CBVs para productos ---
 
-class ProductoListaView(LoginRequiredMixin, ListView):
+class ProductoListaView(RolRequeridoMixin, ListView):
+    roles_requeridos = ["MESON", "CAJERO", "ADMIN"]
     model = Producto
     template_name = "inventario/productos/producto_lista.html"
     context_object_name = "productos"
@@ -126,7 +130,8 @@ class ProductoListaView(LoginRequiredMixin, ListView):
 
 
 
-class ProductoDetalleView(LoginRequiredMixin, DetailView):
+class ProductoDetalleView(RolRequeridoMixin, DetailView):
+    roles_requeridos = ["MESON", "CAJERO", "ADMIN"]
     model = Producto
     template_name = "inventario/productos/producto_detalle.html"
     context_object_name = "producto"
@@ -136,7 +141,8 @@ class ProductoDetalleView(LoginRequiredMixin, DetailView):
         return Producto.objects.filter(negocio=negocio)
 
 
-class ProductoCrearView(LoginRequiredMixin, CreateView):
+class ProductoCrearView(RolRequeridoMixin, CreateView):
+    roles_requeridos = ["MESON", "CAJERO", "ADMIN"]
     model = Producto
     form_class = ProductoCrearForm
     template_name = "inventario/productos/producto_crear.html"
@@ -174,7 +180,8 @@ class ProductoCrearView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
     
 
-class ProductoActualizarView(LoginRequiredMixin, UpdateView):
+class ProductoActualizarView(RolRequeridoMixin, UpdateView):
+    roles_requeridos = ["MESON", "CAJERO", "ADMIN"]
     model = Producto
     form_class = ProductoCrearForm
     template_name = "inventario/productos/producto_editar.html"
@@ -240,6 +247,7 @@ class ProductoActualizarView(LoginRequiredMixin, UpdateView):
 
 
 @login_required
+@rol_requerido("MESON", "CAJERO", "ADMIN")
 def producto_toggle_activo(request, pk):
     if request.method != "POST":
         return redirect("inventario:producto_lista")
@@ -293,11 +301,13 @@ def producto_toggle_activo(request, pk):
     return redirect("inventario:producto_lista")
 
 # --- Movimientos de stock ---
-class FlujosInventarioView(LoginRequiredMixin, TemplateView):
+class FlujosInventarioView(RolRequeridoMixin, TemplateView):
+    roles_requeridos = ["MESON", "CAJERO", "ADMIN"]
     template_name = "inventario/movimiento_stock/flujos_dashboard.html"
 
 
-class MovimientoCrearView(LoginRequiredMixin, CreateView):
+class MovimientoCrearView(RolRequeridoMixin, CreateView):
+    roles_requeridos = ["MESON", "CAJERO", "ADMIN"]
     model = MovimientoInventario
     form_class = MovimientoCrearForm
     template_name = "inventario/movimiento_stock/movimiento_crear.html"
@@ -360,7 +370,8 @@ class MovimientoCrearView(LoginRequiredMixin, CreateView):
         return context
 
 
-class MovimientoListaView(LoginRequiredMixin, ListView):
+class MovimientoListaView(RolRequeridoMixin, ListView):
+    roles_requeridos = ["MESON", "CAJERO", "ADMIN"]
     model = MovimientoInventario
     template_name = "inventario/movimiento_stock/movimiento_lista.html"
     context_object_name = "movimientos"
@@ -384,7 +395,8 @@ class MovimientoListaView(LoginRequiredMixin, ListView):
         return context
 
 
-class ProductoStockCriticoView(LoginRequiredMixin, ListView):
+class ProductoStockCriticoView(RolRequeridoMixin, ListView):
+    roles_requeridos = ["MESON", "CAJERO", "ADMIN"]
     model = Producto
     template_name = "inventario/movimiento_stock/stock_critico.html"
     context_object_name = "productos"
@@ -397,7 +409,8 @@ class ProductoStockCriticoView(LoginRequiredMixin, ListView):
 
 # --- Compras a proveedores ---
 
-class CompraListaView(LoginRequiredMixin, ListView):
+class CompraListaView(RolRequeridoMixin, ListView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
     model = Compra
     template_name = "inventario/compras/compra_lista.html"
     context_object_name = "compras"
@@ -446,7 +459,8 @@ class CompraListaView(LoginRequiredMixin, ListView):
 
 
 
-class CompraDetalleView(LoginRequiredMixin, DetailView):
+class CompraDetalleView(RolRequeridoMixin, DetailView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
     model = Compra
     template_name = "inventario/compras/compra_detalle.html"
     context_object_name = "compra"
@@ -498,6 +512,7 @@ def compra_crear_view(request):
 
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def compra_editar_view(request, pk):
     negocio = request.user.perfilusuario.negocio
     compra = get_object_or_404(Compra, pk=pk, negocio=negocio)
@@ -535,7 +550,8 @@ def compra_editar_view(request, pk):
     return render(request, "inventario/compras/compra_crear.html", context)
 
 
-class CompraEliminarView(LoginRequiredMixin, DeleteView):
+class CompraEliminarView(RolRequeridoMixin, DeleteView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
     model = Compra
     template_name = "inventario/compras/compra_confirmar_eliminar.html"
     success_url = reverse_lazy("inventario:compra_lista")
@@ -547,7 +563,8 @@ class CompraEliminarView(LoginRequiredMixin, DeleteView):
 
 #==================sebastian-proveedores======================#
 #=============================================================#
-class ProveedorListView(LoginRequiredMixin, ListView):
+class ProveedorListView(RolRequeridoMixin, ListView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
     """Lista de proveedores del negocio, con buscador y filtro por estado."""
     model = Proveedor
     template_name = "inventario/proveedores/proveedor_lista.html"
@@ -591,7 +608,8 @@ class ProveedorListView(LoginRequiredMixin, ListView):
 # ----------------------------------------------------
 # B. CREAR PROVEEDOR (CREATE)
 # ----------------------------------------------------
-class ProveedorCreateView(LoginRequiredMixin, CreateView):
+class ProveedorCreateView(RolRequeridoMixin, CreateView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
     """Permite crear un nuevo proveedor."""
     model = Proveedor
     form_class = ProveedorForm
@@ -610,7 +628,8 @@ class ProveedorCreateView(LoginRequiredMixin, CreateView):
 # ----------------------------------------------------
 # C. ACTUALIZAR PROVEEDOR (UPDATE)
 # ----------------------------------------------------
-class ProveedorUpdateView(LoginRequiredMixin, UpdateView):
+class ProveedorUpdateView(RolRequeridoMixin, UpdateView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
     """Permite editar un proveedor existente."""
     model = Proveedor
     form_class = ProveedorForm
@@ -622,7 +641,8 @@ class ProveedorUpdateView(LoginRequiredMixin, UpdateView):
 # D. DETALLE DE PROVEEDOR (DETAIL)
 # ----------------------------------------------------
 
-class ProveedorDetailView(LoginRequiredMixin, DetailView):
+class ProveedorDetailView(RolRequeridoMixin, DetailView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
     """Muestra el detalle de un proveedor específico y su plantilla asociada."""
     model = Proveedor
     template_name = "inventario/proveedores/proveedor_detalle.html" # Nuevo template
@@ -650,7 +670,8 @@ class ProveedorDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class ProveedorToggleActivoView(LoginRequiredMixin, View):
+class ProveedorToggleActivoView(RolRequeridoMixin, View):
+    roles_requeridos = ["CAJERO", "ADMIN"]
     """
     Soft delete: alterna proveedor.activo en lugar de borrar.
     Se llama siempre por POST.
@@ -810,7 +831,8 @@ class ProveedorPlantillaView(LoginRequiredMixin, TemplateView):
 
 # ================== CATEGORÍAS (CRUD INTERNO) ======================
 
-class CategoriaListaView(LoginRequiredMixin, ListView):
+class CategoriaListaView(RolRequeridoMixin, ListView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
     model = Categoria
     template_name = "inventario/categorias/categoria_lista.html"
     context_object_name = "categorias"
@@ -825,7 +847,8 @@ class CategoriaListaView(LoginRequiredMixin, ListView):
         )
 
 
-class CategoriaCrearView(LoginRequiredMixin, CreateView):
+class CategoriaCrearView(RolRequeridoMixin, CreateView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
     model = Categoria
     fields = ["nombre", "imagen", "activo", "orden"]
     template_name = "inventario/categorias/categoria_form.html"
@@ -836,7 +859,8 @@ class CategoriaCrearView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class CategoriaActualizarView(LoginRequiredMixin, UpdateView):
+class CategoriaActualizarView(RolRequeridoMixin, UpdateView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
     model = Categoria
     fields = ["nombre", "imagen", "activo", "orden"]
     template_name = "inventario/categorias/categoria_form.html"
@@ -847,7 +871,8 @@ class CategoriaActualizarView(LoginRequiredMixin, UpdateView):
         return Categoria.objects.filter(negocio=negocio)
 
 
-class CategoriaToggleActivaView(LoginRequiredMixin, View):
+class CategoriaToggleActivaView(RolRequeridoMixin, View):
+    roles_requeridos = ["CAJERO", "ADMIN"]
     """
     Soft-delete: sólo cambia 'activa' en vez de borrar.
     """
@@ -879,6 +904,7 @@ def promo_lista_view(request):
 
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def promo_crear_view(request):
     """
     Crear una nueva promo con sus productos (PromoItem).
@@ -924,6 +950,7 @@ def promo_crear_view(request):
 
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def promo_editar_view(request, pk):
     """
     Editar una promo existente y sus productos asociados.
@@ -953,6 +980,7 @@ def promo_editar_view(request, pk):
 
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def promo_toggle_activa_view(request, pk):
     """
     Soft-delete: cambia 'activo' en vez de borrar la promo.
@@ -967,6 +995,7 @@ def promo_toggle_activa_view(request, pk):
 # Mermas 
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def merma_lista(request):
     negocio = get_negocio_actual(request)
 
@@ -1004,6 +1033,7 @@ def merma_lista(request):
 
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def merma_crear(request):
     negocio = get_negocio_actual(request)
 
@@ -1048,6 +1078,7 @@ def merma_crear(request):
     return render(request, "inventario/merma/merma_form.html", {"form": form})
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def merma_editar(request, pk):
     negocio = get_negocio_actual(request)
     merma = get_object_or_404(
@@ -1074,6 +1105,7 @@ def merma_editar(request, pk):
     )
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def merma_eliminar(request, pk):
     negocio = get_negocio_actual(request)
     merma = get_object_or_404(

@@ -36,4 +36,7 @@ urlpatterns = [
     
     #Carrito
      path("promo/<int:promo_id>/agregar/", views.promo_agregar_carrito_view, name="promo_agregar_carrito"),
+    
+    # Verificación de edad
+    path("verificar-edad/", views.verificar_edad_view, name="verificar_edad"),
 ]

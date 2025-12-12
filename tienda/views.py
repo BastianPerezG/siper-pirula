@@ -1,4 +1,5 @@
 from decimal import Decimal
+import logging
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
@@ -17,7 +18,13 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
+<<<<<<< HEAD
 from core.utils import registrar_bitacora_estructurada
+=======
+
+logger = logging.getLogger(__name__)
+
+>>>>>>> c75e3915b581a931b2164d98bee216091c665de3
 from .forms import CheckoutForm
 from core.models import Negocio
 # SDK Webpay (Transbank)
@@ -30,6 +37,7 @@ except ImportError:
 
 
 CART_SESSION_KEY = "carrito"
+AGE_VERIFICATION_SESSION_KEY = "mayor_edad_verificado"
 
 
 # ------------------------------------------------------------------
@@ -51,6 +59,38 @@ def _save_cart(request, cart):
     """Guarda el carrito en la sesión y marca la sesión como modificada."""
     request.session[CART_SESSION_KEY] = cart
     request.session.modified = True
+
+
+def _tiene_productos_con_alcohol(cart_dict):
+    """
+    Verifica si el carrito contiene productos con alcohol.
+    Retorna True si hay al menos un producto con alcohol.
+    """
+    for key, data in cart_dict.items():
+        try:
+            tipo, raw_id = key.split("-", 1)
+            item_id = int(raw_id)
+        except ValueError:
+            continue
+
+        if tipo == "PROD":
+            try:
+                producto = Producto.objects.get(pk=item_id, activo=True)
+                if producto.contiene_alcohol:
+                    return True
+            except Producto.DoesNotExist:
+                continue
+        elif tipo == "PROMO":
+            try:
+                promo = Promo.objects.get(pk=item_id, activo=True)
+                # Verificar si algún producto de la promo contiene alcohol
+                for promo_item in promo.items.select_related("producto"):
+                    if promo_item.producto.contiene_alcohol:
+                        return True
+            except Promo.DoesNotExist:
+                continue
+    
+    return False
 
 
 def _build_cart_items(cart_dict):
@@ -158,6 +198,33 @@ def _build_cart_items(cart_dict):
     return items, total
 
 
+def verificar_edad_view(request):
+    """
+    Vista para guardar la verificación de edad en la sesión.
+    Si el usuario dice que NO es mayor de edad, se redirige fuera del sitio.
+    """
+    if request.method == "POST":
+        mayor_edad = request.POST.get("mayor_edad")
+        
+        if mayor_edad == "si":
+            request.session[AGE_VERIFICATION_SESSION_KEY] = True
+            request.session.modified = True
+            messages.success(request, "Verificación de edad completada.")
+            # Redirigir a la página de origen o al home
+            next_url = request.META.get("HTTP_REFERER") or reverse("tienda:home")
+            return redirect(next_url)
+        else:
+            # Usuario no es mayor de edad
+            request.session[AGE_VERIFICATION_SESSION_KEY] = False
+            request.session.modified = True
+            messages.error(
+                request,
+                "No es posible continuar. La venta de bebidas alcohólicas es exclusiva para mayores de 18 años."
+            )
+            # Redirigir fuera del sitio o mostrar mensaje de restricción
+            return redirect("tienda:home")
+    
+    return redirect("tienda:home")
 
 
 def limpiar_carrito_en_session(request):
@@ -173,6 +240,13 @@ def limpiar_carrito_en_session(request):
 
 
 def tienda_home(request):
+    # Redirigir usuarios internos al dashboard
+    if request.user.is_authenticated:
+        perfil = getattr(request.user, "perfilusuario", None)
+        if perfil and perfil.activo:
+            from django.shortcuts import redirect
+            return redirect("core:dashboard")
+    
     negocio = get_negocio_actual()
 
     categorias_qs = Categoria.objects.filter(
@@ -222,16 +296,29 @@ def categoria_detalle(request, categoria_id):
         negocio=negocio,
     )
 
-    productos = Producto.objects.filter(
+    productos_qs = Producto.objects.filter(
         negocio=negocio,
         activo=True,
         categoria=categoria,
     ).order_by("nombre")
 
+    # Paginación
+    paginator = Paginator(productos_qs, 12)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    # Obtener todas las categorías para el filtro
+    categorias = Categoria.objects.filter(
+        negocio=negocio,
+        activo=True,
+    ).order_by("nombre")
+
     context = {
         "negocio": negocio,
         "categoria": categoria,
-        "productos": productos,
+        "productos": page_obj,
+        "page_obj": page_obj,
+        "categorias": categorias,
     }
     return render(request, "tienda/producto_lista.html", context)
 
@@ -250,6 +337,18 @@ def carrito_agregar(request, producto_id):
         negocio=negocio,
         activo=True,
     )
+
+    # Validar edad si el producto contiene alcohol
+    mayor_edad_verificado = request.session.get(AGE_VERIFICATION_SESSION_KEY, False)
+    if producto.contiene_alcohol and not mayor_edad_verificado:
+        messages.error(
+            request,
+            "No es posible continuar. La venta de bebidas alcohólicas es exclusiva para mayores de 18 años."
+        )
+        next_url = request.META.get("HTTP_REFERER")
+        if next_url:
+            return redirect(next_url)
+        return redirect("tienda:home")
 
     # Obtener cantidad del formulario (por defecto 1)
     cantidad = int(request.POST.get("cantidad", 1))
@@ -509,12 +608,44 @@ def checkout_view(request):
         messages.warning(request, "Tu carrito está vacío.")
         return redirect("tienda:productos")
 
+    # Verificar si hay productos con alcohol en el carrito
+    tiene_alcohol = _tiene_productos_con_alcohol(cart)
+    
+    # Verificar si el usuario ha confirmado ser mayor de edad
+    mayor_edad_verificado = request.session.get(AGE_VERIFICATION_SESSION_KEY, False)
+    
+    # Si hay productos con alcohol y no ha verificado edad, redirigir
+    if tiene_alcohol and not mayor_edad_verificado:
+        messages.error(
+            request,
+            "No es posible continuar. La venta de bebidas alcohólicas es exclusiva para mayores de 18 años."
+        )
+        return redirect("tienda:home")
+
     if request.method == "POST":
         form = CheckoutForm(request.POST)
 
         if form.is_valid():
             datos = form.cleaned_data
             forma_pago = datos["forma_pago"]
+            
+            # Validar checkbox de edad si hay productos con alcohol
+            if tiene_alcohol:
+                mayor_edad_checkout = datos.get("mayor_edad_checkout", False)
+                if not mayor_edad_checkout:
+                    form.add_error(
+                        "mayor_edad_checkout",
+                        "Debes confirmar que eres mayor de 18 años para comprar productos con alcohol."
+                    )
+                    # Re-renderizar con el error
+                    context = {
+                        "negocio": negocio,
+                        "items": items,
+                        "total": total,
+                        "form": form,
+                        "tiene_alcohol": tiene_alcohol,
+                    }
+                    return render(request, "tienda/checkout.html", context)
 
             rut = datos.get("rut")
             cliente = None
@@ -632,7 +763,12 @@ def checkout_view(request):
             # Flujo según forma de pago
             if forma_pago == "RETIRO":
                 pedido.marcar_pendiente_retiro()
-                enviar_correo_pedido_creado(pedido)
+                # Intentar enviar correo, pero no fallar si hay problemas de configuración SMTP
+                try:
+                    enviar_correo_pedido_creado(pedido)
+                except Exception as e:
+                    # Log del error pero no interrumpir el flujo
+                    logger.warning(f"Error al enviar correo de confirmación del pedido {pedido.codigo}: {e}")
                 limpiar_carrito_en_session(request)
 
                 messages.success(
@@ -686,6 +822,7 @@ def checkout_view(request):
         "items": items,
         "total": total,
         "form": form,
+        "tiene_alcohol": tiene_alcohol,
     }
     return render(request, "tienda/checkout.html", context)
 
@@ -713,12 +850,16 @@ def registro_cliente_view(request):
         if form.is_valid():
             username = form.cleaned_data["username"]
             password = form.cleaned_data["password1"]
+<<<<<<< HEAD
             email = form.cleaned_data["correo"]
+=======
+            correo = form.cleaned_data.get("correo", "")
+>>>>>>> c75e3915b581a931b2164d98bee216091c665de3
 
             user = User.objects.create_user(
                 username=username,
                 password=password,
-                email=email,
+                email=correo,
             )
 
             cliente = form.save(commit=False)
@@ -984,7 +1125,16 @@ def webpay_retorno_view(request):
         pedido.estado = Pedido.EST_PAGADO
         pedido.save(update_fields=["webpay_status", "estado"])
 
-        enviar_correo_pedido_creado(pedido)
+        # Intentar enviar correo, pero no fallar si hay problemas de configuración SMTP
+        try:
+            enviar_correo_pedido_creado(pedido)
+        except Exception as e:
+            # Log del error pero no interrumpir el flujo
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Error al enviar correo de confirmación del pedido {pedido.codigo}: {e}")
+            # El pedido ya está pagado, así que continuamos normalmente
+
         messages.success(request, "Pago realizado con éxito.")
         return redirect("tienda:checkout_exito", pedido_id=pedido.id)
 
@@ -1051,6 +1201,25 @@ def promo_agregar_carrito_view(request, promo_id):
         negocio=negocio,
         activo=True,
     )
+
+    # Verificar si la promo contiene productos con alcohol
+    tiene_alcohol = False
+    for promo_item in promo.items.select_related("producto"):
+        if promo_item.producto.contiene_alcohol:
+            tiene_alcohol = True
+            break
+
+    # Validar edad si la promo contiene alcohol
+    mayor_edad_verificado = request.session.get(AGE_VERIFICATION_SESSION_KEY, False)
+    if tiene_alcohol and not mayor_edad_verificado:
+        messages.error(
+            request,
+            "No es posible continuar. La venta de bebidas alcohólicas es exclusiva para mayores de 18 años."
+        )
+        next_url = request.META.get("HTTP_REFERER")
+        if next_url:
+            return redirect(next_url)
+        return redirect("tienda:home")
 
     # Obtener cantidad del formulario (por defecto 1)
     cantidad = int(request.POST.get("cantidad", 1))

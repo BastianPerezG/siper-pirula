@@ -3,46 +3,46 @@
 {% block title %}Pedidos - SIPER Pirula{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Pedidos</h1>
-
-<div class="mb-4">
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <h1 class="text-2xl font-bold">Pedidos</h1>
     <a href="{% url 'pedidos:pedido_crear' %}"
-       class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md bg-slate-900 text-slate-100 hover:bg-slate-700">
+       class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-slate-900 text-slate-100 hover:bg-slate-700">
         + Nuevo pedido
     </a>
 </div>
 
 <div class="bg-white rounded-lg shadow overflow-hidden">
-    <table class="min-w-full text-sm">
-        <thead class="bg-slate-100 text-left text-xs font-semibold text-slate-600 uppercase">
-            <tr>
-                <th class="px-4 py-3">Código</th>
-                <th class="px-4 py-3">Fecha</th>
-                <th class="px-4 py-3">Cliente</th>
-                <th class="px-4 py-3 text-right">Total</th>
-                <th class="px-4 py-3">Estado</th>
-                <th class="px-4 py-3"></th>
-            </tr>
-        </thead>
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-xs sm:text-sm">
+            <thead class="bg-slate-100 text-left text-xs font-semibold text-slate-600 uppercase">
+                <tr>
+                    <th class="px-2 sm:px-4 py-3">Código</th>
+                    <th class="px-2 sm:px-4 py-3 hidden md:table-cell">Fecha</th>
+                    <th class="px-2 sm:px-4 py-3">Cliente</th>
+                    <th class="px-2 sm:px-4 py-3 text-right">Total</th>
+                    <th class="px-2 sm:px-4 py-3">Estado</th>
+                    <th class="px-2 sm:px-4 py-3"></th>
+                </tr>
+            </thead>
         <tbody class="divide-y divide-slate-100">
             {% for pedido in pedidos %}
                 <tr class="hover:bg-slate-50">
-                    <td class="px-4 py-2 font-mono text-xs">{{ pedido.codigo }}</td>
-                    <td class="px-4 py-2">{{ pedido.fecha|date:"d/m/Y H:i" }}</td>
-                    <td class="px-4 py-2">
-                        {{ pedido.cliente.nombre|default:pedido.nombre|default:"-" }}
+                    <td class="px-2 sm:px-4 py-2 font-mono text-xs sm:text-sm font-semibold">{{ pedido.codigo }}</td>
+                    <td class="px-2 sm:px-4 py-2 hidden md:table-cell text-xs sm:text-sm">{{ pedido.fecha|date:"d/m/Y H:i" }}</td>
+                    <td class="px-2 sm:px-4 py-2 text-xs sm:text-sm">
+                        {{ pedido.cliente.nombre|default:pedido.nombre|default:"-"|truncatewords:3 }}
                     </td>
-                    <td class="px-4 py-2 text-right">
-                        $ {{ pedido.total|default:pedido.total_monto|floatformat:0 }}
+                    <td class="px-2 sm:px-4 py-2 text-right text-xs sm:text-sm font-semibold">
+                        ${{ pedido.total|default:pedido.total_monto|floatformat:0 }}
                     </td>
-                    <td class="px-4 py-2">
-                        <span class="inline-flex px-2 py-1 text-xs rounded-full bg-slate-100">
+                    <td class="px-2 sm:px-4 py-2">
+                        <span class="inline-flex px-2 py-1 text-xs rounded-full bg-slate-100 whitespace-nowrap">
                             {{ pedido.get_estado_display }}
                         </span>
                     </td>
-                    <td class="px-4 py-2 text-right">
+                    <td class="px-2 sm:px-4 py-2 text-right">
                         <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
-                           class="text-slate-700 hover:text-slate-900 text-xs underline">
+                           class="text-slate-700 hover:text-slate-900 text-xs sm:text-sm underline whitespace-nowrap">
                             Ver
                         </a>
                     </td>
@@ -56,5 +56,6 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endblock %}

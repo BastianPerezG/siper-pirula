@@ -1,11 +1,14 @@
 # core/views.py
 from django.views.generic import TemplateView, ListView, CreateView, UpdateView
 from django.urls import reverse_lazy
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth import login, logout
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.models import User
+from django.utils.decorators import method_decorator
+from django.db.models import Q
 
 from .models import PerfilUsuario, Negocio, BitacoraAccion
 from .forms import UsuarioCrearForm, UsuarioEditarForm
@@ -20,8 +23,21 @@ from .mixins import RolRequeridoMixin, rol_requerido
 
 # Views Core
 
-class DashboardView(TemplateView):
+class DashboardView(LoginRequiredMixin, TemplateView):
     template_name = "core/dashboard.html"
+    
+    def dispatch(self, request, *args, **kwargs):
+        # Solo usuarios internos (con perfil) pueden acceder al dashboard
+        if not request.user.is_authenticated:
+            from django.contrib.auth.views import redirect_to_login
+            return redirect_to_login(request.get_full_path())
+        
+        perfil = getattr(request.user, "perfilusuario", None)
+        if not perfil or not perfil.activo:
+            from django.shortcuts import render
+            return render(request, "403.html", status=403)
+        
+        return super().dispatch(request, *args, **kwargs)
 
 
 # ---------------------------
