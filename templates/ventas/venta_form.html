@@ -58,16 +58,16 @@
     {# ----------------------------------------------------------------- #}
     {# ÍTEMS #}
     {# ----------------------------------------------------------------- #}
-    <section class="bg-white rounded-lg shadow-sm p-6">
-        <div class="flex items-center justify-between gap-4 mb-4">
+    <section class="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <h2 class="text-lg font-semibold text-slate-700">Ítems</h2>
 
-            <div class="flex items-center gap-2">
-                <label class="text-sm text-slate-600">Escanear EAN</label>
-                <input type="text" id="ean-input" class="border rounded px-2 py-1 text-sm w-56" placeholder="EAN..."
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <label class="text-sm text-slate-600 hidden sm:block">Escanear EAN</label>
+                <input type="text" id="ean-input" class="border rounded px-2 py-1.5 text-sm w-full sm:w-56" placeholder="Escanear código de barras..."
                     autocomplete="off">
                 <button type="button" id="btn-agregar"
-                    class="inline-flex items-center px-3 py-1.5 rounded bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">
+                    class="inline-flex items-center justify-center px-3 py-1.5 rounded bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 whitespace-nowrap">
                     + Agregar ítem
                 </button>
             </div>
@@ -75,15 +75,15 @@
 
         {{ formset.management_form }}
 
-        <div class="overflow-x-auto">
-            <table id="items-table" class="min-w-full text-sm border border-slate-200">
+        <div class="overflow-x-auto -mx-4 sm:mx-0">
+            <table id="items-table" class="min-w-full text-xs sm:text-sm border border-slate-200">
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
-                        <th class="px-3 py-2 text-left">Producto</th>
-                        <th class="px-3 py-2 text-center w-24">Cantidad</th>
-                        <th class="px-3 py-2 text-center w-28">Precio unitario</th>
-                        <th class="px-3 py-2 text-center w-28">Subtotal</th>
-                        <th class="px-3 py-2 text-center w-16">Eliminar</th>
+                        <th class="px-2 sm:px-3 py-2 text-left">Producto</th>
+                        <th class="px-2 sm:px-3 py-2 text-center w-20 sm:w-24">Cantidad</th>
+                        <th class="px-2 sm:px-3 py-2 text-center w-24 sm:w-28 hidden md:table-cell">Precio unitario</th>
+                        <th class="px-2 sm:px-3 py-2 text-center w-24 sm:w-28">Subtotal</th>
+                        <th class="px-2 sm:px-3 py-2 text-center w-12 sm:w-16">Eliminar</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -95,27 +95,30 @@
                         {{ hidden }}
                         {% endfor %}
 
-                        <td class="px-3 py-2">
+                        <td class="px-2 sm:px-3 py-2">
                             {{ f.producto }}
                             {{ f.producto.errors }}
                         </td>
-                        <td class="px-3 py-2 text-center">
+                        <td class="px-2 sm:px-3 py-2 text-center">
                             {{ f.cantidad }}
                             {{ f.cantidad.errors }}
                         </td>
-                        <td class="px-3 py-2 text-center">
+                        <td class="px-2 sm:px-3 py-2 text-center hidden md:table-cell">
                             {{ f.precio_unit }}
                             {{ f.precio_unit.errors }}
                         </td>
-                        <td class="px-3 py-2 text-center">
-                            <span class="subtotal-cell">0</span>
+                        <td class="px-2 sm:px-3 py-2 text-center">
+                            <span class="subtotal-cell">$0</span>
+                            <div class="text-xs text-slate-500 md:hidden mt-1">
+                                <span class="precio-unit-display">$0</span> c/u
+                            </div>
                         </td>
-                        <td class="px-3 py-2 text-center">
+                        <td class="px-2 sm:px-3 py-2 text-center">
                             {# Ocultamos checkbox DELETE, dejamos sólo la X #}
                             <span class="hidden">
                                 {{ f.DELETE }}
                             </span>
-                            <button type="button" class="btn-eliminar text-red-600 hover:text-red-800 font-semibold">
+                            <button type="button" class="btn-eliminar text-red-600 hover:text-red-800 font-semibold text-sm sm:text-base">
                                 ✕
                             </button>
                         </td>
@@ -138,24 +141,24 @@
     {# ----------------------------------------------------------------- #}
     {# BOTONES DE ACCIÓN #}
     {# ----------------------------------------------------------------- #}
-    <div class="flex flex-wrap gap-3">
+    <div class="flex flex-col sm:flex-row flex-wrap gap-3">
         <button type="submit" name="accion" value="cerrar"
-            class="inline-flex items-center px-4 py-2 rounded bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full sm:w-auto">
             {% if modo_edicion %}Guardar cambios y cerrar{% else %}Cobrar y cerrar{% endif %}
         </button>
 
         <button type="submit" name="accion" value="espera"
-            class="inline-flex items-center px-4 py-2 rounded bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400">
+            class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 w-full sm:w-auto">
             {% if modo_edicion %}Guardar cambios y dejar en espera{% else %}Enviar a espera{% endif %}
         </button>
 
         <a href="{% url 'ventas:venta_lista' %}"
-            class="inline-flex items-center px-4 py-2 rounded border border-slate-300 text-sm text-slate-700 hover:bg-slate-50">
+            class="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-slate-300 text-sm text-slate-700 hover:bg-slate-50 w-full sm:w-auto">
             Volver a la lista
         </a>
 
         <a href="{% url 'core:dashboard' %}"
-            class="inline-flex items-center px-4 py-2 rounded border border-slate-300 text-sm text-slate-700 hover:bg-slate-50">
+            class="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-slate-300 text-sm text-slate-700 hover:bg-slate-50 w-full sm:w-auto">
             Volver al inicio
         </a>
     </div>
@@ -471,19 +474,22 @@
             {{ hidden }}
             {% endfor %}
 
-            <td class="px-3 py-2">
+            <td class="px-2 sm:px-3 py-2">
                 {{ formset.empty_form.producto }}
             </td>
-            <td class="px-3 py-2 text-center">
+            <td class="px-2 sm:px-3 py-2 text-center">
                 {{ formset.empty_form.cantidad }}
             </td>
-            <td class="px-3 py-2 text-center">
+            <td class="px-2 sm:px-3 py-2 text-center hidden md:table-cell">
                 {{ formset.empty_form.precio_unit }}
             </td>
-            <td class="px-3 py-2 text-center">
-                <span class="subtotal-cell">0</span>
+            <td class="px-2 sm:px-3 py-2 text-center">
+                <span class="subtotal-cell">$0</span>
+                <div class="text-xs text-slate-500 md:hidden mt-1">
+                    <span class="precio-unit-display">$0</span> c/u
+                </div>
             </td>
-            <td class="px-3 py-2 text-center">
+            <td class="px-2 sm:px-3 py-2 text-center">
                 <span class="hidden">
                     {{ formset.empty_form.DELETE }}
                 </span>

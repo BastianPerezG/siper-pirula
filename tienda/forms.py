@@ -32,7 +32,14 @@ class CheckoutForm(forms.Form):
         }),
     )
 
-    
+    correo = forms.EmailField(
+        label="Correo electrónico",
+        widget=forms.EmailInput(attrs={
+            "class": "w-full px-4 py-3 rounded-2xl border border-slate-200 "
+                     "focus:outline-none focus:ring-2 focus:ring-slate-800",
+            "placeholder": "tu@correo.com",
+        }),
+    )
 
     telefono = forms.CharField(
         label="Teléfono",
@@ -61,3 +68,18 @@ class CheckoutForm(forms.Form):
         label="Crear cuenta con estos datos",
         required=False,
     )
+
+    mayor_edad_checkout = forms.BooleanField(
+        label="Declaro ser mayor de 18 años y estar autorizado legalmente para comprar bebidas alcohólicas.",
+        required=False,
+        widget=forms.CheckboxInput(attrs={
+            "class": "mt-1",
+        }),
+    )
+
+    def clean_mayor_edad_checkout(self):
+        """
+        Valida que el checkbox esté marcado si hay productos con alcohol.
+        Esta validación se hace en la vista, pero aquí validamos el formato.
+        """
+        return self.cleaned_data.get("mayor_edad_checkout", False)

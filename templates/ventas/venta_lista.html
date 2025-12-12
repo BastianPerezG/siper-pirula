@@ -100,29 +100,33 @@
 </div>
 
 <div class="bg-white shadow-sm rounded-lg overflow-hidden">
-    <table class="min-w-full text-sm">
-        <thead class="bg-slate-100 text-left">
-            <tr>
-                <th class="px-4 py-2">ID</th>
-                <th class="px-4 py-2">Fecha</th>
-                <th class="px-4 py-2">Documento</th>
-                <th class="px-4 py-2">Estado</th>
-                <th class="px-4 py-2">Medio de pago</th>
-                <th class="px-4 py-2 text-right">Total</th>
-                <th class="px-4 py-2 text-right">Acciones</th>
-            </tr>
-        </thead>
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-slate-100 text-left">
+                <tr>
+                    <th class="px-2 sm:px-4 py-2 text-xs sm:text-sm">ID</th>
+                    <th class="px-2 sm:px-4 py-2 text-xs sm:text-sm hidden md:table-cell">Fecha</th>
+                    <th class="px-2 sm:px-4 py-2 text-xs sm:text-sm">Documento</th>
+                    <th class="px-2 sm:px-4 py-2 text-xs sm:text-sm">Estado</th>
+                    <th class="px-2 sm:px-4 py-2 text-xs sm:text-sm hidden lg:table-cell">Medio de pago</th>
+                    <th class="px-2 sm:px-4 py-2 text-xs sm:text-sm text-right">Total</th>
+                    <th class="px-2 sm:px-4 py-2 text-xs sm:text-sm text-right">Acciones</th>
+                </tr>
+            </thead>
         <tbody>
             {% for venta in ventas %}
             <tr class="border-t hover:bg-slate-50">
-                <td class="px-4 py-2">
-                    <a href="{% url 'ventas:venta_detalle' venta.pk %}" class="text-emerald-700 hover:underline">
+                <td class="px-2 sm:px-4 py-2">
+                    <a href="{% url 'ventas:venta_detalle' venta.pk %}" class="text-emerald-700 hover:underline font-medium">
                         {{ venta.id }}
                     </a>
                 </td>
-                <td class="px-4 py-2">{{ venta.fecha }}</td>
-                <td class="px-4 py-2">{{ venta.doc_tipo }} {{ venta.doc_num }}</td>
-                <td class="px-4 py-2">
+                <td class="px-2 sm:px-4 py-2 hidden md:table-cell text-xs sm:text-sm">{{ venta.fecha|date:"d/m/Y H:i" }}</td>
+                <td class="px-2 sm:px-4 py-2 text-xs sm:text-sm">
+                    <span class="md:hidden">{{ venta.doc_tipo }} {{ venta.doc_num }}</span>
+                    <span class="hidden md:inline">{{ venta.doc_tipo }} {{ venta.doc_num }}</span>
+                </td>
+                <td class="px-2 sm:px-4 py-2">
                     {% if venta.estado == "ABIERTA" %}
                     <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
                         En espera
@@ -138,34 +142,36 @@
                     </span>
                     {% endif %}
                 </td>
-                <td class="px-4 py-2">{{ venta.medio_pago }}</td>
-                <td class="px-4 py-2 text-right">
-                    $ {{ venta.monto_total|default:venta.total|floatformat:0 }}
+                <td class="px-2 sm:px-4 py-2 hidden lg:table-cell text-xs sm:text-sm">{{ venta.get_medio_pago_display|default:venta.medio_pago }}</td>
+                <td class="px-2 sm:px-4 py-2 text-right font-semibold text-xs sm:text-sm">
+                    ${{ venta.monto_total|default:venta.total|floatformat:0 }}
                 </td>
-                <td class="px-4 py-2 text-right">
-                    <a href="{% url 'ventas:venta_detalle' venta.pk %}"
-                        class="text-emerald-700 hover:underline text-sm">
-                        Ver
-                    </a>
+                <td class="px-2 sm:px-4 py-2 text-right">
+                    <div class="flex flex-col sm:flex-row items-end sm:items-center justify-end gap-1 sm:gap-2">
+                        <a href="{% url 'ventas:venta_detalle' venta.pk %}"
+                            class="text-emerald-700 hover:underline text-xs sm:text-sm whitespace-nowrap">
+                            Ver
+                        </a>
 
-                    {% if venta.estado == "ABIERTA" %}
-                    <a href="{% url 'ventas:venta_cobrar' venta.pk %}"
-                        class="ml-3 text-amber-700 hover:underline text-sm">
-                        Cobrar
-                    </a>
-                    {% endif %}
+                        {% if venta.estado == "ABIERTA" %}
+                        <a href="{% url 'ventas:venta_cobrar' venta.pk %}"
+                            class="text-amber-700 hover:underline text-xs sm:text-sm whitespace-nowrap">
+                            Cobrar
+                        </a>
+                        {% endif %}
 
-                    {% if venta.estado == "CERRADA" %}
-                    <a href="{% url 'ventas:venta_anular' venta.pk %}"
-                        class="ml-3 text-red-700 hover:underline text-sm">
-                        Anular
-                    </a>
-                    {% endif %}
+                        {% if venta.estado == "CERRADA" %}
+                        <a href="{% url 'ventas:venta_anular' venta.pk %}"
+                            class="text-red-700 hover:underline text-xs sm:text-sm whitespace-nowrap">
+                            Anular
+                        </a>
+                        {% endif %}
+                    </div>
                 </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="7" class="px-4 py-4 text-center text-slate-500">
+                <td colspan="7" class="px-4 py-4 text-center text-slate-500 text-sm">
                     {% if request.GET %}
                         No se encontraron ventas con los filtros aplicados.
                     {% else %}
@@ -176,6 +182,7 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 
 <!-- Paginación -->

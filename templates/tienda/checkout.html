@@ -125,6 +125,30 @@
           </p>
           {% endif %}
         </div>
+        {% if tiene_alcohol %}
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+          <p class="text-sm font-semibold text-amber-800 mb-3">
+            ⚠️ Tu pedido contiene productos con alcohol
+          </p>
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" 
+                   name="mayor_edad_checkout" 
+                   id="mayor_edad_checkout"
+                   required
+                   class="mt-1"
+                   onchange="toggleConfirmButton()">
+            <span class="text-sm text-amber-900">
+              Declaro ser mayor de 18 años y estar autorizado legalmente para comprar bebidas alcohólicas.
+            </span>
+          </label>
+          {% if form.mayor_edad_checkout.errors %}
+          <p class="mt-2 text-xs text-red-600">
+            {{ form.mayor_edad_checkout.errors.0 }}
+          </p>
+          {% endif %}
+        </div>
+        {% endif %}
+
         <div class="space-y-4">
           <h2 class="text-lg font-semibold text-slate-800">Forma de pago</h2>
 
@@ -148,7 +172,9 @@
             Volver al carrito
           </a>
           <button type="submit"
-            class="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 w-full sm:w-auto">
+                  id="btn_confirmar_pedido"
+                  {% if tiene_alcohol %}disabled{% endif %}
+            class="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 w-full sm:w-auto disabled:bg-slate-400 disabled:cursor-not-allowed">
             Confirmar pedido
           </button>
         </div>
@@ -168,4 +194,23 @@
   </div>
   {% endif %}
 </div>
+
+{% if tiene_alcohol %}
+<script>
+  function toggleConfirmButton() {
+    const checkbox = document.getElementById('mayor_edad_checkout');
+    const button = document.getElementById('btn_confirmar_pedido');
+    
+    if (checkbox.checked) {
+      button.disabled = false;
+      button.classList.remove('bg-slate-400', 'cursor-not-allowed');
+      button.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+    } else {
+      button.disabled = true;
+      button.classList.add('bg-slate-400', 'cursor-not-allowed');
+      button.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+    }
+  }
+</script>
+{% endif %}
 {% endblock %}

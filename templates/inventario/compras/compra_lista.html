@@ -67,40 +67,40 @@
     </form>
     {% if compras %}
     <div class="overflow-x-auto bg-white rounded-lg shadow-sm border border-slate-200">
-        <table class="min-w-full text-sm">
+        <table class="min-w-full text-xs sm:text-sm">
             <thead class="bg-slate-50">
                 <tr>
-                    <th class="px-3 py-2 text-left border-b">ID</th>
-                    <th class="px-3 py-2 text-left border-b">Fecha</th>
-                    <th class="px-3 py-2 text-left border-b">Proveedor</th>
-                    <th class="px-3 py-2 text-left border-b">Documento</th>
-                    <th class="px-3 py-2 text-left border-b">Comentario</th>
-                    <th class="px-3 py-2 text-center border-b">Acciones</th>
+                    <th class="px-2 sm:px-3 py-2 text-left border-b">ID</th>
+                    <th class="px-2 sm:px-3 py-2 text-left border-b hidden md:table-cell">Fecha</th>
+                    <th class="px-2 sm:px-3 py-2 text-left border-b">Proveedor</th>
+                    <th class="px-2 sm:px-3 py-2 text-left border-b hidden lg:table-cell">Documento</th>
+                    <th class="px-2 sm:px-3 py-2 text-left border-b hidden lg:table-cell">Comentario</th>
+                    <th class="px-2 sm:px-3 py-2 text-center border-b">Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 {% for compra in compras %}
                 <tr class="odd:bg-white even:bg-slate-50 hover:bg-amber-50 transition">
-                    <td class="px-3 py-2 border-b font-semibold">
+                    <td class="px-2 sm:px-3 py-2 border-b font-semibold text-xs sm:text-sm">
                         <a href="{% url 'inventario:compra_detalle' compra.pk %}"
                             class="text-emerald-700 hover:underline">
                             {{ compra.id }}
                         </a>
                     </td>
-                    <td class="px-3 py-2 border-b">
-                        {{ compra.fecha }}
+                    <td class="px-2 sm:px-3 py-2 border-b hidden md:table-cell text-xs sm:text-sm">
+                        {{ compra.fecha|date:"d/m/Y" }}
                     </td>
-                    <td class="px-3 py-2 border-b">
-                        {{ compra.proveedor }}
+                    <td class="px-2 sm:px-3 py-2 border-b text-xs sm:text-sm">
+                        {{ compra.proveedor|truncatewords:2 }}
                     </td>
-                    <td class="px-3 py-2 border-b">
+                    <td class="px-2 sm:px-3 py-2 border-b hidden lg:table-cell text-xs sm:text-sm">
                         {{ compra.doc_tipo }} {{ compra.doc_num }}
                     </td>
-                    <td class="px-3 py-2 border-b text-slate-600">
-                        {{ compra.comentario|default:"–" }}
+                    <td class="px-2 sm:px-3 py-2 border-b text-slate-600 hidden lg:table-cell text-xs sm:text-sm">
+                        {{ compra.comentario|default:"–"|truncatewords:3 }}
                     </td>
-                    <td class="px-3 py-2 border-b text-center">
-                        <div class="inline-flex gap-2 text-sm">
+                    <td class="px-2 sm:px-3 py-2 border-b text-center">
+                        <div class="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
                             <a href="{% url 'inventario:compra_detalle' compra.pk %}"
                                 class="text-emerald-700 hover:underline">
                                 Ver

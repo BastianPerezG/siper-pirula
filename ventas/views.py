@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.views.decorators.csrf import csrf_exempt
 
-from core.mixins import RolRequeridoMixin
+from core.mixins import RolRequeridoMixin, rol_requerido
 from .models import PagoVenta, Venta,VentaItem,Anulacion, CajaTurno, ArqueoParcial, DescuentoReglaRol, CodigoAutorizacionDescuento, AuditoriaDescuento
 from .forms import AuditoriaDescuentoFiltroForm, CodigoAutorizacionDescuentoForm, DescuentoReglaRolForm, VentaCheckoutForm, VentaForm, VentaItemFormSet, AperturaCajaForm, ArqueoParcialForm, CierreCajaForm, VentaFiltroForm
 from inventario.models import Producto, MovimientoInventario
@@ -41,7 +41,8 @@ def _caja_abierta(negocio):
     ).first()
 
 
-class VentaListaView(LoginRequiredMixin, ListView):
+class VentaListaView(RolRequeridoMixin, ListView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
     model = Venta
     template_name = "ventas/venta_lista.html"
     context_object_name = "ventas"
@@ -98,7 +99,8 @@ class VentaListaView(LoginRequiredMixin, ListView):
         return context
 
 
-class VentaDetalleView(LoginRequiredMixin, DetailView):
+class VentaDetalleView(RolRequeridoMixin, DetailView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
     model = Venta
     template_name = "ventas/venta_detalle.html"
     context_object_name = "venta"
@@ -109,6 +111,7 @@ class VentaDetalleView(LoginRequiredMixin, DetailView):
 
 
 @login_required
+@rol_requerido("MESON", "CAJERO", "ADMIN")
 def venta_crear_view(request):
     """
     Crear una venta con ítems (POS simple con escáner EAN).
@@ -247,6 +250,7 @@ def venta_crear_view(request):
 
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def venta_editar_view(request, pk):
     """
     Editar una venta en estado ABIERTA (en espera).
@@ -411,6 +415,7 @@ def venta_editar_view(request, pk):
     return render(request, "ventas/venta_form.html", context)
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def venta_checkout_view(request, pk):
     """
     Registrar descuento de ticket y pago de una venta.
@@ -619,7 +624,8 @@ def venta_checkout_view(request, pk):
     return render(request, "ventas/venta_checkout.html", context)
 
 
-class VentaEnEsperaListaView(LoginRequiredMixin, ListView):
+class VentaEnEsperaListaView(RolRequeridoMixin, ListView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
     """
     Lista de ventas en estado 'En espera', para que la caja pueda seleccionarlas
     y proceder al cobro/cierre.
@@ -650,6 +656,7 @@ class VentaEnEsperaListaView(LoginRequiredMixin, ListView):
         return context
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def venta_cobrar_view(request, pk):
     """
     Cobra (cierra) una venta en espera:
@@ -685,6 +692,7 @@ def venta_cobrar_view(request, pk):
 
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def venta_anular_view(request, pk):
     venta = get_object_or_404(Venta, pk=pk, negocio=request.user.perfilusuario.negocio)
     
@@ -746,6 +754,7 @@ def venta_anular_view(request, pk):
 
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def caja_apertura_view(request):
     negocio = request.user.perfilusuario.negocio
 
@@ -781,6 +790,7 @@ def caja_apertura_view(request):
 
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def caja_arqueo_parcial_view(request):
     negocio = request.user.perfilusuario.negocio
 
@@ -836,6 +846,7 @@ def caja_arqueo_parcial_view(request):
 
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def caja_cierre_view(request):
     negocio = request.user.perfilusuario.negocio
     caja = _caja_abierta(negocio)
@@ -882,7 +893,8 @@ def caja_cierre_view(request):
     return render(request, "ventas/caja_cierre.html", context)
 
 
-class CajaTurnoListaView(LoginRequiredMixin, ListView):
+class CajaTurnoListaView(RolRequeridoMixin, ListView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
     """
     Muestra el historial de cajas (turnos) del negocio del usuario.
     """
@@ -901,7 +913,8 @@ class CajaTurnoListaView(LoginRequiredMixin, ListView):
         )
 
 
-class CajaTurnoDetalleView(LoginRequiredMixin, DetailView):
+class CajaTurnoDetalleView(RolRequeridoMixin, DetailView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
     """
     Informe completo de un turno de caja:
     - datos generales
@@ -978,6 +991,7 @@ class CajaTurnoDetalleView(LoginRequiredMixin, DetailView):
     
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def caja_pdf_view(request, pk):
     """
     Genera un PDF formal del turno de caja usando xhtml2pdf.
@@ -1212,6 +1226,7 @@ class AuditoriaDescuentoListaView(RolRequeridoMixin, ListView):
 
 
 class PagoPendienteListaView(RolRequeridoMixin, ListView):
+    roles_requeridos = ["ADMIN"]
     """
     Lista de pagos pendientes de confirmación (transferencias).
     Solo accesible para ADMIN.
@@ -1259,6 +1274,7 @@ class PagoPendienteListaView(RolRequeridoMixin, ListView):
 
 
 @login_required
+@rol_requerido("ADMIN")
 def pago_confirmar_view(request, pk):
     """
     Confirma un pago pendiente (transferencia).
@@ -1313,6 +1329,7 @@ def pago_confirmar_view(request, pk):
 
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def venta_datos_bancarios_view(request, pk):
     """
     Muestra los datos bancarios del negocio para que el cliente realice la transferencia.
@@ -1407,6 +1424,7 @@ def venta_datos_bancarios_view(request, pk):
 
 
 @login_required
+@rol_requerido("CAJERO", "ADMIN")
 def venta_nota_imprimir_view(request, pk):
     """
     Genera una nota de venta (boleta térmica) con el detalle de la compra.

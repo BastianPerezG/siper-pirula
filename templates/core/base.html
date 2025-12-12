@@ -23,16 +23,18 @@
 
     <!-- Navbar superior -->
     <header class="bg-slate-900 text-slate-100">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+        <div class="max-w-6xl mx-auto px-4 py-3">
+            <div class="flex items-center justify-between gap-4">
+                <!-- Logo / inicio -->
+                <a href="{% url 'core:dashboard' %}" class="font-bold text-lg tracking-wide">
+                    SIPER Pirula
+                </a>
 
-            <!-- Logo / inicio -->
-            <a href="{% url 'core:dashboard' %}" class="font-bold text-lg tracking-wide">
-                SIPER Pirula
-            </a>
-
-            {% if request.user.is_authenticated %}
-            {# ====================== NAV LOGUEADO ====================== #}
-            <nav class="hidden md:flex flex-wrap gap-4 text-sm">
+                {% if request.user.is_authenticated %}
+                {# ====================== NAV LOGUEADO ====================== #}
+                
+                <!-- Menú desktop -->
+                <nav class="hidden lg:flex flex-wrap gap-4 text-sm">
 
                 {# ----- Menú Inventario ----- #}
                 <div class="relative group">
@@ -228,19 +230,12 @@
                 </a>
             </nav>
 
-            <!-- Menú simple en mobile -->
-            <nav class="md:hidden flex flex-wrap gap-2 text-xs">
-                <a href="{% url 'inventario:producto_lista' %}" class="underline">Productos</a>
-
-                {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
-                <a href="{% url 'ventas:venta_crear' %}" class="underline">POS</a>
-                <a href="{% url 'ventas:venta_lista' %}" class="underline">Ventas</a>
-                <a href="{% url 'ventas:caja_apertura' %}" class="underline">Caja</a>
-                {% endif %}
-
-                <a href="{% url 'pedidos:pedido_lista' %}" class="underline">Pedidos</a>
-                <a href="{% url 'pedidos:pedidos_monitor' %}" class="underline">Monitor</a>
-            </nav>
+                <!-- Botón menú móvil -->
+                <button id="mobile-menu-btn" class="lg:hidden p-2 rounded hover:bg-slate-800">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
 
 
             <!-- Info de usuario + salir -->
@@ -271,12 +266,83 @@
                 </a>
             </div>
             {% endif %}
+            </div>
+
+            <!-- Menú móvil desplegable -->
+            {% if request.user.is_authenticated %}
+            <nav id="mobile-menu" class="hidden lg:hidden mt-4 pb-2 border-t border-slate-700">
+                <div class="pt-4 space-y-2 text-sm">
+                    <!-- Inventario -->
+                    <div class="space-y-1">
+                        <a href="{% url 'inventario:producto_lista' %}" class="block px-3 py-2 rounded hover:bg-slate-800">📦 Productos</a>
+                        <a href="{% url 'inventario:producto_stock_critico' %}" class="block px-3 py-2 rounded hover:bg-slate-800">⚠️ Stock crítico</a>
+                        <a href="{% url 'inventario:scan_ean' %}" class="block px-3 py-2 rounded hover:bg-slate-800">📷 Escanear</a>
+                        {% if request.user.perfilusuario.rol == 'ADMIN' %}
+                        <a href="{% url 'inventario:categoria_lista' %}" class="block px-3 py-2 rounded hover:bg-slate-800">🏷️ Categorías</a>
+                        <a href="{% url 'inventario:proveedor_lista' %}" class="block px-3 py-2 rounded hover:bg-slate-800">🤝 Proveedores</a>
+                        <a href="{% url 'inventario:compra_lista' %}" class="block px-3 py-2 rounded hover:bg-slate-800">🧾 Compras</a>
+                        <a href="{% url 'inventario:merma_lista' %}" class="block px-3 py-2 rounded hover:bg-slate-800">🗑️ Mermas</a>
+                        <a href="{% url 'inventario:promo_lista' %}" class="block px-3 py-2 rounded hover:bg-slate-800">🏷️ Promociones</a>
+                        {% endif %}
+                    </div>
+
+                    <!-- Operaciones -->
+                    {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
+                    <div class="space-y-1 border-t border-slate-700 pt-2">
+                        <a href="{% url 'ventas:venta_crear' %}" class="block px-3 py-2 rounded hover:bg-slate-800">💰 Punto de venta</a>
+                        <a href="{% url 'ventas:venta_lista' %}" class="block px-3 py-2 rounded hover:bg-slate-800">📋 Todas las ventas</a>
+                        <a href="{% url 'ventas:ventas_en_espera_lista' %}" class="block px-3 py-2 rounded hover:bg-slate-800">⏳ Ventas en espera</a>
+                        {% if request.user.perfilusuario.rol == 'ADMIN' %}
+                        <a href="{% url 'ventas:pago_pendiente_lista' %}" class="block px-3 py-2 rounded hover:bg-slate-800">💳 Pagos pendientes</a>
+                        {% endif %}
+                        <a href="{% url 'ventas:caja_apertura' %}" class="block px-3 py-2 rounded hover:bg-slate-800">🏦 Apertura de caja</a>
+                        <a href="{% url 'ventas:caja_arqueo_parcial' %}" class="block px-3 py-2 rounded hover:bg-slate-800">📊 Arqueo parcial</a>
+                        <a href="{% url 'ventas:caja_cierre' %}" class="block px-3 py-2 rounded hover:bg-slate-800">🔒 Cierre de caja</a>
+                    </div>
+                    {% endif %}
+
+                    <!-- Pedidos -->
+                    <div class="space-y-1 border-t border-slate-700 pt-2">
+                        <a href="{% url 'pedidos:pedido_lista' %}" class="block px-3 py-2 rounded hover:bg-slate-800">📦 Listado de pedidos</a>
+                        <a href="{% url 'pedidos:pedidos_monitor' %}" class="block px-3 py-2 rounded hover:bg-slate-800">📺 Monitor de pedidos</a>
+                    </div>
+
+                    <!-- Reportes -->
+                    {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
+                    <div class="space-y-1 border-t border-slate-700 pt-2">
+                        <a href="{% url 'reportes:ventas' %}" class="block px-3 py-2 rounded hover:bg-slate-800">📈 Ventas</a>
+                        <a href="{% url 'reportes:dia-hora' %}" class="block px-3 py-2 rounded hover:bg-slate-800">🕐 Día × Hora</a>
+                        <a href="{% url 'reportes:no-retira' %}" class="block px-3 py-2 rounded hover:bg-slate-800">❌ Tasa no retira</a>
+                        <a href="{% url 'reportes:mermas-proveedor' %}" class="block px-3 py-2 rounded hover:bg-slate-800">📉 Mermas por proveedor</a>
+                        <a href="{% url 'reportes:reporte_quiebres' %}" class="block px-3 py-2 rounded hover:bg-slate-800">📊 Stock / quiebres</a>
+                    </div>
+                    {% endif %}
+
+                    <!-- Administración -->
+                    {% if request.user.perfilusuario.rol == 'ADMIN' %}
+                    <div class="space-y-1 border-t border-slate-700 pt-2">
+                        <a href="{% url 'core:usuarios_lista' %}" class="block px-3 py-2 rounded hover:bg-slate-800">👥 Usuarios</a>
+                        <a href="{% url 'ventas:descuento_reglas' %}" class="block px-3 py-2 rounded hover:bg-slate-800">🎯 Reglas de descuento</a>
+                        <a href="{% url 'ventas:codigo_descuento_lista' %}" class="block px-3 py-2 rounded hover:bg-slate-800">🔐 Códigos de autorización</a>
+                        <a href="{% url 'ventas:descuento_auditoria' %}" class="block px-3 py-2 rounded hover:bg-slate-800">📁 Auditoría de descuentos</a>
+                    </div>
+                    {% endif %}
+
+                    <!-- Tienda -->
+                    <div class="border-t border-slate-700 pt-2">
+                        <a href="{% url 'tienda:home' %}" target="_blank" class="block px-3 py-2 rounded bg-emerald-600 hover:bg-emerald-500 font-semibold">
+                            🛒 Ver tienda
+                        </a>
+                    </div>
+                </div>
+            </nav>
+            {% endif %}
         </div>
     </header>
 
     <!-- Contenido principal -->
     <main class="flex-1">
-        <div class="max-w-6xl mx-auto px-4 py-6">
+        <div class="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
 
             {# Mensajes de Django #}
             {% if messages %}
@@ -349,6 +415,19 @@
         {% endif %}
     </script>
 
+    <script>
+        // Menú móvil toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const menuBtn = document.getElementById('mobile-menu-btn');
+            const mobileMenu = document.getElementById('mobile-menu');
+            
+            if (menuBtn && mobileMenu) {
+                menuBtn.addEventListener('click', function() {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+        });
+    </script>
 </body>
 
 </html>

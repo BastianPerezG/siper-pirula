@@ -3,74 +3,112 @@
 {% block title %}Usuarios del sistema{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Usuarios del sistema</h1>
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <h1 class="text-2xl font-bold">Usuarios del sistema</h1>
+    <a href="{% url 'core:usuario_crear' %}"
+       class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors">
+        + Nuevo usuario
+    </a>
+</div>
 
-<form method="get" class="flex flex-wrap gap-2 mb-4">
-  <input type="text" name="q" placeholder="Buscar por nombre, usuario o correo"
-         value="{{ q }}"
-         class="border rounded px-2 py-1 flex-1 min-w-[200px]">
+<form method="get" class="bg-white shadow-sm rounded-lg p-4 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div>
+            <label for="q" class="block text-xs font-semibold text-slate-700 mb-1">
+                Buscar
+            </label>
+            <input type="text" name="q" placeholder="Nombre, usuario o correo"
+                   value="{{ q }}"
+                   class="w-full border border-slate-300 rounded px-3 py-2 text-sm">
+        </div>
 
-  <select name="rol" class="border rounded px-2 py-1">
-    <option value="">Todos los roles</option>
-    {% for value,label in roles %}
-      <option value="{{ value }}"{% if rol_actual == value %} selected{% endif %}>{{ label }}</option>
-    {% endfor %}
-  </select>
+        <div>
+            <label for="rol" class="block text-xs font-semibold text-slate-700 mb-1">
+                Rol
+            </label>
+            <select name="rol" class="w-full border border-slate-300 rounded px-3 py-2 text-sm">
+                <option value="">Todos los roles</option>
+                {% for value,label in roles %}
+                <option value="{{ value }}"{% if rol_actual == value %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
-  <select name="estado" class="border rounded px-2 py-1">
-    <option value="">Todos</option>
-    <option value="activos"{% if estado_actual == "activos" %} selected{% endif %}>Activos</option>
-    <option value="inactivos"{% if estado_actual == "inactivos" %} selected{% endif %}>Inactivos</option>
-  </select>
+        <div>
+            <label for="estado" class="block text-xs font-semibold text-slate-700 mb-1">
+                Estado
+            </label>
+            <select name="estado" class="w-full border border-slate-300 rounded px-3 py-2 text-sm">
+                <option value="">Todos</option>
+                <option value="activos"{% if estado_actual == "activos" %} selected{% endif %}>Activos</option>
+                <option value="inactivos"{% if estado_actual == "inactivos" %} selected{% endif %}>Inactivos</option>
+            </select>
+        </div>
 
-  <button class="px-3 py-1 bg-sky-600 text-white rounded">Filtrar</button>
-
-  <a href="{% url 'core:usuario_crear' %}"
-     class="ml-auto px-3 py-1 bg-emerald-600 text-white rounded">
-    Nuevo usuario
-  </a>
+        <div class="flex items-end">
+            <button type="submit" class="w-full px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">
+                Filtrar
+            </button>
+        </div>
+    </div>
 </form>
 
-<table class="w-full border text-sm bg-white">
-  <thead class="bg-slate-100">
-    <tr>
-      <th class="border px-2 py-1 text-left">Nombre</th>
-      <th class="border px-2 py-1 text-left">Usuario</th>
-      <th class="border px-2 py-1 text-left">Correo</th>
-      <th class="border px-2 py-1 text-left">Rol</th>
-      <th class="border px-2 py-1 text-left">Estado</th>
-      <th class="border px-2 py-1 text-center">Acciones</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for u in usuarios %}
-      <tr>
-        <td class="border px-2 py-1">{{ u.user.get_full_name|default:u.user.username }}</td>
-        <td class="border px-2 py-1">{{ u.user.username }}</td>
-        <td class="border px-2 py-1">{{ u.user.email }}</td>
-        <td class="border px-2 py-1">{{ u.get_rol_display }}</td>
-        <td class="border px-2 py-1">
-          {% if u.activo %}
-            <span class="text-emerald-600 font-semibold">Activo</span>
-          {% else %}
-            <span class="text-red-600 font-semibold">Inactivo</span>
-          {% endif %}
-        </td>
-        <td class="border px-2 py-1 text-center space-x-2">
-          <a href="{% url 'core:usuario_editar' u.pk %}" class="text-sky-700 underline">Editar</a>
-          <a href="{% url 'core:usuario_toggle_activo' u.pk %}" class="text-amber-700 underline">
-            {% if u.activo %}Desactivar{% else %}Activar{% endif %}
-          </a>
-        </td>
-      </tr>
-    {% empty %}
-      <tr>
-        <td colspan="6" class="border px-2 py-3 text-center text-slate-500">
-          No hay usuarios registrados.
-        </td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div class="bg-white shadow-sm rounded-lg overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-700">Nombre</th>
+                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-700 hidden md:table-cell">Usuario</th>
+                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-700 hidden lg:table-cell">Correo</th>
+                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-700">Rol</th>
+                    <th class="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-700">Estado</th>
+                    <th class="px-3 sm:px-4 py-3 text-center text-xs font-semibold text-slate-700">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for u in usuarios %}
+                <tr class="hover:bg-slate-50">
+                    <td class="px-3 sm:px-4 py-3">
+                        <div class="font-medium text-slate-900">{{ u.user.get_full_name|default:u.user.username }}</div>
+                        <div class="text-xs text-slate-500 md:hidden">{{ u.user.username }}</div>
+                        <div class="text-xs text-slate-500 lg:hidden">{{ u.user.email|truncatechars:30 }}</div>
+                    </td>
+                    <td class="px-3 sm:px-4 py-3 hidden md:table-cell text-slate-700">{{ u.user.username }}</td>
+                    <td class="px-3 sm:px-4 py-3 hidden lg:table-cell text-slate-700">{{ u.user.email }}</td>
+                    <td class="px-3 sm:px-4 py-3">
+                        <span class="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                            {{ u.get_rol_display }}
+                        </span>
+                    </td>
+                    <td class="px-3 sm:px-4 py-3">
+                        {% if u.activo %}
+                        <span class="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">Activo</span>
+                        {% else %}
+                        <span class="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-3 sm:px-4 py-3">
+                        <div class="flex flex-col sm:flex-row items-center justify-center gap-2">
+                            <a href="{% url 'core:usuario_editar' u.pk %}" 
+                               class="text-sky-700 hover:text-sky-900 text-xs sm:text-sm font-medium whitespace-nowrap">Editar</a>
+                            <a href="{% url 'core:usuario_toggle_activo' u.pk %}" 
+                               class="text-amber-700 hover:text-amber-900 text-xs sm:text-sm font-medium whitespace-nowrap">
+                                {% if u.activo %}Desactivar{% else %}Activar{% endif %}
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-3 sm:px-4 py-8 text-center text-slate-500">
+                        No hay usuarios registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 
 {% endblock %}

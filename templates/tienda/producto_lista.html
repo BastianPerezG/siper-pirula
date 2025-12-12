@@ -102,9 +102,9 @@
           </a>
         </h2>
 
-        {% if producto.descripcion_corta %}
-        <p class="mt-1 text-xs sm:text-sm text-slate-500 line-clamp-2">
-          {{ producto.descripcion_corta }}
+        {% if producto.categoria %}
+        <p class="mt-1 text-xs text-slate-500">
+          {{ producto.categoria.nombre }}
         </p>
         {% endif %}
         <div class="mt-2 sm:mt-3 flex items-end justify-between">

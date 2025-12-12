@@ -1,6 +1,7 @@
 # core/mixins.py
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import PermissionDenied
+from django.shortcuts import render
 from functools import wraps
 
 def _get_perfil(user):
@@ -22,6 +23,10 @@ class RolRequeridoMixin(LoginRequiredMixin, UserPassesTestMixin):
         if self.roles_requeridos is None:
             return True
         return perfil.rol in self.roles_requeridos
+    
+    def handle_no_permission(self):
+        """Renderiza el template 403 en lugar de lanzar excepción."""
+        return render(self.request, "403.html", status=403)
 
 
 def rol_requerido(*roles):
@@ -29,7 +34,7 @@ def rol_requerido(*roles):
     Decorador para FBVs.
     Uso:
         @rol_requerido("ADMIN")
-        def vista_x(request): ...
+        def vista_x(request): ... 
 
         @rol_requerido("ADMIN", "CAJERO")
         def vista_y(request): ...
@@ -44,10 +49,10 @@ def rol_requerido(*roles):
                 return redirect_to_login(request.get_full_path())
 
             if not perfil or not user.is_active or not perfil.activo:
-                raise PermissionDenied("No tienes un perfil activo asociado.")
+                return render(request, "403.html", status=403)
 
             if roles and perfil.rol not in roles:
-                raise PermissionDenied("No tienes permisos para acceder a esta sección.")
+                return render(request, "403.html", status=403)
 
             return view_func(request, *args, **kwargs)
         return _wrapped

@@ -95,13 +95,12 @@
 
           <!-- Contiene alcohol -->
           {% if producto.contiene_alcohol %}
-          <div>
-            <p class="text-xs uppercase tracking-wide text-slate-500 mb-1">
-              Contiene alcohol
-            </p>
-            <p class="text-sm font-medium text-amber-700">
-              ⚠️ Sí
-            </p>
+          <div class="col-span-2">
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p class="text-sm font-semibold text-amber-800">
+                ⚠️ Este producto contiene alcohol. Venta permitida solo a mayores de 18 años.
+              </p>
+            </div>
           </div>
           {% endif %}
         </div>
