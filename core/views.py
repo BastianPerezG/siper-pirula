@@ -69,6 +69,7 @@ def login_interno_view(request):
                 }
                 
                 registrar_bitacora_estructurada(
+                    negocio=user.perfilusuario.negocio,
                     usuario=user,
                     nombre_modelo='Log',      # Modelo que representa la acción del sistema
                     tipo_accion='LOGIN',          # Acción específica para el inicio de sesión
@@ -104,6 +105,7 @@ def logout_interno_view(request):
                     'ip_address': request.META.get('REMOTE_ADDR'), 
                 }
             registrar_bitacora_estructurada(
+                negocio=request.user.perfilusuario.negocio,
                 usuario=request.user,
                 nombre_modelo="Log",
                 tipo_accion="LOGOUT",
