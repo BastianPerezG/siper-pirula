@@ -18,13 +18,13 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
-<<<<<<< HEAD
+
 from core.utils import registrar_bitacora_estructurada
-=======
+
 
 logger = logging.getLogger(__name__)
 
->>>>>>> c75e3915b581a931b2164d98bee216091c665de3
+
 from .forms import CheckoutForm
 from core.models import Negocio
 # SDK Webpay (Transbank)
@@ -850,11 +850,9 @@ def registro_cliente_view(request):
         if form.is_valid():
             username = form.cleaned_data["username"]
             password = form.cleaned_data["password1"]
-<<<<<<< HEAD
-            email = form.cleaned_data["correo"]
-=======
+
             correo = form.cleaned_data.get("correo", "")
->>>>>>> c75e3915b581a931b2164d98bee216091c665de3
+
 
             user = User.objects.create_user(
                 username=username,
