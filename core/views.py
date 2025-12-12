@@ -54,7 +54,7 @@ def login_interno_view(request):
                 
                 registrar_bitacora_estructurada(
                     usuario=user,
-                    nombre_modelo='Sesion',      # Modelo que representa la acción del sistema
+                    nombre_modelo='Log',      # Modelo que representa la acción del sistema
                     tipo_accion='LOGIN',          # Acción específica para el inicio de sesión
                     accion=f"Inicio de sesión exitoso por el usuario: {user.username} con ID: {user.pk}",
                     entidad_id=user.pk,           # La entidad afectada es el propio usuario
@@ -73,7 +73,33 @@ def login_interno_view(request):
 
 
 def logout_interno_view(request):
+    # 1. Verificar autenticación y obtener el objeto Negocio (si es necesario)
+    if request.user.is_authenticated:
+        # Intenta obtener el negocio asociado al usuario o el primero disponible
+        try:
+            negocio_instancia = Negocio.objects.first() 
+        except Negocio.DoesNotExist:
+            negocio_instancia = None
+
+        # 2. Registrar el evento ANTES del logout
+        if negocio_instancia:
+            detalles_registro = {
+                    'usuario_id': request.user.pk,
+                    'ip_address': request.META.get('REMOTE_ADDR'), 
+                }
+            registrar_bitacora_estructurada(
+                usuario=request.user,
+                nombre_modelo="Log",
+                tipo_accion="LOGOUT",
+                entidad_id=request.user.pk,
+                accion=f"Cierre de sesión exitoso por el usuario {request.user.username} con ID: {request.user.pk}.",
+                detalles=detalles_registro
+            )
+
+    # 3. Cerrar sesión
     logout(request)
+    
+    # 4. Mensaje y redirección
     messages.info(request, "Sesión cerrada.")
     return redirect("core:login_interno")
 
@@ -137,8 +163,39 @@ class UsuarioCrearView(RolRequeridoMixin, CreateView):
     roles_requeridos = ["ADMIN"]
 
     def form_valid(self, form):
+        # 1. Obtener el negocio (como lo tenías)
         negocio = Negocio.objects.first()  
-        form.save(negocio=negocio)
+        
+        # 2. Guardar el formulario (esto crea PerfilUsuario y el User asociado)
+        # El método form.save(negocio=negocio) debe devolver la instancia del PerfilUsuario
+        perfil_usuario = form.save(negocio=negocio)
+        user = perfil_usuario.user # Asumiendo que PerfilUsuario tiene un campo 'user'
+        
+        # --- INICIO: REGISTRO DE BITÁCORA ---
+        try:
+            registrar_bitacora_estructurada(
+                negocio=negocio,
+                usuario=self.request.user, # El usuario que realiza la acción (ADMIN)
+                nombre_modelo="Usuario",
+                tipo_accion="CREACION_USUARIO",
+                accion=f"Usuario '{user.username}' (ID: {user.pk}) creado por {self.request.user.username}(ID: {self.request.user.pk}).",
+                entidad_id=user.pk,
+                detalles={
+                    'nuevo_usuario_id': user.pk,
+                    'nuevo_usuario_username': user.username,
+                    'rol_asignado': perfil_usuario.rol, # Asumiendo que el rol está en PerfilUsuario
+                    'negocio_id': negocio.pk,
+                    'negocio':str(negocio),
+                }
+            )
+            # Opcional: imprimir en consola para depuración
+            # print(f"DEBUG: Bitácora de creación de usuario {user.username} registrada.") 
+            
+        except Exception as e:
+            # Captura y logea el error sin detener el proceso de creación de usuario
+            print(f"ERROR BITACORA (Creación de Usuario): {e}") 
+        # --- FIN: REGISTRO DE BITÁCORA ---
+
         messages.success(self.request, "Usuario creado correctamente.")
         return redirect("core:usuarios_lista")
 
@@ -153,32 +210,120 @@ class UsuarioEditarView(RolRequeridoMixin, UpdateView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         perfil = self.get_object()
-        kwargs["user_instance"] = perfil.user
+        # Asegurarse de que la instancia de User se pase al formulario
+        kwargs["user_instance"] = perfil.user 
         return kwargs
 
     def form_valid(self, form):
-        form.save()
+        # 1. Preparación y Captura de Cambios
+        # self.object es la instancia de PerfilUsuario ORIGINAL antes de guardar.
+        perfil_original = self.object
+        user_original = perfil_original.user
+        
+        # El formulario UsuarioEditarForm probablemente maneja campos de User y PerfilUsuario
+        # form.changed_data contiene la lista de campos que fueron realmente modificados.
+        
+        if form.changed_data:
+            cambios = {}
+            
+            for field_name in form.changed_data:
+                # El valor original está en form.initial
+                old_value = form.initial.get(field_name, 'N/A')
+                # El nuevo valor está en form.cleaned_data
+                new_value = form.cleaned_data.get(field_name, 'N/A')
+
+                # Almacenar el cambio de forma estructurada
+                cambios[field_name] = {
+                    'anterior': str(old_value),
+                    'nuevo': str(new_value)
+                }
+
+            # 2. Registrar en la bitácora ANTES de guardar el cambio
+            # Nota: Algunos prefieren registrar después de guardar para confirmar el éxito, 
+            # pero registrar aquí asegura que usamos el `self.object` original.
+            
+            # El objeto principal es PerfilUsuario, pero el ID de la entidad es el User.
+            user_afectado_pk = user_original.pk
+            negocio = perfil_original.negocio 
+            
+            campos_txt = ", ".join(form.changed_data)
+
+            detalles_registro = {
+                'usuario_editado_id': user_afectado_pk,
+                'usuario_editado_username': user_original.username,
+                'rol_asignado_original': perfil_original.rol, # Valor original del rol
+                'negocio_id': negocio.pk,
+                'admin_responsable_id': self.request.user.pk,
+                'cambios_detallados': cambios, 
+            }
+            
+            try:
+                registrar_bitacora_estructurada(
+                    negocio=negocio, 
+                    usuario=self.request.user, # ADMIN
+                    nombre_modelo="Usuario",
+                    tipo_accion="EDICION_USUARIO",
+                    accion=f"Usuario '{user_original.username}' (ID: {user_afectado_pk}) actualizado. Campos modificados: {campos_txt}.",
+                    entidad_id=perfil_original.pk,
+                    detalles=detalles_registro
+                )
+            except Exception as e:
+                print(f"ERROR BITACORA (Edición de Usuario): {e}") 
+        
+        # 3. Finalizar la operación de actualización (Guarda los nuevos datos)
+        response = super().form_valid(form) 
         messages.success(self.request, "Usuario actualizado correctamente.")
-        return redirect("core:usuarios_lista")
-
-
+        return response
+    
 @rol_requerido("ADMIN")
 def usuario_toggle_activo_view(request, pk):
     """
     Activa/desactiva un usuario rápidamente desde la lista.
     """
     perfil = get_object_or_404(PerfilUsuario, pk=pk)
+    
+    # Toggle (Invertir) el estado en PerfilUsuario
     perfil.activo = not perfil.activo
     perfil.save(update_fields=["activo"])
 
-    # sincronizamos con is_active del User
+    # Sincronizamos con is_active del User
     perfil.user.is_active = perfil.activo
     perfil.user.save(update_fields=["is_active"])
 
     estado_txt = "activado" if perfil.activo else "desactivado"
+    
+    # --- INICIO: REGISTRO DE BITÁCORA ---
+    user_afectado = perfil.user
+    negocio = perfil.negocio # Obtenemos el negocio del perfil
+
+    try:
+        # Define la acción y el tipo basado en el resultado del toggle
+        tipo_accion = "USUARIO_ACTIVADO" if perfil.activo else "USUARIO_DESACTIVADO"
+        accion_detalle = f"Usuario '{user_afectado.username}'(ID: {request.user.pk}) {estado_txt} por {request.user.username} (ID: {request.user.pk})."
+        
+        registrar_bitacora_estructurada(
+            negocio=negocio,
+            usuario=request.user, # El administrador que realiza la acción
+            nombre_modelo="Usuario",
+            tipo_accion=tipo_accion,
+            accion=accion_detalle,
+            entidad_id=user_afectado.pk, # El ID del usuario cuyo estado se cambió
+            detalles={
+                'usuario_afectado_id': user_afectado.pk,
+                'usuario_afectado': user_afectado.username,
+                'nuevo_estado': estado_txt,
+                'admin_responsable_id': request.user.pk,
+                'negocio_id': negocio.pk,
+                'negocio':str(negocio),
+            }
+        )
+    except Exception as e:
+        # Captura y logea el error sin detener el proceso de toggle
+        print(f"ERROR BITACORA (Toggle Usuario): {e}") 
+    # --- FIN: REGISTRO DE BITÁCORA ---
+
     messages.info(request, f"Usuario {perfil.user.username} {estado_txt}.")
     return redirect("core:usuarios_lista")
-
 
 class BitacoraListView(ListView):
     model = BitacoraAccion
@@ -188,7 +333,7 @@ class BitacoraListView(ListView):
 
     # Definimos las áreas funcionales disponibles para el filtro
     AREAS_FUNCIONALES = [
-        'Venta', 'Inventario', 'Sesion', 'PedidoOnline', 'Caja', 'Usuario','Log'
+        'Venta', 'Inventario', 'PedidoOnline', 'Caja', 'Usuario','Log'
     ]
 
     def get_queryset(self):

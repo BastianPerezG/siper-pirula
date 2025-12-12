@@ -154,14 +154,16 @@ class ProductoCrearView(LoginRequiredMixin, CreateView):
         producto.negocio = self.request.user.perfilusuario.negocio
         producto.save()
         detalles_registro = {
+            'id_producto': producto.pk,
             'nombre_producto': producto.nombre,
             'sku': producto.sku, # Asumiendo que tienes un campo SKU
             'ean': producto.ean or 'N/A',
             'precio_inicial': str(producto.precio),
             'usuario_creador_id': str(self.request.user.pk),
         }
-        
+        negocio=self.request.user.perfilusuario.negocio
         registrar_bitacora_estructurada(
+            negocio=negocio,
             usuario=self.request.user,
             accion=f"Producto creado: {producto.nombre}",
             tipo_accion='CREACION',
@@ -186,8 +188,7 @@ class ProductoActualizarView(LoginRequiredMixin, UpdateView):
     def form_valid(self, form):
         # 1. Obtener los datos ANTES de guardar (instancia original)
         # El formulario ya contiene una copia de los datos guardados en 'self.object'
-        
-        # 2. Registrar los cambios
+        negocio = self.request.user.perfilusuario.negocio        # 2. Registrar los cambios
         
         # form.changed_data contiene una lista de campos que fueron modificados
         if form.changed_data:
@@ -211,16 +212,18 @@ class ProductoActualizarView(LoginRequiredMixin, UpdateView):
             producto = self.object # El objeto antes de guardar
             
             detalles_registro = {
+                'id_producto':producto.pk,
                 'nombre_producto': producto.nombre,
                 'sku': producto.sku,
                 'cambios_registrados': cambios, # Incluimos el diccionario de cambios
             }
             
             registrar_bitacora_estructurada(
+                negocio=negocio,
                 usuario=self.request.user,
                 accion=f"Producto actualizado: {producto.nombre}",
-                tipo_accion='ACTUALIZACION',  # Tipo de acción: ACTUALIZACION
-                nombre_modelo='Inventario',
+                tipo_accion="ACTUALIZACION",  # Tipo de acción: ACTUALIZACION
+                nombre_modelo="Inventario",
                 entidad_id=producto.pk,
                 detalles=detalles_registro
             )
@@ -263,7 +266,7 @@ def producto_toggle_activo(request, pk):
     else:
         # El producto FUE desactivado (estaba activo, ahora está inactivo)
         estado_accion = "desactivado"
-        tipo_log = 'ELIMINACION' # Se usa ELIMINACION para borrado lógico
+        tipo_log = 'DESACTIVADO' # Se usa ELIMINACION para borrado lógico
         accion_descripcion = f"Producto desactivado (Borrado Lógico): {producto.nombre}"
         
     # 3. Preparar detalles del registro
@@ -276,6 +279,7 @@ def producto_toggle_activo(request, pk):
 
     # 4. Registrar en la bitácora
     registrar_bitacora_estructurada(
+        negocio=request.user.perfilusuario.negocio,
         usuario=request.user,
         accion=accion_descripcion,
         tipo_accion=tipo_log,
@@ -312,7 +316,19 @@ class MovimientoCrearView(LoginRequiredMixin, CreateView):
         form.instance.usuario = self.request.user
         movimiento = form.save()
         accion_desc = f"Registro de Movimiento de Stock ({movimiento.get_tipo_display()}): {self.producto.nombre}"
-        tipo_accion = f"{movimiento.get_tipo_display()}"
+        MAPEO_TIPO_LOG = {
+            MovimientoInventario.TIPO_ENTRADA: "ENTRADA",
+            MovimientoInventario.TIPO_SALIDA: "SALIDA",
+            MovimientoInventario.TIPO_AJUSTE: "AJUSTE",
+            MovimientoInventario.TIPO_MERMA: "MERMA",
+            MovimientoInventario.TIPO_RESERVA: "RESERVA",
+            MovimientoInventario.TIPO_VENTA: "VENTA",
+        }
+        tipo_bd = movimiento.tipo 
+
+        # 2. Usar el mapeo para obtener el nombre del log
+        tipo_accion_log = MAPEO_TIPO_LOG.get(tipo_bd, "MOVIMIENTO")
+        negocio= self.request.user.perfilusuario.negocio
         detalles_registro = {
             'producto_afectado_id': self.producto.pk,
             'producto_nombre': self.producto.nombre,
@@ -323,9 +339,10 @@ class MovimientoCrearView(LoginRequiredMixin, CreateView):
         }
         
         registrar_bitacora_estructurada(
+            negocio=negocio,
             usuario=self.request.user,
-            nombre_modelo='Movimiento',
-            tipo_accion=tipo_accion,
+            nombre_modelo='Inventario',
+            tipo_accion=tipo_accion_log,
             accion=accion_desc,
             entidad_id=movimiento.pk,
             detalles=detalles_registro
@@ -1001,7 +1018,9 @@ def merma_crear(request):
             producto = merma.producto # Accede al producto afectado por la merma
             
             accion_desc = f"Registro de Merma (Pérdida de Stock) para: {producto.nombre}"
-            
+            perfil = request.user
+            negocio = perfil.perfilusuario.negocio
+
             detalles_registro = {
                 'producto_afectado_id': producto.pk,
                 'producto_nombre': producto.nombre,
@@ -1010,11 +1029,12 @@ def merma_crear(request):
                 'comentario_registro': merma.comentario or 'Sin Comentario',
                 'usuario_responsable_id': str(request.user.pk),
             }
-            
+            tipo_accion="MERMA"
             registrar_bitacora_estructurada(
+                negocio=negocio,
                 usuario=request.user,
                 nombre_modelo='Inventario',
-                tipo_accion=merma.get_tipo_display(), 
+                tipo_accion=tipo_accion, 
                 accion=accion_desc,
                 entidad_id=merma.pk,
                 detalles=detalles_registro

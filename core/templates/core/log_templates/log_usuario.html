@@ -1,0 +1,74 @@
+{% with detalles=log.detalles %}
+<div class="border-l-4 border-gray-400 pl-4 py-1">
+    
+    <span class="font-semibold text-gray-800">
+         {{ log.tipo_accion }}
+    </span>
+    
+    <div class="ml-2 mt-1">
+        
+        {% if log.tipo_accion == 'CREACION_USUARIO' %}        
+        
+        <table class="w-full text-left border border-gray-200">
+            <tr class="bg-gray-100 text-gray-600 uppercase text-xs">
+                <th class="py-1 px-2">ID Usuario</th>
+                <th class="py-1 px-2">Username</th>
+                <th class="py-1 px-2">Rol Asignado</th>
+                <th class="py-1 px-2">Negocio</th>
+            </tr>
+            <tr>
+                <td class="py-1 px-2 text-gray-800 font-medium">{{ detalles.nuevo_usuario_id }}</td>
+                <td class="py-1 px-2 text-gray-800">{{ detalles.nuevo_usuario_username }}</td>
+                <td class="py-1 px-2 font-bold text-green-600">{{ detalles.rol_asignado }}</td>
+                <td class="py-1 px-2 text-gray-700">{{ detalles.negocio }}</td>
+            </tr>
+        </table>
+            
+        {% elif log.tipo_accion == 'EDICION_USUARIO' %}
+             
+                <p class="font-semibold text-xs mb-1 text-gray-700">Campos Modificados:</p>
+                
+                <table class="w-full text-left border border-gray-200">
+                    <thead>
+                        <tr class="bg-yellow-100 text-gray-700 uppercase text-xs">
+                            <th class="py-1 px-2">Campo</th>
+                            <th class="py-1 px-2">Valor Anterior</th>
+                            <th class="py-1 px-2">Valor Nuevo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for campo, cambio in detalles.cambios_detallados.items %}
+                        <tr class="border-t border-gray-200">
+                            <td class="py-1 px-2 text-gray-800 font-medium">{{ campo }}</td>
+                            <td class="py-1 px-2 text-gray-500 line-through">{{ cambio.anterior|default:"[Vacío]" }}</td>
+                            <td class="py-1 px-2 text-green-700 font-bold">{{ cambio.nuevo|default:"[Vacío]" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            
+        {% elif log.tipo_accion == 'USUARIO_ACTIVADO' or log.tipo_accion == 'USUARIO_DESACTIVADO' %}
+            
+        <table class="w-full text-left border border-gray-200">
+            <tr class="bg-gray-100 text-gray-600 uppercase text-xs">
+                <th class="py-1 px-2">Usuario Afectado ID</th>
+                <th class="py-1 px-2">Usuario</th>
+                <th class="py-1 px-2">Nuevo Estado</th>
+                <th class="py-1 px-2">Negocio</th>
+            </tr>
+            <tr>
+                <td class="py-1 px-2 text-gray-800 font-medium">{{ detalles.usuario_afectado_id }}</td>
+                <td class="py-1 px-2 font-bold text-red-600">{{ detalles.usuario_afectado }}</td>
+                <td class="py-1 px-2 font-bold text-red-600">{{ detalles.nuevo_estado }}</td>
+                <td class="py-1 px-2 text-gray-700">{{ detalles.negocio }}</td>
+            </tr>
+        </table>
+        {% else %}
+            <span class="text-sm text-gray-600">Sin descripción específica.</span>
+        {% endif %}
+    </div> 
+    <p class="text-xs italic mt-1 text-gray-500">
+        Registrado por <strong>{{ log.usuario.username }}</strong>. (ID: {{ log.usuario.pk }})
+    </p>
+</div>
+{% endwith %}

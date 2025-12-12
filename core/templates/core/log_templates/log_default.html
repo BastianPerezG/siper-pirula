@@ -2,36 +2,61 @@
 <div class="border-l-4 border-gray-400 pl-4 py-1">
     
     <span class="font-semibold text-gray-800">
-         {{ log.tipo_accion }}
+         {{log.tipo_accion}}
     </span>
     
     <div class="ml-2 mt-1">
         
         {% if log.tipo_accion == 'CREACION' %}
-            <span class="text-sm text-gray-600">{{ log.accion }}</span>
+            <div class="p-2 border border-300 rounded-md bg-100">
             
+            <table class="w-full text-left bg-white border border-gray-300 rounded overflow-hidden">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-600 uppercase text-xs">
+                                <th class="py-2 px-2 ">Sku</th>
+                                <th class="py-2 px-2">Producto</th>
+                                <th class="py-2 px-2">Precio inicial</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="border-t border-gray-200 hover:bg-gray-50">
+                            <td class="py-1 px-2 text-gray-800 font-medium">{{ detalles.sku }} </td>
+                            <td class="py-1 px-2 text-gray-800 font-medium">{{ detalles.nombre_producto }}</td>
+                            <td class="py-1 px-2 text-gray-800 font-medium">{{detalles.precio_inicial}}</td>
+                    </tr>
+                </tbody>
+            </table>       
+            </div>
         {% elif log.tipo_accion == 'ACTUALIZACION' %}
-            <div class="p-2 border border-blue-200 rounded-md bg-blue-50">
-                <p class="font-semibold text-blue-700">
-                    Producto actualizado: <span class="text-lg font-bold">{{ detalles.nombre_producto }}</span>
-                </p>
-
-                {% if detalles.cambios_registrados %}
-                    <p class="text-sm text-blue-600 mt-2 mb-1 font-medium">Detalles de los cambios:</p>
-                    <ul class="text-sm text-gray-700 list-disc list-inside ml-4">
-                        {% for campo, cambio in detalles.cambios_registrados.items %}
-                            <li class="my-1">
-                                <span class="font-bold capitalize">{{ campo }}:</span> <span class="text-gray-500 line-through mr-1">{{ cambio.anterior }}</span>
-                                <span class="text-blue-500 mr-1">→</span>
-                                <span class="font-semibold text-blue-700">{{ cambio.nuevo }}</span>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <p class="text-sm italic text-gray-500 mt-2">Actualización registrada sin cambios detectados.</p>
-                {% endif %}
+            <div class="p-2 border border-300 rounded-md bg-100">
+            
+            <p class="font-semibold text-blue-800">
+                <ul class="list-disc list-inside ml-2 text-gray-700 mb-3 pb-2 border-b border-yellow-200">
+                    <li><span class="font-medium">Producto:</span> {{ detalles.nombre_producto }}</li>
+                    <li><span class="font-medium">SKU:</span> {{ detalles.sku }}</li>
+                </ul>
+            </p>
+            <table class="w-full text-left bg-white border border-gray-300 rounded overflow-hidden">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-600 uppercase text-xs">
+                                <th class="py-2 px-2 ">Campo</th>
+                                <th class="py-2 px-2 ">Valor anterior</th>
+                                <th class="py-2 px-2">Valor nuevo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {%for campo, prod in detalles.cambios_registrados.items %}
+                    <tr class="border-t border-gray-200 hover:bg-gray-50">
+                            <td class="py-1 px-2 text-gray-800 font-medium">{{ campo }} </td>
+                            <td class="py-1 px-2 text-gray-800 font-medium">{{ prod.anterior }} </td>
+                            <td class="py-1 px-2 text-gray-800 font-medium">{{ prod.nuevo }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>       
             </div>
             
+        
         {% elif log.tipo_accion == 'ACTIVACION' %}
             <div class="p-2 border border-green-300 rounded-md bg-green-100">
                 <p class="font-bold text-green-800">
@@ -45,96 +70,149 @@
                 </ul>
             </div>
             
-        {% elif log.tipo_accion == 'ELIMINACION' %}
-            <div class="p-2 border border-red-300 rounded-md bg-red-100">
-                <p class="font-bold text-red-800">
-                    Producto Desactivado: <span class="text-lg">{{ detalles.nombre_producto }}</span>
-                </p>
-                 <ul class="text-sm text-gray-700 list-disc list-inside mt-1 ml-2">
-                    <li>
-                        <span class="font-medium">Detalle:</span> {{ detalles.estado_anterior }} → 
-                        <span class="font-bold text-red-700">{{ detalles.estado_nuevo }}</span>
-                    </li>
-                </ul>
+        {% elif log.tipo_accion == 'DESACTIVADO' %}
+            <div class="p-2 border border-300 rounded-md bg-100">
+            
+            <table class="w-full text-left bg-white border border-gray-300 rounded overflow-hidden">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-600 uppercase text-xs">
+                                <th class="py-2 px-2 ">Sku</th>
+                                <th class="py-2 px-2">Producto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="border-t border-gray-200 hover:bg-gray-50">
+                            <td class="py-1 px-2 text-gray-800 font-medium">{{ detalles.sku }} </td>
+                            <td class="py-1 px-2 text-gray-800 font-medium">{{ detalles.nombre_producto }}</td>
+                    </tr>
+                </tbody>
+            </table>       
             </div>
             
-        {% elif log.tipo_accion == 'Entrada (compra, devolución)' or log.tipo_accion == 'Salida (venta manual, uso interno)' or log.tipo_accion == 'Ajuste (conteo inventario)'%}
-            <div class="p-2 border border-yellow-300 rounded-md bg-yellow-100">
+        {% elif log.tipo_accion == 'CREACION_ONLINE' %}
             
-            <p class="font-semibold text-yellow-800">
-                📦 Movimiento de Stock Registrado
-            </p>
+                <div class="mt-2 text-xs p-3 bg-teal-50 border border-teal-200 rounded-lg shadow-sm">
+                
+                <p class="font-bold text-sm text-teal-800 mb-2">Resumen del Pedido Online (N° {{ log.entidad_id }}):</p>
+                
+                <ul class="list-disc list-inside ml-2 text-gray-700 mb-3 pb-2 border-b border-teal-200">
+                    <li><span class="font-medium">Total Pagado:</span> <span class="font-bold text-red-600">${{ detalles.total }}</span></li>
+                    <li><span class="font-medium">Forma de Pago:</span> {{ detalles.forma_pago }}</li>
+                    {% if detalles.cliente_rut %}
+                        <li><span class="font-medium">Cliente (RUT):</span> {{ detalles.cliente_rut }}</li>
+                    {% endif %}
+                    <li><span class="font-medium">IP:</span> {{ detalles.ip_address }}</li>
+                </ul>
 
-            <ul class="text-sm text-gray-700 list-disc list-inside mt-1 ml-2">
-                <li>
-                    <span class="font-medium">Producto:</span> 
-                    <span class="font-bold">{{ detalles.producto_nombre }}</span> (ID: {{ detalles.producto_afectado_id }})
-                </li>
-                <li class="mt-1">
-                    <span class="font-medium">Tipo:</span> 
-                    <span class="font-bold 
-                        {% if 'ENTRADA' in detalles.tipo_movimiento %}text-green-600{% elif 'SALIDA' in detalles.tipo_movimiento %}text-red-600{% else %}text-gray-600{% endif %}"
-                    >
-                        {{ detalles.tipo_movimiento }}
-                    </span>
-                </li>
-                <li>
-                    <span class="font-medium">Cantidad:</span> 
-                    <span class="text-lg font-extrabold 
-                        {% if 'ENTRADA' in detalles.tipo_movimiento %}text-green-700{% elif 'SALIDA' in detalles.tipo_movimiento %}text-red-700{% else %}text-gray-700{% endif %}"
-                    >
-                        {{ detalles.cantidad_movida }} uds
-                    </span>
-                </li>
-            </ul>
-            
-            {% if detalles.comentario_registro and detalles.comentario_registro != 'N/A' %}
-                <blockquote class="text-xs italic mt-2 p-1 border-l-2 border-yellow-400 bg-yellow-50 text-gray-600">
-                    Comentario: {{ detalles.comentario_registro }}
-                </blockquote>
-            {% endif %}
-        </div>
-        {% elif log.tipo_accion == 'Merma (rotura, pérdida)' %}
-            <div class="p-2 border border-yellow-300 rounded-md bg-yellow-100">
-            
-            <p class="font-semibold text-yellow-800">
-                📦 Movimiento de Merma
-            </p>
+                {# Tabla de Ítems del Pedido #}
+                {% if detalles.items_del_pedido %}
+                    <p class="font-medium text-xs text-teal-700 mb-1">Detalle de Productos y Promociones:</p>
+                    <table class="w-full text-left bg-white border border-gray-300 rounded overflow-hidden">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-600 uppercase text-xs">
+                                <th class="py-2 px-2">Tipo / Nombre</th>
+                                <th class="py-2 px-2 text-right">Cant.</th>
+                                <th class="py-2 px-2 text-right">Monto Unitario/Promo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in detalles.items_del_pedido %}
+                                {# Fila Principal del Item (Producto o Promoción) #}
+                                <tr class="border-t border-gray-200 {% if item.tipo_item == 'PROMOCION' %}bg-blue-50{% endif %}">
+                                    <td class="py-1 px-2 text-gray-800 font-medium">
+                                        <span class="font-bold mr-1">[{{ item.tipo_item }}]</span> {{ item.nombre }}
+                                    </td>
+                                    <td class="py-1 px-2 text-right text-gray-700">{{ item.cantidad|floatformat }}</td>
+                                    <td class="py-1 px-2 text-right font-bold text-gray-900">
+                                        {% if item.tipo_item == 'PRODUCTO' %}${{ item.precio_unitario }}
+                                        {% else %}${{ item.precio_total }}{% endif %}
+                                    </td>
+                                </tr>
+                                
+                                {# Mostrar sub-ítems si es una PROMOCIÓN #}
+                                {% if item.tipo_item == 'PROMOCION' and item.productos_internos %}
+                                    {% for sub_item in item.productos_internos %}
+                                        <tr class="bg-blue-100">
+                                            <td class="py-0.5 pl-8 pr-2 text-gray-600 italic">
+                                                &boxur; {{ sub_item.nombre }} (ID: {{ sub_item.id }})
+                                            </td>
+                                            <td class="py-0.5 px-2 text-right text-gray-600">{{ sub_item.cantidad|floatformat }}</td>
+                                            <td class="py-0.5 px-2 text-right text-gray-600"></td>
+                                        </tr>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table> 
+                {% endif %}
+        {% elif log.tipo_accion == 'CAJA_ABIERTA' %}
+                <p class="font-semibold text-sm mb-1">Detalles de la Apertura de Caja</p>
+                <table class="w-full text-left border border-gray-200">
+                    <tr class="bg-gray-100 text-gray-600 uppercase text-xs">
+                        <th class="py-1 px-2">Negocio</th>
+                        <th class="py-1 px-2">Monto Inicial</th>
+                        <th class="py-1 px-2">Estado</th>
+                    </tr>
+                    <tr>
+                        <td class="py-1 px-2 text-gray-800">{{ detalles.caja_negocio }}</td>
+                        <td class="py-1 px-2 font-bold text-green-700">${{ detalles.valor_inicial }}</td>
+                        <td class="py-1 px-2 text-gray-700">{{ detalles.caja_estado }}</td>
+                    </tr>
+                </table>
+        {% elif log.tipo_accion == 'CAJA_ARQUEO' %}
+        
+        <p class="font-bold text-sm mb-1 {{ text_color }}">Detalles del Arqueo / Cierre de Sesión</p>
+        
+        {# Tabla de Resumen #}
+        <table class="w-full text-left border border-gray-200">
+            <tr class="bg-gray-100 text-gray-600 uppercase text-xs">
+                <th class="py-1 px-2">Caja ID</th>
+                <th class="py-1 px-2">Negocio</th>
+                <th class="py-1 px-2">Estado de Caja</th>
+                <th class="py-1 px-2">Monto esperado</th>
+                <th class="py-1 px-2">Diferencia</th>
 
-            <ul class="text-sm text-gray-700 list-disc list-inside mt-1 ml-2">
-                <li>
-                    <span class="font-medium">Producto:</span> 
-                    <span class="font-bold">{{ detalles.producto_nombre }}</span> (ID: {{ detalles.producto_afectado_id }})
-                </li>
-                <li class="mt-1">
-                    <span class="font-medium">Tipo:</span> 
-                    <span class="font-bold 
-                        {% if 'ENTRADA' in detalles.tipo_movimiento %}text-green-600{% elif 'SALIDA' in detalles.tipo_movimiento %}text-red-600{% else %}text-gray-600{% endif %}"
-                    >
-                        {{ detalles.tipo_movimiento }}
-                    </span>
-                </li>
-                <li>
-                    <span class="font-medium">Cantidad:</span> 
-                    <span class="text-lg font-extrabold 
-                        {% if 'ENTRADA' in detalles.tipo_movimiento %}text-green-700{% elif 'SALIDA' in detalles.tipo_movimiento %}text-red-700{% else %}text-gray-700{% endif %}"
-                    >
-                        {{ detalles.cantidad_movida }} uds
-                    </span>
-                </li>
-            </ul>
+            </tr>
+            <tr>
+                <td class="py-1 px-2 text-gray-800 font-medium">{{ detalles.caja_afectada_id }}</td>
+                <td class="py-1 px-2 text-gray-800">{{ detalles.caja_negocio }}</td>
+                <td class="py-1 px-2 font-bold text-orange-600">{{ detalles.caja_estado }}</td>
+                <td class="py-1 px-2 text-gray-700">{{ detalles.monto_esperado }}</td>
+                <td class="py-1 px-2 text-gray-700">{{ detalles.diferencia }}</td>
+
+            </tr>
+        </table>
+        
+     
+        
+
+
+        {% elif log.tipo_accion == 'CAJA_CERRADA' %}
+                <p class="font-semibold text-sm mb-1">Detalles del Cierre y Cuadre de Caja</p>
+                <table class="w-full text-left border border-gray-200">
+                    <tr class="bg-gray-100 text-gray-600 uppercase text-xs">
+                        <th class="py-1 px-2">Monto inicial</th>
+                        <th class="py-1 px-2">Monto esperado</th>
+                        <th class="py-1 px-2">Monto contado</th>
+                        <th class="py-1 px-2">Diferencia</th>
+                    </tr>
+                    <tr>
+                        <td class="py-1 px-2 text-gray-800">${{ detalles.monto_inicial|default:"0.00" }}</td>
+                        <td class="py-1 px-2 text-blue-700 font-bold">${{ detalles.monto_esperado|default:"0.00" }}</td>
+                        <td class="py-1 px-2 text-indigo-700 font-bold">${{ detalles.monto_contado|default:"0.00" }}</td>
+                        <td class="py-1 px-2 font-bold 
+                            {% if detalles.diferencia_cuadre|floatformat:2 == '0.00' %}text-green-600{% else %}text-red-600{% endif %}">
+                            ${{ detalles.diferencia|default:"0.00" }}
+                        </td>
+                    </tr>
+                </table>
+        
             
-            {% if detalles.comentario_registro and detalles.comentario_registro != 'N/A' %}
-                <blockquote class="text-xs italic mt-2 p-1 border-l-2 border-yellow-400 bg-yellow-50 text-gray-600">
-                    Comentario: {{ detalles.comentario_registro }}
-                </blockquote>
-            {% endif %}
-        </div>
         {% else %}
             <span class="text-sm text-gray-600">Sin descripción específica.</span>
         {% endif %}
     </div> <p class="text-xs italic mt-1 text-gray-500">
-        Registrado por <strong>{{ log.usuario.username }}</strong>. (ID Producto: {{ log.entidad_id }})
+        Registrado por <strong>{{ log.usuario.username }}</strong>. (ID: {{ log.usuario.pk }})
     </p>
 </div>
 {% endwith %}

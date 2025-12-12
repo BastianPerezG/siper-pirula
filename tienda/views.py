@@ -17,9 +17,9 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
-
+from core.utils import registrar_bitacora_estructurada
 from .forms import CheckoutForm
-
+from core.models import Negocio
 # SDK Webpay (Transbank)
 try:
     from transbank.webpay.webpay_plus.transaction import Transaction
@@ -520,16 +520,22 @@ def checkout_view(request):
             cliente = None
 
             if rut:
-                cliente, _ = Cliente.objects.get_or_create(
-                    negocio=negocio,
-                    rut=rut,
-                    defaults={
+                # Usamos update_or_create para manejar clientes existentes y nuevos
+                # de forma segura, respetando la restricción UNIQUE(negocio, rut)
+                cliente, created = Cliente.objects.update_or_create(
+                    negocio=negocio,  # Criterio de búsqueda 1
+                    rut=rut,          # Criterio de búsqueda 2
+                    defaults={        # Datos a crear o actualizar
                         "nombre": datos["nombre"],
                         "correo": datos["correo"],
                         "telefono": datos.get("telefono", ""),
+                        # Si tu modelo Cliente tiene un campo 'user', y el usuario está autenticado, 
+                        # puedes asignarlo aquí al crear o actualizar:
+                        "user": request.user if request.user.is_authenticated else None,
                     },
                 )
             else:
+                # Si no hay RUT, intenta buscar el cliente solo si el usuario está autenticado.
                 if request.user.is_authenticated:
                     cliente = Cliente.objects.filter(
                         negocio=negocio, user=request.user
@@ -546,7 +552,7 @@ def checkout_view(request):
                 forma_pago=forma_pago,
                 estado=Pedido.EST_RECIBIDO,
             )
-
+            productos_y_promos_detalle = []
             # Crear ítems de pedido
             for item in items:
                 if item["tipo"] == "PROD":
@@ -559,8 +565,24 @@ def checkout_view(request):
                         cantidad=item["cantidad"],
                         precio=item["precio_unit"],
                     )
+                    productos_y_promos_detalle.append({
+                        'tipo_item': 'PRODUCTO',
+                        'id': producto.pk,
+                        'nombre': producto.nombre,
+                        'cantidad': float(item["cantidad"]),
+                        'precio_unitario': str(item["precio_unit"]),
+                        'subtotal': str(item["subtotal"]),
+                    })
                 elif item["tipo"] == "PROMO":
                     promo = Promo.objects.get(pk=item["id"])
+                    detalle_promo = {
+                        'tipo_item': 'PROMOCION',
+                        'id': promo.pk,
+                        'nombre': promo.nombre,
+                        'cantidad': float(item["cantidad"]),
+                        'precio_total': str(item["precio_unit"]), # Precio total de la promo
+                        'productos_internos': [],
+                    }
                     for promo_item in promo.items.select_related("producto"):
                         producto = promo_item.producto
                         cantidad_total = promo_item.cantidad * item["cantidad"]
@@ -570,7 +592,40 @@ def checkout_view(request):
                             cantidad=cantidad_total,
                             precio=producto.precio,
                         )
-
+                        detalle_promo['productos_internos'].append({
+                            'id': producto.pk,
+                            'nombre': producto.nombre,
+                            'cantidad': float(cantidad_total),
+                        })
+            try:
+                # 1. Obtener la instancia de Negocio para la bitácora
+                # (Ya la tienes arriba: negocio = get_negocio_actual())
+                
+                detalles_registro = {
+                    'cliente_rut': rut,
+                    'forma_pago': forma_pago,
+                    'total': str(total), # Convertir Decimal a string
+                    'ip_address': request.META.get('REMOTE_ADDR'), 
+                    'items_del_pedido': productos_y_promos_detalle,
+                }
+                
+                # 2. Registrar la acción
+                registrar_bitacora_estructurada(
+                    negocio=request.user.perfilusuario.negocio,
+                    usuario=request.user if request.user.is_authenticated else None, # Puede ser Anon
+                    nombre_modelo="PedidoOnline",
+                    tipo_accion="CREACION_ONLINE",
+                    entidad_id=pedido.pk,
+                    accion=f"Pedido online N° {pedido.pk} creado exitosamente. Total: ${total}",
+                    detalles=detalles_registro
+                )
+            except NameError as ne:
+                # Este error ocurre si la función no está importada
+                print(f"ERROR FATAL (IMPORTACIÓN): Bitácora no registrada. {ne}") 
+            except Exception as e:
+                # Cualquier otro error interno de la función de registro
+                print(f"ERROR BITACORA CHECKOUT (INTERNO): {e}") 
+            # 🔥 FIN DEL REGISTRO DE BITÁCORA 🔥
             # Reservar stock
             pedido.crear_reservas_inventario()
 
@@ -658,7 +713,7 @@ def registro_cliente_view(request):
         if form.is_valid():
             username = form.cleaned_data["username"]
             password = form.cleaned_data["password1"]
-            email = form.cleaned_data["email"]
+            email = form.cleaned_data["correo"]
 
             user = User.objects.create_user(
                 username=username,

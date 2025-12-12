@@ -26,8 +26,7 @@ from .utils import validar_y_auditar_descuento_ticket
 # Imports para el PDF
 from django.template.loader import render_to_string
 from django.http import HttpResponse
-from xhtml12pdf import pisa
-from qrcode import *
+from xhtml2pdf import pisa
 from core.utils import registrar_bitacora_estructurada
 from core.models import Negocio
 
@@ -121,7 +120,6 @@ def venta_crear_view(request):
       - "Enviar a espera"  -> la Venta queda ABIERTA (reservas de stock) y se envía
                              a la lista de ventas en espera.
     """
-
     negocio = request.user.perfilusuario.negocio
 
     caja = _caja_abierta(negocio)
@@ -172,77 +170,97 @@ def venta_crear_view(request):
 
                 items_validos = 0
 
-                for item_form in formset:
-                    # El formset siempre trae filas vacías, las ignoramos
-                    if not item_form.cleaned_data:
-                        continue
+                if form.is_valid() and formset.is_valid():
+                    comentario_usuario = (form.cleaned_data.get("comentario") or "").strip()
+            
+                    # 🚨 MODIFICACIÓN: Lista para almacenar los detalles de los ítems para la Bitácora
+                    items_para_bitacora = [] 
 
-                    if item_form.cleaned_data.get("DELETE"):
-                        continue
+                    with transaction.atomic():
+                        venta = form.save(commit=False)
+                        venta.negocio = negocio
 
-                    item = item_form.save(commit=False)
-
-                    # Saltar filas sin producto o sin cantidad válida
-                    if not item.producto_id or not item.cantidad or item.cantidad <= 0:
-                        continue
-
-                    item.venta = venta
-                    item.precio_unit = item.producto.precio
-                    item.save()
-                    items_validos += 1
-
-                if items_validos == 0:
-                    transaction.set_rollback(True)
-                    form.add_error(
-                        None,
-                        "La venta debe tener al menos un producto válido."
-                    )
-                else:
-
-                    # 'venta.total' ejecuta la suma de los subtotales de los ítems
-                    venta.monto_total = venta.total 
-                    
-                    # Esto congela el total en la base de datos (Inmutabilidad histórica)
-                    venta.save(update_fields=['monto_total','estado'])
-                    detalles_registro = {
-                        'items_vendidos': items_validos,
-                        'monto_total': str(venta.monto_total), 
-                        'id_venta': venta.pk,
-                    }
-                    if comentario_usuario:
-                        detalles_registro['comentario_usuario'] = comentario_usuario
+                        venta.estado = Venta.EST_ABIERTA
+                        venta.doc_num = venta.generar_numero_documento()
                         
-                    # --- 🔥 REGISTRO DE BITÁCORA 🔥 ---
-                    registrar_bitacora_estructurada(
+                        venta.save()
 
-                        usuario=request.user,
-                        
-                        # 🟢 AÑADIDO: Para categorizar el objeto
-                        nombre_modelo='Venta',
-                        
-                        # 🟢 AÑADIDO: La acción específica es CREACION
-                        tipo_accion='CREACION', 
-                        
-                        accion=f"Creación de Venta POS #{venta.pk}",
-                        entidad_id=venta.pk,
-                        detalles=detalles_registro,
-                    )
+                        items_validos = 0
 
-                    if accion == "espera":
-                        messages.success(
-                            request,
-                            f"Venta #{venta.pk} enviada a espera correctamente."
-                        )
-                        return redirect("ventas:ventas_en_espera_lista")
-                    else:
-                        messages.success(
-                            request,
-                            f"Venta #{venta.pk} creada. Continúa con el cobro."
-                        )
-                        # Ir directamente al checkout
-                        return redirect("ventas:venta_checkout", pk=venta.pk)
+                        for item_form in formset:
+                            if not item_form.cleaned_data:
+                                continue
+
+                            if item_form.cleaned_data.get("DELETE"):
+                                continue
+
+                            item = item_form.save(commit=False)
+
+                            if not item.producto_id or not item.cantidad or item.cantidad <= 0:
+                                continue
+
+                            item.venta = venta
+                            item.precio_unit = item.producto.precio
+                            item.save()
+                            items_validos += 1
+                            
+                            # 🚨 MODIFICACIÓN: Capturar detalles del ítem guardado
+                            items_para_bitacora.append({
+                                'producto_id': item.producto.pk,
+                                'nombre': item.producto.nombre,
+                                'cantidad': float(item.cantidad), # Usar float() para precisión
+                                'precio_unitario': str(item.precio_unit),
+                                'subtotal': str(item.subtotal),
+                            })
+                            # FIN MODIFICACIÓN 🚨
+
+                        if items_validos == 0:
+                            transaction.set_rollback(True)
+                            form.add_error(
+                                None,
+                                "La venta debe tener al menos un producto válido."
+                            )
+                        else:
+
+                            venta.monto_total = venta.total 
+                            venta.save(update_fields=['monto_total','estado'])
+                            
+                            # 🚨 MODIFICACIÓN: Incluir la lista de ítems en los detalles
+                            detalles_registro = {
+                                'items_vendidos_count': items_validos, # Renombré para evitar conflicto con la lista
+                                'monto_total': str(venta.monto_total), 
+                                'id_venta': venta.pk,
+                                'productos_vendidos': items_para_bitacora, # <-- ¡ESTO ES LO NUEVO!
+                            }
+                            if comentario_usuario:
+                                detalles_registro['comentario_usuario'] = comentario_usuario
+                                
+                            registrar_bitacora_estructurada(
+                                negocio=negocio,
+                                usuario=request.user,
+                                nombre_modelo='Venta',
+                                tipo_accion='CREACION_VENTA', 
+                                accion=f"POS #{venta.pk}",
+                                entidad_id=venta.pk,
+                                detalles=detalles_registro,
+                            )
+        
+                            # ... (redirecciones omitidas) ...
+                            if accion == "espera":
+                                messages.success(
+                                    request,
+                                    f"Venta #{venta.pk} enviada a espera correctamente."
+                                )
+                                return redirect("ventas:ventas_en_espera_lista")
+                            else:
+                                messages.success(
+                                    request,
+                                    f"Venta #{venta.pk} creada. Continúa con el cobro."
+                                )
+                                return redirect("ventas:venta_checkout", pk=venta.pk)
 
     else:
+        # ... (código GET omitido) ...
         form = VentaForm()
         formset = VentaItemFormSet(
             form_kwargs={"negocio": negocio, "usuario": request.user}
@@ -381,12 +399,12 @@ def venta_editar_view(request, pk):
                     if comentario_usuario:
                         detalles_registro["comentario_usuario"] = comentario_usuario
 
-                    registrar_bitacora_estructurada(
-                        usuario=request.user,
-                        accion=f"Edición de Venta #{venta.pk}",
-                        entidad_id=venta.pk,
-                        detalles=detalles_registro,
-                    )
+                    #registrar_bitacora_estructurada(
+                       # usuario=request.user,
+                        #accion=f"Edición de Venta #{venta.pk}",
+                        #entidad_id=venta.pk,
+                        #detalles=detalles_registro,
+                    #)
 
                     if accion == "espera":
                         messages.success(
@@ -583,20 +601,20 @@ def venta_checkout_view(request, pk):
                         pago.observaciones = observaciones
                         pago.save(update_fields=["observaciones"])
 
-                    registrar_bitacora_estructurada(
-                        usuario=request.user,
-                        accion=f"Cobro / checkout venta #{venta.pk}",
-                        entidad_id=venta.pk,
-                        detalles=(
-                            f"Total bruto: ${total_bruto} | "
-                            f"Descuento ticket: ${monto_desc} | "
-                            f"Total neto: ${total_neto} | "
-                            f"Medio de pago: {venta.get_medio_pago_display()} | "
-                            f"Monto pagado: ${monto_pagado} | "
-                            f"Vuelto: ${vuelto} | "
-                            f"Estado pago: {pago.get_estado_display()}"
-                        ),
-                    )
+                    #registrar_bitacora_estructurada(
+                    #    usuario=request.user,
+                    #    accion=f"Cobro / checkout venta #{venta.pk}",
+                    #    entidad_id=venta.pk,
+                    #    detalles=(
+                    #        f"Total bruto: ${total_bruto} | "
+                    #        f"Descuento ticket: ${monto_desc} | "
+                    #        f"Total neto: ${total_neto} | "
+                    #        f"Medio de pago: {venta.get_medio_pago_display()} | "
+                    #        f"Monto pagado: ${monto_pagado} | "
+                    #        f"Vuelto: ${vuelto} | "
+                    #        f"Estado pago: {pago.get_estado_display()}"
+                    #    ),
+                    #)
 
                     # Redirigir según método de pago
                     if metodo_pago == PagoVenta.MET_EFECTIVO:
@@ -682,8 +700,11 @@ def venta_cobrar_view(request, pk):
             venta.cerrar_y_actualizar_stock()
 
             registrar_bitacora_estructurada(
+                negocio=negocio,
                 usuario=request.user,
-                accion=f"Cobro y cierre de Venta en espera #{venta.pk}",
+                nombre_modelo='Venta',
+                tipo_accion='FINALIZACION_COBRO',
+                accion=f"Cobro y cierre de Venta en espera",
                 entidad_id=venta.pk,
                 detalles={
                     "monto_total": str(venta.monto_total),
@@ -691,6 +712,7 @@ def venta_cobrar_view(request, pk):
                     "estado_nuevo": Venta.EST_CERRADA,
                 },
             )
+            
 
         messages.success(request, f"Venta #{venta.pk} cobrada y cerrada correctamente.")
         return redirect("ventas:venta_detalle", pk=venta.pk)
@@ -701,6 +723,7 @@ def venta_cobrar_view(request, pk):
 @login_required
 def venta_anular_view(request, pk):
     venta = get_object_or_404(Venta, pk=pk, negocio=request.user.perfilusuario.negocio)
+    negocio = request.user.perfilusuario.negocio
     
     # Prevenir doble anulación
     if venta.estado == Venta.EST_ANULADA:
@@ -714,26 +737,39 @@ def venta_anular_view(request, pk):
             messages.error(request, "Debe especificar un motivo para la anulación.")
             return render(request, 'ventas/venta_anular_confirmacion.html', {'venta': venta})
             
+        # 🚨 Inicializar la lista para capturar los ítems anulados
+        items_anulados = []
+
         with transaction.atomic():
-            # 1. Crear el registro de Anulacion (VentaItem es None, como se requiere)
+            
+            # 1. Crear el registro de Anulacion
             anulacion = Anulacion.objects.create(
                 venta=venta,
                 motivo=motivo,
                 usuario=request.user,
-                venta_item=None # Clave para anulación completa
+                venta_item=None 
             )
 
-            # 2. Revertir el stock y eliminar items lógicos (o simplemente revertir stock)
+            # 2. Revertir el stock y recopilar detalles de los ítems
             for item in venta.items.all():
+                
                 # Crear un movimiento de ENTRADA para devolver el stock
                 MovimientoInventario.objects.create(
                     producto=item.producto,
                     tipo=MovimientoInventario.TIPO_ENTRADA,
                     cantidad=item.cantidad,
                     comentario=f"Reversa por Anulación Total Venta #{venta.pk} (Motivo: {motivo})",
-                    # Puedes relacionar esto a la Anulacion si quieres:
-                    # anulacion=anulacion 
                 )
+                
+                # 🚨 CAPTURAR DETALLES DEL ÍTEM PARA LA BITÁCORA
+                items_anulados.append({
+                    'producto_id': item.producto.pk,
+                    'nombre': item.producto.nombre,
+                    'cantidad_revertida': float(item.cantidad),
+                    'precio_unitario': str(item.precio_unit),
+                    'subtotal_original': str(item.subtotal),
+                })
+                # FIN CAPTURA 🚨
 
             # 3. Actualizar el estado de la Venta
             venta.estado = Venta.EST_ANULADA
@@ -743,11 +779,16 @@ def venta_anular_view(request, pk):
             detalles_registro = {
                 'motivo_anulacion': motivo,
                 'monto_original': str(venta.monto_total),
-                'items_revertidos': venta.items.count(),
+                'items_revertidos_count': len(items_anulados), # Usamos la longitud de la lista
                 'usuario_anulador_id': str(request.user.pk),
+                'productos_anulados': items_anulados, # <-- ¡NUEVA CLAVE CON DETALLES!
             }
+            
             registrar_bitacora_estructurada(
+                negocio=negocio,
                 usuario=request.user,
+                nombre_modelo='Venta',
+                tipo_accion='ANULACION_VENTA',
                 accion=f"Anulación completa de Venta POS #{venta.pk}",
                 entidad_id=venta.pk,
                 detalles=detalles_registro
@@ -757,7 +798,6 @@ def venta_anular_view(request, pk):
             return redirect('ventas:venta_detalle', pk=pk)
 
     return render(request, 'ventas/venta_anular_confirmacion.html', {'venta': venta})
-
 
 @login_required
 def caja_apertura_view(request):
@@ -776,15 +816,23 @@ def caja_apertura_view(request):
             caja.estado = CajaTurno.EST_ABIERTA
             caja.save()
 
+            
             registrar_bitacora_estructurada(
+                negocio=negocio,
                 usuario=request.user,
-                accion="Apertura de caja",
+                nombre_modelo="Caja",
+                tipo_accion="CAJA_ABIERTA",
+                accion=f"Apertura de caja: {caja.pk} por el usuario: {request.user} (id:{request.user.pk})",
                 entidad_id=caja.pk,
                 detalles={
-                    "monto_inicial": str(caja.monto_inicial),
-                    "negocio_id": str(negocio.pk),
-                },
+                'caja_afectada_id': caja.pk,
+                'caja_estado': caja.estado,
+                'caja_negocio': str(caja.negocio), 
+                'usuario_responsable_id': str(request.user.pk),
+                'valor_inicial':str(caja.monto_inicial),
+            }
             )
+
 
             messages.success(request, "Caja abierta correctamente.")
             return redirect("ventas:venta_lista")
@@ -822,7 +870,24 @@ def caja_arqueo_parcial_view(request):
             arqueo.diferencia = arqueo.monto_contado - monto_esperado
 
             arqueo.save()
-
+            detalles_registro={
+                'usuario_id':request.user.pk,
+                'caja_afectada_id': caja.pk,
+                'caja_estado': caja.estado,
+                'caja_negocio': str(caja.negocio), 
+                'usuario_responsable_id': str(request.user.pk),
+                'monto_esperado':str(arqueo.monto_esperado),
+                'diferencia':str(arqueo.diferencia),
+            }
+            registrar_bitacora_estructurada(
+                negocio=negocio,
+                usuario=request.user,
+                nombre_modelo="Caja",
+                tipo_accion="CAJA_ARQUEO",
+                entidad_id=request.user.pk,
+                accion=f"Cierre de sesión exitoso por el usuario {request.user.username} con ID: {request.user.pk}.",
+                detalles=detalles_registro
+            )
             messages.success(
                 request,
                 f"Arqueo parcial registrado correctamente. Diferencia: ${arqueo.diferencia:.0f}",
@@ -870,8 +935,11 @@ def caja_cierre_view(request):
             caja.save()
 
             registrar_bitacora_estructurada(
+                negocio=negocio,
                 usuario=request.user,
-                accion="Cierre de caja",
+                nombre_modelo="Caja",
+                tipo_accion="CAJA_CERRADA",
+                accion=f"Cierre de caja: {caja.pk} por el usuario: {request.user}",
                 entidad_id=caja.pk,
                 detalles={
                     "monto_inicial": str(caja.monto_inicial),

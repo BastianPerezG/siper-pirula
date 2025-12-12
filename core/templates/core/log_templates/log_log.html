@@ -1,0 +1,25 @@
+{% with detalles=log.detalles %}
+<div class="border-l-4 border-gray-400 pl-4 py-1">
+    
+    <span class="font-semibold text-gray-800">
+         {{ log.tipo_accion }}
+    </span>
+    
+    <div class="ml-2 mt-1">
+        
+        {% if log.tipo_accion == 'LOGIN' %}
+            <span class="text-sm text-gray-600">{{ log.accion }}</span>
+            
+        {% elif log.tipo_accion == 'LOGOUT' %}
+            <span class="text-sm text-gray-600">{{ log.accion }}</span>
+            
+        
+        {% else %}
+            <span class="text-sm text-gray-600">Sin descripción específica.</span>
+        {% endif %}
+    </div> 
+    <p class="text-xs italic mt-1 text-gray-500">
+        Registrado por <strong>{{ log.usuario.username }}</strong>. (ID: {{ log.usuario.pk }})
+    </p>
+</div>
+{% endwith %}

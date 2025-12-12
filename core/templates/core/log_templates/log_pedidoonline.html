@@ -1,0 +1,76 @@
+{% with detalles=log.detalles %}
+<div class="border-l-4 border-gray-400 pl-4 py-1">
+    
+    <span class="font-semibold text-gray-800">
+         {{ log.tipo_accion }}
+    </span>
+    
+    <div class="ml-2 mt-1">
+        
+        {% if log.tipo_accion == 'CREACION_ONLINE' %}
+            
+            <span class="text-sm text-gray-600">{{ log.accion }}</span>
+                <div class="mt-2 text-xs p-3 bg-teal-50 border border-teal-200 rounded-lg shadow-sm">
+                
+                <p class="font-bold text-sm text-teal-800 mb-2">Resumen del Pedido Online (N° {{ log.entidad_id }}):</p>
+                
+                <ul class="list-disc list-inside ml-2 text-gray-700 mb-3 pb-2 border-b border-teal-200">
+                    <li><span class="font-medium">Total Pagado:</span> <span class="font-bold text-red-600">${{ detalles.total }}</span></li>
+                    <li><span class="font-medium">Forma de Pago:</span> {{ detalles.forma_pago }}</li>
+                    {% if detalles.cliente_rut %}
+                        <li><span class="font-medium">Cliente (RUT):</span> {{ detalles.cliente_rut }}</li>
+                    {% endif %}
+                    <li><span class="font-medium">IP:</span> {{ detalles.ip_address }}</li>
+                </ul>
+
+                {# Tabla de Ítems del Pedido #}
+                {% if detalles.items_del_pedido %}
+                    <p class="font-medium text-xs text-teal-700 mb-1">Detalle de Productos y Promociones:</p>
+                    <table class="w-full text-left bg-white border border-gray-300 rounded overflow-hidden">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-600 uppercase text-xs">
+                                <th class="py-2 px-2">Tipo / Nombre</th>
+                                <th class="py-2 px-2 text-right">Cant.</th>
+                                <th class="py-2 px-2 text-right">Monto Unitario/Promo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in detalles.items_del_pedido %}
+                                {# Fila Principal del Item (Producto o Promoción) #}
+                                <tr class="border-t border-gray-200 {% if item.tipo_item == 'PROMOCION' %}bg-blue-50{% endif %}">
+                                    <td class="py-1 px-2 text-gray-800 font-medium">
+                                        <span class="font-bold mr-1">[{{ item.tipo_item }}]</span> {{ item.nombre }}
+                                    </td>
+                                    <td class="py-1 px-2 text-right text-gray-700">{{ item.cantidad|floatformat }}</td>
+                                    <td class="py-1 px-2 text-right font-bold text-gray-900">
+                                        {% if item.tipo_item == 'PRODUCTO' %}${{ item.precio_unitario }}
+                                        {% else %}${{ item.precio_total }}{% endif %}
+                                    </td>
+                                </tr>
+                                
+                                {# Mostrar sub-ítems si es una PROMOCIÓN #}
+                                {% if item.tipo_item == 'PROMOCION' and item.productos_internos %}
+                                    {% for sub_item in item.productos_internos %}
+                                        <tr class="bg-blue-100">
+                                            <td class="py-0.5 pl-8 pr-2 text-gray-600 italic">
+                                                &boxur; {{ sub_item.nombre }} (ID: {{ sub_item.id }})
+                                            </td>
+                                            <td class="py-0.5 px-2 text-right text-gray-600">{{ sub_item.cantidad|floatformat }}</td>
+                                            <td class="py-0.5 px-2 text-right text-gray-600"></td>
+                                        </tr>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table> 
+        
+        
+        {% else %}
+            <span class="text-sm text-gray-600">Sin descripción específica.</span>
+        {% endif %}
+    </div> 
+    <p class="text-xs italic mt-1 text-gray-500">
+        Registrado por <strong>{{ log.usuario.username }}</strong>. (ID: {{ log.usuario.pk }})
+    </p>
+</div>
+{% endwith %}

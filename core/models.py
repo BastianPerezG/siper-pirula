@@ -119,6 +119,12 @@ User = get_user_model()
 
 class BitacoraAccion(models.Model):
     """Modelo para registrar automáticamente todas las acciones relevantes de los usuarios."""
+    negocio = models.ForeignKey(
+        Negocio,
+        on_delete=models.SET_NULL,
+        null=True, 
+        verbose_name= "Negocio"
+    )
     fecha_hora = models.DateTimeField(
         auto_now_add = True,
         verbose_name= "Fecha y Hora"

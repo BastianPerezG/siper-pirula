@@ -1,0 +1,51 @@
+{% with detalles=log.detalles %}
+<div class="border-l-4 border-gray-400 pl-4 py-1">
+    
+    <span class="font-semibold text-gray-800">
+         {{ log.tipo_accion }}
+    </span>
+    
+    <div class="ml-2 mt-1">
+        
+        {% elif log.tipo_accion == 'CAJA_ABIERTA' %}
+                <p class="font-semibold text-sm mb-1">Detalles de la Apertura de Caja</p>
+                <table class="w-full text-left border border-gray-200">
+                    <tr class="bg-gray-100 text-gray-600 uppercase text-xs">
+                        <th class="py-1 px-2">Negocio</th>
+                        <th class="py-1 px-2">Monto Inicial</th>
+                        <th class="py-1 px-2">Estado</th>
+                    </tr>
+                    <tr>
+                        <td class="py-1 px-2 text-gray-800">{{ detalles.caja_negocio }}</td>
+                        <td class="py-1 px-2 font-bold text-green-700">${{ detalles.valor_inicial }}</td>
+                        <td class="py-1 px-2 text-gray-700">{{ detalles.caja_estado }}</td>
+                    </tr>
+                </table>
+
+            {% elif log.tipo_accion == 'CAJA_CERRADA' %}
+                <p class="font-semibold text-sm mb-1">Detalles del Cierre y Cuadre de Caja</p>
+                <table class="w-full text-left border border-gray-200">
+                    <tr class="bg-gray-100 text-gray-600 uppercase text-xs">
+                        <th class="py-1 px-2">Monto inicial</th>
+                        <th class="py-1 px-2">Monto esperado</th>
+                        <th class="py-1 px-2">Monto contado</th>
+                        <th class="py-1 px-2">Diferencia</th>
+                    </tr>
+                    <tr>
+                        <td class="py-1 px-2 text-gray-800">${{ detalles.monto_inicial|default:"0.00" }}</td>
+                        <td class="py-1 px-2 text-blue-700 font-bold">${{ detalles.monto_esperado|default:"0.00" }}</td>
+                        <td class="py-1 px-2 text-indigo-700 font-bold">${{ detalles.monto_contado|default:"0.00" }}</td>
+                        <td class="py-1 px-2 font-bold 
+                            {% if detalles.diferencia_cuadre|floatformat:2 == '0.00' %}text-green-600{% else %}text-red-600{% endif %}">
+                            ${{ detalles.diferencia|default:"0.00" }}
+                        </td>
+                    </tr>
+                </table>
+        {% elif log.tipo_accion == 'CAJA_ARQUEO' %}
+            <span class="text-sm text-gray-600">{{ log.accion }}</span>
+        {% else %}
+            <span class="text-sm text-gray-600">Sin descripción específica.</span>
+        {% endif %}
+    </div> 
+</div>
+{% endwith %}

@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from typing import Optional, Dict
 
 def registrar_bitacora_estructurada(
+    negocio:str,
     usuario: Optional[User], 
     accion: str, # Esto será el título o resumen
     tipo_accion: str, # Ejemplo: 'CREATION', 'EDITION'
@@ -25,6 +26,7 @@ def registrar_bitacora_estructurada(
     
     try:
         registro = BitacoraAccion.objects.create(
+            negocio=negocio,
             usuario=usuario,
             accion=accion, # El título
             tipo_accion=tipo_accion, # El nuevo campo clave

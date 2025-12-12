@@ -8,29 +8,55 @@
     <div class="ml-2 mt-1">
         
         {% if log.tipo_accion == 'CREACION' %}
-            <span class="text-sm text-gray-600">{{ log.accion }}</span>
+            <div class="p-2 border border-300 rounded-md bg-100">
             
-        {% elif log.tipo_accion == 'ACTUALIZACION' %}
-            <div class="p-2 border border-blue-200 rounded-md bg-blue-50">
-                <p class="font-semibold text-blue-700">
-                    Producto actualizado: <span class="text-lg font-bold">{{ detalles.nombre_producto }}</span>
-                </p>
-
-                {% if detalles.cambios_registrados %}
-                    <p class="text-sm text-blue-600 mt-2 mb-1 font-medium">Detalles de los cambios:</p>
-                    <ul class="text-sm text-gray-700 list-disc list-inside ml-4">
-                        {% for campo, cambio in detalles.cambios_registrados.items %}
-                            <li class="my-1">
-                                <span class="font-bold capitalize">{{ campo }}:</span> <span class="text-gray-500 line-through mr-1">{{ cambio.anterior }}</span>
-                                <span class="text-blue-500 mr-1">→</span>
-                                <span class="font-semibold text-blue-700">{{ cambio.nuevo }}</span>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <p class="text-sm italic text-gray-500 mt-2">Actualización registrada sin cambios detectados.</p>
-                {% endif %}
+            <table class="w-full text-left bg-white border border-gray-300 rounded overflow-hidden">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-600 uppercase text-xs">
+                                <th class="py-2 px-2 ">Id</th>
+                                <th class="py-2 px-2 ">Sku</th>
+                                <th class="py-2 px-2">Producto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="border-t border-gray-200 hover:bg-gray-50">
+                            <td class="py-1 px-2 text-gray-800 font-medium">{{ detalles.id_producto }} </td>
+                            <td class="py-1 px-2 text-gray-800 font-medium">{{ detalles.sku }} </td>
+                            <td class="py-1 px-2 text-gray-800 font-medium">{{ detalles.nombre_producto }}</td>
+                    </tr>
+                </tbody>
+            </table>       
             </div>
+                     
+        {% elif log.tipo_accion == 'ACTUALIZACION' %}
+            <div class="p-2 border border-300 rounded-md bg-100">
+            
+            <p class="font-semibold text-blue-800">
+                Producto actualizados
+            </p>
+            <table class="w-full text-left bg-white border border-gray-300 rounded overflow-hidden">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-600 uppercase text-xs">
+                                <th class="py-2 px-2 ">Id</th>
+                                <th class="py-2 px-2 ">Sku</th>
+                                <th class="py-2 px-2">Producto</th>
+                                <th class="py-2 px-2 text-right">Cambios registrados</th>
+                    </tr>
+                </thead>
+                <tbody>
+                            
+                    <tr class="border-t border-gray-200 hover:bg-gray-50">
+                            <td class="py-1 px-2 text-gray-800 font-medium">{{ detalles.id_producto }} </td>
+                            <td class="py-1 px-2 text-gray-800 font-medium">{{ detalles.sku }} </td>
+                            <td class="py-1 px-2 text-right text-gray-700">{{ detalles.nombre_producto }}</td>
+                            {% for prod in detalles.cambios_registrados %}
+                            <td class="py-1 px-2 text-right text-gray-600">{{ prod.cambios_registrados.anterior }}</td>
+                            {% enfor %}
+                    </tr>
+                        
+                </tbody>
+            </table>       
+        </div>
             
         {% elif log.tipo_accion == 'ACTIVACION' %}
             <div class="p-2 border border-green-300 rounded-md bg-green-100">
@@ -58,78 +84,60 @@
                 </ul>
             </div>
             
-        {% elif log.tipo_accion == 'Entrada (compra, devolución)' or log.tipo_accion == 'Salida (venta manual, uso interno)' or log.tipo_accion == 'Ajuste (conteo inventario)'%}
-            <div class="p-2 border border-yellow-300 rounded-md bg-yellow-100">
+        {% elif log.tipo_accion == 'ENTRADA' or log.tipo_accion == 'SALIDA' or log.tipo_accion == 'AJUSTE' or log.tipo_accion == 'MERMA' %}
+        <div class="p-2 border border-300 rounded-md bg-100">
             
             <p class="font-semibold text-yellow-800">
-                📦 Movimiento de Stock Registrado
+                Movimiento de Stock Registrado
             </p>
-
-            <ul class="text-sm text-gray-700 list-disc list-inside mt-1 ml-2">
-                <li>
-                    <span class="font-medium">Producto:</span> 
-                    <span class="font-bold">{{ detalles.producto_nombre }}</span> (ID: {{ detalles.producto_afectado_id }})
-                </li>
-                <li class="mt-1">
-                    <span class="font-medium">Tipo:</span> 
-                    <span class="font-bold 
-                        {% if 'ENTRADA' in detalles.tipo_movimiento %}text-green-600{% elif 'SALIDA' in detalles.tipo_movimiento %}text-red-600{% else %}text-gray-600{% endif %}"
-                    >
-                        {{ detalles.tipo_movimiento }}
-                    </span>
-                </li>
-                <li>
-                    <span class="font-medium">Cantidad:</span> 
-                    <span class="text-lg font-extrabold 
-                        {% if 'ENTRADA' in detalles.tipo_movimiento %}text-green-700{% elif 'SALIDA' in detalles.tipo_movimiento %}text-red-700{% else %}text-gray-700{% endif %}"
-                    >
-                        {{ detalles.cantidad_movida }} uds
-                    </span>
-                </li>
-            </ul>
-            
-            {% if detalles.comentario_registro and detalles.comentario_registro != 'N/A' %}
-                <blockquote class="text-xs italic mt-2 p-1 border-l-2 border-yellow-400 bg-yellow-50 text-gray-600">
-                    Comentario: {{ detalles.comentario_registro }}
-                </blockquote>
-            {% endif %}
+            <table class="w-full text-left bg-white border border-gray-300 rounded overflow-hidden">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-600 uppercase text-xs">
+                                <th class="py-2 px-2 ">Id</th>
+                                <th class="py-2 px-2">Producto</th>
+                                <th class="py-2 px-2 text-right">Cantidad movida</th>
+                                <th class="py-2 px-2 text-right">Comentario</th>
+                    </tr>
+                </thead>
+                <tbody>
+                            
+                    <tr class="border-t border-gray-200 hover:bg-gray-50">
+                            <td class="py-1 px-2 text-gray-800 font-medium">{{ detalles.producto_afectado_id }} </td>
+                            <td class="py-1 px-2 text-gray-800 font-medium">{{ detalles.producto_nombre }} </td>
+                            <td class="py-1 px-2 text-right text-gray-700">{{ detalles.cantidad_movida|floatformat }}</td>
+                            <td class="py-1 px-2 text-right text-gray-600">{{ detalles.comentario_registro }}</td>
+                    </tr>
+                        
+                </tbody>
+            </table>       
         </div>
-        {% elif log.tipo_accion == 'Merma (rotura, pérdida)' %}
-            <div class="p-2 border border-yellow-300 rounded-md bg-yellow-100">
+        {% elif log.tipo_accion == 'MERMA' %}
+            <div class="p-2 border border-300 rounded-md bg-100">
             
-            <p class="font-semibold text-yellow-800">
-                📦 Movimiento de Merma
-            </p>
-
-            <ul class="text-sm text-gray-700 list-disc list-inside mt-1 ml-2">
-                <li>
-                    <span class="font-medium">Producto:</span> 
-                    <span class="font-bold">{{ detalles.producto_nombre }}</span> (ID: {{ detalles.producto_afectado_id }})
-                </li>
-                <li class="mt-1">
-                    <span class="font-medium">Tipo:</span> 
-                    <span class="font-bold 
-                        {% if 'ENTRADA' in detalles.tipo_movimiento %}text-green-600{% elif 'SALIDA' in detalles.tipo_movimiento %}text-red-600{% else %}text-gray-600{% endif %}"
-                    >
-                        {{ detalles.tipo_movimiento }}
-                    </span>
-                </li>
-                <li>
-                    <span class="font-medium">Cantidad:</span> 
-                    <span class="text-lg font-extrabold 
-                        {% if 'ENTRADA' in detalles.tipo_movimiento %}text-green-700{% elif 'SALIDA' in detalles.tipo_movimiento %}text-red-700{% else %}text-gray-700{% endif %}"
-                    >
-                        {{ detalles.cantidad_movida }} uds
-                    </span>
-                </li>
-            </ul>
-            
-            {% if detalles.comentario_registro and detalles.comentario_registro != 'N/A' %}
-                <blockquote class="text-xs italic mt-2 p-1 border-l-2 border-yellow-400 bg-yellow-50 text-gray-600">
-                    Comentario: {{ detalles.comentario_registro }}
-                </blockquote>
-            {% endif %}
-        </div>
+                <p class="font-semibold text-yellow-800">
+                    Movimiento de Stock Registrado
+                </p>
+                <table class="w-full text-left bg-white border border-gray-300 rounded overflow-hidden">
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-600 uppercase text-xs">
+                                    <th class="py-2 px-2 ">Id</th>
+                                    <th class="py-2 px-2">Producto</th>
+                                    <th class="py-2 px-2 text-right">Cantidad movida</th>
+                                    <th class="py-2 px-2 text-right">Comentario</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                                
+                        <tr class="border-t border-gray-200 hover:bg-gray-50">
+                                <td class="py-1 px-2 text-gray-800 font-medium">{{ detalles.producto_afectado_id }} </td>
+                                <td class="py-1 px-2 text-gray-800 font-medium">{{ detalles.producto_nombre }} </td>
+                                <td class="py-1 px-2 text-right text-gray-700">{{ detalles.cantidad_movida|floatformat }}</td>
+                                <td class="py-1 px-2 text-right text-gray-600">{{ detalles.comentario_registro }}</td>
+                        </tr>
+                            
+                    </tbody>
+                </table>       
+            </div>
         {% else %}
             <span class="text-sm text-gray-600">Sin descripción específica.</span>
         {% endif %}

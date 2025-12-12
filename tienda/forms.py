@@ -5,8 +5,6 @@ from pedidos.validators import validar_rut
 
 # tienda/forms.py
 
-from django import forms
-from pedidos.validators import validar_rut
 
 class CheckoutForm(forms.Form):
     nombre = forms.CharField(
@@ -18,7 +16,16 @@ class CheckoutForm(forms.Form):
             "placeholder": "Tu nombre",
         }),
     )
-
+    correo = forms.EmailField(
+        label="Correo electrónico",
+        max_length=100,
+        required=True, # El correo debe ser obligatorio
+        widget=forms.EmailInput(attrs={
+            "class": "w-full px-4 py-3 rounded-2xl border border-slate-200 "
+                     "focus:outline-none focus:ring-2 focus:ring-slate-800",
+            "placeholder": "ejemplo@dominio.cl",
+        }),
+    )
     rut = forms.CharField(
         label="RUT",
         max_length=12,
