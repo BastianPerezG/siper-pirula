@@ -2,14 +2,64 @@
 
 {% block title %}¿Qué quieres llevar hoy? - SIPER Pirula{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* Marquee Animation */
+  @keyframes scroll {
+    0% {
+      transform: translateX(0);
+    }
+
+    100% {
+      transform: translateX(calc(-250px * 7));
+    }
+
+    /* Adjust based on item width and count */
+  }
+
+  .marquee-container {
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .marquee-content {
+    display: flex;
+    width: max-content;
+    animation: scroll 40s linear infinite;
+  }
+
+  .marquee-container:hover .marquee-content {
+    animation-play-state: paused;
+  }
+
+  /* Premium Card Hover */
+  .premium-card {
+    transition: all 0.3s ease;
+  }
+
+  .premium-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border-color: #FFB300;
+    /* pirula-amber */
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-  <header class="mb-6 sm:mb-8">
-    <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">
-      ¿Qué quieres llevar hoy?
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+  <header class="mb-12 text-center">
+    <h1
+      class="text-4xl sm:text-5xl lg:text-6xl font-header font-bold text-pirula-dark dark:text-slate-100 mb-4 tracking-tight uppercase">
+      <span
+        class="bg-clip-text text-transparent bg-gradient-to-r from-pirula-dark to-pirula-brown dark:from-pirula-amber dark:to-orange-500">
+        El Gran Pirula
+      </span>
     </h1>
-    <p class="mt-2 text-sm sm:text-base text-slate-600">
-      Elige una categoría para explorar los productos disponibles para retiro en local.
+    <p class="text-lg sm:text-xl text-slate-600 dark:text-slate-400 font-light max-w-2xl mx-auto">
+      Selección premium de licores, vinos y cervezas. <br class="hidden sm:block">
+      <span class="text-pirula-amber font-medium">Pide ahora y retira en local.</span>
     </p>
 
     <!-- Barra de búsqueda -->
@@ -18,8 +68,8 @@
         <input type="text" name="q" placeholder="Buscar producto..."
           class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm">
         <button type="submit"
-          class="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">
-          Buscar
+          class="px-6 py-3 rounded-lg bg-slate-900 dark:bg-pirula-amber text-white dark:text-slate-900 text-base font-bold uppercase tracking-wide hover:bg-slate-800 dark:hover:bg-amber-400 transition-all shadow-lg">
+          BUSCAR
         </button>
       </form>
 
@@ -30,19 +80,28 @@
     </div>
 
   </header>
-  <h2 class="text-xl font-semibold text-slate-800 mb-4">
-    Promos y Combos
+
+  <h2
+    class="text-3xl font-header font-bold text-pirula-dark dark:text-slate-200 mb-6 border-l-4 border-pirula-amber pl-4 uppercase">
+    Combos & Promociones
   </h2>
 
   {% if promos %}
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-16">
     {% for promo in promos %}
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+    <div
+      class="group relative bg-white dark:bg-slate-800 rounded-3xl shadow-md border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col sm:flex-row premium-card">
+      {# Badge #}
+      <div
+        class="absolute top-4 right-4 z-10 bg-pirula-amber text-pirula-dark font-bold text-xs px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
+        OFERTA
+      </div>
       {# Imagen de la promo - clicable #}
       <a href="{% url 'tienda:promo_detalle' promo.id %}" class="block">
         {% if promo.imagen %}
         <div class="h-40 w-full overflow-hidden">
-          <img src="{{ promo.imagen.url }}" alt="{{ promo.nombre }}" class="w-full h-full object-cover hover:scale-105 transition-transform duration-200">
+          <img src="{{ promo.imagen.url }}" alt="{{ promo.nombre }}"
+            class="w-full h-full object-cover hover:scale-105 transition-transform duration-200">
         </div>
         {% else %}
         <div class="h-40 w-full flex items-center justify-center bg-slate-50 text-slate-400 text-sm">
@@ -52,21 +111,21 @@
       </a>
 
       <div class="p-4 flex-1 flex flex-col">
-        <h3 class="text-lg font-semibold text-slate-800 mb-1">
+        <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-1">
           <a href="{% url 'tienda:promo_detalle' promo.id %}" class="hover:text-emerald-600 transition-colors">
             {{ promo.nombre }}
           </a>
         </h3>
 
         {% if promo.descripcion %}
-        <p class="text-xs text-slate-500 mb-2">
+        <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">
           {{ promo.descripcion }}
         </p>
         {% endif %}
 
         {# Lista de items de la promo si los muestras aquí, si no puedes quitar esto #}
         {% if promo.items.all %}
-        <div class="text-xs text-slate-600 mb-3">
+        <div class="text-xs text-slate-600 dark:text-slate-300 mb-3">
           <span class="font-semibold">Incluye:</span>
           <ul class="list-disc list-inside mt-1 space-y-0.5">
             {% for item in promo.items.all %}
@@ -80,7 +139,7 @@
 
         <div class="mt-auto flex items-center justify-between">
           <div>
-            <p class="text-sm font-semibold text-slate-900">
+            <p class="text-sm font-semibold text-slate-900 dark:text-white">
               ${{ promo.precio_combo|floatformat:0 }}
             </p>
             {% if promo.precio_referencial %}
@@ -124,30 +183,32 @@
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
     {% for grupo in categorias_data %}
     {% with categoria=grupo.categoria productos=grupo.productos %}
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+    <div
+      class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col premium-card group">
       {# Imagen de la categoría #}
       {% if categoria.imagen %}
       <div class="h-40 w-full overflow-hidden">
-        <img src="{{ categoria.imagen.url }}" alt="{{ categoria.nombre }}" class="w-full h-full object-cover">
+        <img src="{{ categoria.imagen.url }}" alt="{{ categoria.nombre }}"
+          class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
       </div>
       {% else %}
-      <div class="h-40 w-full flex items-center justify-center bg-slate-50 text-slate-400 text-sm">
+      <div class="h-40 w-full flex items-center justify-center bg-slate-50 dark:bg-slate-700 text-slate-400 text-sm">
         Sin imagen
       </div>
       {% endif %}
 
       <div class="p-4 flex-1 flex flex-col">
-        <h3 class="text-lg font-semibold text-slate-800 mb-1">
+        <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-1">
           {{ categoria.nombre }}
         </h3>
 
         {% if productos %}
-        <ul class="text-xs text-slate-600 mb-3 space-y-0.5">
+        <ul class="text-xs text-slate-600 dark:text-slate-400 mb-3 space-y-0.5">
           {% for prod in productos %}
           <li>
             {{ prod.nombre }}
             {% if prod.precio_venta %}
-            <span class="text-[11px] text-slate-400">
+            <span class="text-[11px] text-slate-400 dark:text-slate-500">
               – ${{ prod.precio_venta|floatformat:0 }}
             </span>
             {% endif %}
@@ -155,15 +216,15 @@
           {% endfor %}
         </ul>
         {% else %}
-        <p class="text-xs text-slate-400 mb-3">
+        <p class="text-xs text-slate-400 dark:text-slate-500 mb-3">
           Sin productos disponibles.
         </p>
         {% endif %}
 
         <div class="mt-auto flex justify-end">
           <a href="{% url 'tienda:categoria_detalle' categoria.id %}"
-            class="inline-flex items-center px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800">
-            Ver
+            class="inline-flex items-center px-4 py-2 rounded-lg bg-pirula-dark dark:bg-white text-white dark:text-pirula-dark text-xs font-bold uppercase tracking-wide hover:bg-pirula-brown dark:hover:bg-slate-200 transition-colors">
+            Ver Productos
           </a>
         </div>
       </div>
@@ -177,47 +238,93 @@
     No hay categorías configuradas aún. Créalas desde el módulo de inventario.
   </div>
   {% endif %}
- <script>
-  const input = document.querySelector('input[name="q"]');
-  const box = document.getElementById("sugerenciasBox");
-  let timeout = null;
 
-  input.addEventListener("input", function () {
-    const q = this.value.trim();
-    clearTimeout(timeout);
+  <!-- Horizontal Marquee Section -->
+  {% if categorias_data %}
+  <div class="mt-20 mb-8">
+    <h2
+      class="text-2xl font-header font-bold text-pirula-dark dark:text-slate-200 mb-6 text-center uppercase tracking-widest">
+      Explora nuestras variedades
+    </h2>
+    <div class="marquee-container bg-pirula-dark dark:bg-slate-800 py-8 relative">
+      <div class="marquee-content gap-8 px-4">
+        <!-- Duplicate content to ensure seamless loop -->
+        {% for i in "123" %}
+        {% for grupo in categorias_data %}
+        <div
+          class="w-64 shrink-0 bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-lg border-2 border-transparent hover:border-pirula-amber transition-colors cursor-pointer group"
+          onclick="window.location.href='{% url 'tienda:categoria_detalle' grupo.categoria.id %}'">
+          {% if grupo.categoria.imagen %}
+          <div class="h-32 w-full overflow-hidden">
+            <img src="{{ grupo.categoria.imagen.url }}"
+              class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+          </div>
+          {% else %}
+          <div class="h-32 w-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+            <span class="text-3xl">🍷</span>
+          </div>
+          {% endif %}
+          <div class="p-3 text-center">
+            <h4
+              class="font-bold text-slate-800 dark:text-slate-200 uppercase text-sm tracking-wide group-hover:text-pirula-amber transition-colors">
+              {{ grupo.categoria.nombre }}
+            </h4>
+          </div>
+        </div>
+        {% endfor %}
+        {% endfor %}
+      </div>
+      <!-- Fade effect on sides -->
+      <div
+        class="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-pirula-dark dark:from-slate-800 to-transparent pointer-events-none">
+      </div>
+      <div
+        class="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-pirula-dark dark:from-slate-800 to-transparent pointer-events-none">
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  <script>
+    const input = document.querySelector('input[name="q"]');
+    const box = document.getElementById("sugerenciasBox");
+    let timeout = null;
 
-    if (q.length < 2) {
-      box.classList.add("hidden");
-      box.innerHTML = "";
-      return;
-    }
+    input.addEventListener("input", function () {
+      const q = this.value.trim();
+      clearTimeout(timeout);
 
-    timeout = setTimeout(() => {
-      fetch(`/tienda/ajax/sugerencias/?q=${encodeURIComponent(q)}`)
-        .then(r => r.json())
-        .then(resp => {
-          const data = resp.resultados || [];
+      if (q.length < 2) {
+        box.classList.add("hidden");
+        box.innerHTML = "";
+        return;
+      }
 
-          if (data.length === 0) {
-            box.classList.add("hidden");
+      timeout = setTimeout(() => {
+        fetch(`/tienda/ajax/sugerencias/?q=${encodeURIComponent(q)}`)
+          .then(r => r.json())
+          .then(resp => {
+            const data = resp.resultados || [];
+
+            if (data.length === 0) {
+              box.classList.add("hidden");
+              box.innerHTML = "";
+              return;
+            }
+
             box.innerHTML = "";
-            return;
-          }
-
-          box.innerHTML = "";
-          data.forEach(item => {
-            const div = document.createElement("div");
-            div.className = "px-3 py-2 text-sm hover:bg-slate-50 cursor-pointer";
-            div.textContent = item.nombre;
-            div.onclick = () => {
-              window.location.href = `/tienda/producto/${item.id}/`;
-            };
-            box.appendChild(div);
+            data.forEach(item => {
+              const div = document.createElement("div");
+              div.className = "px-3 py-2 text-sm hover:bg-slate-50 cursor-pointer";
+              div.textContent = item.nombre;
+              div.onclick = () => {
+                window.location.href = `/tienda/producto/${item.id}/`;
+              };
+              box.appendChild(div);
+            });
+            box.classList.remove("hidden");
           });
-          box.classList.remove("hidden");
-        });
-    }, 250);
-  });
-</script>
+      }, 250);
+    });
+  </script>
 
   {% endblock %}

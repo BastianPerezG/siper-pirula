@@ -1,0 +1,67 @@
+{% extends "tienda/base_public.html" %}
+
+{% block title %}Términos y Condiciones - SIPER Pirula{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div
+        class="bg-white dark:bg-slate-800 rounded-3xl shadow-lg border border-slate-200 dark:border-slate-700 p-8 sm:p-12">
+
+        <h1
+            class="text-3xl sm:text-4xl font-header font-bold text-pirula-dark dark:text-white mb-8 uppercase tracking-wide border-l-8 border-pirula-amber pl-6">
+            Términos y Condiciones
+        </h1>
+
+        <div class="prose prose-slate dark:prose-invert max-w-none">
+            <p class="lead text-lg text-slate-600 dark:text-slate-300 mb-8">
+                Bienvenido a SIPER Pirula. Al utilizar nuestro sitio web y realizar compras, aceptas los siguientes
+                términos y condiciones. Por favor, léelos cuidadosamente.
+            </p>
+
+            <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-8 mb-4">1. Venta de Alcohol y
+                Restricciones de Edad</h3>
+            <div class="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 p-4 mb-6 rounded-r-lg">
+                <p class="font-bold text-amber-800 dark:text-amber-100 m-0">
+                    ⚠️ Importante:
+                </p>
+                <p class="text-amber-900 dark:text-amber-200 mt-2 m-0">
+                    En cumplimiento con la Ley N° 19.925 sobre Expendio y Consumo de Bebidas Alcohólicas, <strong>la
+                        venta de alcohol está estrictamente prohibida a menores de 18 años</strong>.
+                </p>
+            </div>
+            <p>
+                Al realizar un pedido en SIPER Pirula, declaras bajo juramento que eres mayor de 18 años. Nos reservamos
+                el derecho de solicitar la cédula de identidad al momento de la entrega o retiro para verificar la edad
+                del receptor. Si no se puede acreditar la mayoría de edad, el pedido no será entregado y se procederá a
+                la anulación de la compra.
+            </p>
+
+            <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-8 mb-4">2. Retiro en Tienda</h3>
+            <p>
+                Los pedidos estarán disponibles para retiro en nuestro local ubicado en <strong>Av. Senador Luis Valente
+                    Rossi 2336, Arica</strong>, una vez que recibas el correo de confirmación de "Listo para retiro". El
+                horario de retiro es de Lunes a Sábado de [Horario].
+            </p>
+
+            <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-8 mb-4">3. Política de Devoluciones</h3>
+            <p>
+                Aceptamos cambios o devoluciones solo en caso de productos defectuosos o errores en el pedido, dentro de
+                las 24 horas siguientes a la recepción. El producto debe estar sellado, sin abrir y en su estado
+                original.
+            </p>
+
+            <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-8 mb-4">4. Consumo Responsable</h3>
+            <p>
+                SIPER Pirula promueve el consumo responsable de alcohol. Bebe con moderación. Si bebes, no conduzcas.
+            </p>
+        </div>
+
+        <div class="mt-12 pt-8 border-t border-slate-200 dark:border-slate-700 flex justify-center">
+            <a href="{% url 'tienda:checkout' %}"
+                class="inline-flex items-center justify-center px-8 py-3 bg-pirula-dark dark:bg-pirula-amber text-white dark:text-pirula-dark font-bold uppercase tracking-wide rounded-full hover:bg-slate-800 dark:hover:bg-amber-400 transition-all shadow-lg">
+                Volver al Checkout
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

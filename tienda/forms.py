@@ -39,14 +39,6 @@ class CheckoutForm(forms.Form):
         }),
     )
 
-    correo = forms.EmailField(
-        label="Correo electrónico",
-        widget=forms.EmailInput(attrs={
-            "class": "w-full px-4 py-3 rounded-2xl border border-slate-200 "
-                     "focus:outline-none focus:ring-2 focus:ring-slate-800",
-            "placeholder": "tu@correo.com",
-        }),
-    )
 
     telefono = forms.CharField(
         label="Teléfono",
@@ -81,7 +73,17 @@ class CheckoutForm(forms.Form):
         required=False,
         widget=forms.CheckboxInput(attrs={
             "class": "mt-1",
+            "id": "mayor_edad_checkout", # Explicit ID for JS
         }),
+    )
+
+    aceptar_terminos = forms.BooleanField(
+        required=True, # Validado por Django
+        widget=forms.CheckboxInput(attrs={
+            "class": "rounded border-slate-300 text-pirula-amber focus:ring-pirula-amber",
+            "id": "aceptar_terminos",
+        }),
+        error_messages={'required': 'Debes aceptar los términos y condiciones para continuar.'}
     )
 
     def clean_mayor_edad_checkout(self):

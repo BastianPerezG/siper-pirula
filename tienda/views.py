@@ -1266,3 +1266,9 @@ def promo_agregar_carrito_view(request, promo_id):
     if next_url:
         return redirect(next_url)
     return redirect("tienda:home")
+
+def terminos(request):
+    """
+    Vista simple para renderizar la página de Términos y Condiciones.
+    """
+    return render(request, "tienda/terminos.html")

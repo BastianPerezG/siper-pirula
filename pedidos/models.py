@@ -139,6 +139,11 @@ class Pedido(models.Model):
         help_text="Estado interno del pago Webpay (iniciado, autorizado, etc.)"
     )
 
+    terminos_aceptados = models.BooleanField(
+        default=False,
+        help_text="Indica si el cliente aceptó los términos al comprar."
+    )
+
 
     class Meta:
         db_table = "pedido"

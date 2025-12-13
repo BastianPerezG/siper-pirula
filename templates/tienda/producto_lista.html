@@ -11,33 +11,33 @@
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6">
     <div>
       {% if categoria %}
-      <p class="text-xs uppercase tracking-wide text-slate-500">
+      <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
         Categoría
       </p>
-      <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">
+      <h1 class="text-2xl sm:text-3xl font-header font-bold text-pirula-dark dark:text-white uppercase">
         {{ categoria.nombre }}
       </h1>
       {% if categoria.descripcion %}
-      <p class="mt-1 text-sm text-slate-600 max-w-xl">
+      <p class="mt-1 text-sm text-slate-600 dark:text-slate-300 max-w-xl">
         {{ categoria.descripcion }}
       </p>
       {% endif %}
       {% else %}
-      <p class="text-xs uppercase tracking-wide text-slate-500">
+      <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
         Productos
       </p>
-      <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">
+      <h1 class="text-2xl sm:text-3xl font-header font-bold text-pirula-dark dark:text-white uppercase">
         Todos los productos
       </h1>
       {% endif %}
     </div>
-    <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
       <a href="{% url 'tienda:home' %}"
-        class="inline-flex items-center justify-center rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 w-full sm:w-auto">
-        ← Volver a categorías
+        class="inline-flex items-center justify-center rounded-lg border border-slate-300 dark:border-slate-600 px-5 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-all w-full sm:w-auto uppercase tracking-wide">
+        ← Volver
       </a>
       <a href="{% url 'tienda:carrito_ver' %}"
-        class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 w-full sm:w-auto">
+        class="inline-flex items-center justify-center rounded-lg bg-slate-900 dark:bg-white px-5 py-2.5 text-sm font-bold text-white dark:text-slate-900 hover:bg-pirula-amber hover:text-slate-900 dark:hover:bg-pirula-amber transition-all shadow-lg hover:shadow-xl w-full sm:w-auto uppercase tracking-wide">
         Ver carrito
       </a>
     </div>
@@ -47,31 +47,27 @@
   {% if categorias %}
   <form method="get" class="mb-5 flex flex-col sm:flex-row gap-3 sm:items-center">
     <select name="categoria"
-            class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-full sm:w-56"
-            onchange="this.form.submit()">
+      class="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm w-full sm:w-56 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-pirula-amber focus:ring-1 focus:ring-pirula-amber"
+      onchange="this.form.submit()">
       <option value="">Todas las categorías</option>
       {% for cat in categorias %}
-        <option value="{{ cat.slug }}"
-          {% if categoria and categoria.slug == cat.slug %}selected{% endif %}>
-          {{ cat.nombre }}
-        </option>
+      <option value="{{ cat.slug }}" {% if categoria and categoria.slug == cat.slug %}selected{% endif %}>
+        {{ cat.nombre }}
+      </option>
       {% endfor %}
     </select>
 
-    <input type="text"
-           name="q"
-           value="{{ q }}"
-           placeholder="Buscar producto..."
-           class="px-3 py-2 border border-slate-300 rounded-lg text-sm w-full sm:w-64">
+    <input type="text" name="q" value="{{ q }}" placeholder="Buscar producto..."
+      class="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm w-full sm:w-64 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-pirula-amber focus:ring-1 focus:ring-pirula-amber">
 
     <button type="submit"
-            class="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800">
+      class="px-6 py-2 rounded-lg bg-slate-900 dark:bg-pirula-amber text-white dark:text-slate-900 text-sm font-bold uppercase tracking-wide hover:bg-slate-800 dark:hover:bg-amber-400 transition-all shadow-md">
       Buscar
     </button>
-    
+
     {% if categoria or q %}
     <a href="{% url 'tienda:productos' %}"
-       class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm">
+      class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm">
       Limpiar filtros
     </a>
     {% endif %}
@@ -83,52 +79,88 @@
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
     {% for producto in page_obj %}
     <div
-      class="bg-white rounded-2xl shadow-sm hover:shadow-md border border-slate-100 flex flex-col transition-shadow duration-200">
+      class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col premium-card overflow-hidden group h-full">
       {% if producto.imagen %}
-      <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}"
-        class="h-40 sm:h-44 w-full object-cover rounded-t-2xl">
+      <div class="h-48 w-full overflow-hidden relative">
+        <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}"
+          class="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500">
+        {% if producto.formato %}
+        <div
+          class="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase">
+          {{ producto.formato }}
+        </div>
+        {% endif %}
+      </div>
       {% else %}
-      <div class="h-40 sm:h-44 w-full bg-slate-100 flex items-center justify-center rounded-t-2xl">
-        <span class="text-4xl text-slate-400">
+      <div class="h-48 w-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center relative">
+        <span class="text-4xl text-slate-400 dark:text-slate-500">
           {{ producto.nombre|slice:":1" }}
         </span>
+        {% if producto.formato %}
+        <div
+          class="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase">
+          {{ producto.formato }}
+        </div>
+        {% endif %}
       </div>
       {% endif %}
 
-      <div class="flex-1 flex flex-col px-4 sm:px-5 py-3 sm:py-4">
-        <h2 class="text-base sm:text-lg font-semibold text-slate-900 line-clamp-2">
-          <a href="{% url 'tienda:producto_detalle' producto.id %}" class="hover:underline">
-            {{ producto.nombre }}
-          </a>
-        </h2>
+      <div class="flex-1 flex flex-col px-4 sm:px-5 py-4">
+        <div class="flex-1">
+          {% if producto.categoria %}
+          <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+            {{ producto.categoria.nombre }}
+          </p>
+          {% endif %}
+          <h2 class="text-base font-bold text-slate-900 dark:text-slate-100 line-clamp-2 leading-tight min-h-[2.5rem]">
+            <a href="{% url 'tienda:producto_detalle' producto.id %}" class="hover:text-pirula-amber transition-colors">
+              {{ producto.nombre }}
+            </a>
+          </h2>
+        </div>
 
-        {% if producto.categoria %}
-        <p class="mt-1 text-xs text-slate-500">
-          {{ producto.categoria.nombre }}
-        </p>
-        {% endif %}
-        <div class="mt-2 sm:mt-3 flex items-end justify-between">
-          <div>
-            <p class="text-xs uppercase tracking-wide text-slate-500">
-              Precio
-            </p>
-            <p class="text-lg sm:text-xl font-bold text-slate-900">
-              $ {{ producto.precio|floatformat:0 }}
-            </p>
+        <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+          <div class="flex items-end justify-between mb-3">
+            <div>
+              <p class="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Precio</p>
+              <p class="text-xl font-bold text-pirula-dark dark:text-pirula-amber">
+                $ {{ producto.precio|floatformat:0 }}
+              </p>
+            </div>
           </div>
 
           {% if producto.stock_actual > 0 %}
-          <form method="post" action="{% url 'tienda:carrito_agregar' producto.id %}">
+          <form method="post" action="{% url 'tienda:carrito_agregar' producto.id %}" class="flex gap-2">
             {% csrf_token %}
+
+            <div
+              class="flex items-center border-2 border-slate-200 dark:border-slate-600 rounded-lg h-9 bg-white dark:bg-slate-700">
+              <button type="button" onclick="decrementQuantity(this)"
+                class="w-8 h-full flex items-center justify-center text-slate-500 hover:text-pirula-dark dark:text-slate-300 dark:hover:text-white transition-colors focus:outline-none bg-transparent border-r border-slate-200 dark:border-slate-600">
+                <span class="text-lg font-bold leading-none mb-0.5">-</span>
+              </button>
+              <input type="number" name="cantidad" value="1" min="1" max="{{ producto.stock_actual }}"
+                oninvalid="this.setCustomValidity('La cantidad no puede exceder el stock disponible (' + this.max + ')')"
+                oninput="this.setCustomValidity('')"
+                class="w-10 h-full border-none bg-transparent text-center font-bold text-sm focus:ring-0 text-slate-900 dark:text-white p-0 appearance-none [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none">
+              <button type="button" onclick="incrementQuantity(this)"
+                class="w-8 h-full flex items-center justify-center text-slate-500 hover:text-pirula-dark dark:text-slate-300 dark:hover:text-white transition-colors focus:outline-none bg-transparent border-l border-slate-200 dark:border-slate-600">
+                <span class="text-lg font-bold leading-none mb-0.5">+</span>
+              </button>
+            </div>
+
             <button type="submit"
-              class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-slate-800">
+              class="flex-1 inline-flex items-center justify-center rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 h-9 text-xs font-bold uppercase tracking-wider hover:bg-pirula-amber hover:text-slate-900 dark:hover:bg-pirula-amber transition-all duration-300 shadow-md hover:shadow-lg">
               Agregar
             </button>
           </form>
           {% else %}
-          <span class="inline-flex items-center rounded-full bg-red-100 text-red-700 text-xs px-3 py-1">
-            Sin stock
-          </span>
+          <div class="w-full">
+            <span
+              class="block w-full text-center rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs py-2 font-bold">
+              Agotado
+            </span>
+          </div>
           {% endif %}
         </div>
       </div>
@@ -164,4 +196,25 @@
   </div>
   {% endif %}
 </div>
+
+</div>
+
+<script>
+  function incrementQuantity(btn) {
+    const input = btn.parentElement.querySelector('input');
+    const max = parseInt(input.getAttribute('max'));
+    const currentValue = parseInt(input.value) || 0;
+    if (currentValue < max) {
+      input.value = currentValue + 1;
+    }
+  }
+
+  function decrementQuantity(btn) {
+    const input = btn.parentElement.querySelector('input');
+    const currentValue = parseInt(input.value) || 0;
+    if (currentValue > 1) {
+      input.value = currentValue - 1;
+    }
+  }
+</script>
 {% endblock %}

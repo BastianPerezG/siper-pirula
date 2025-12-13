@@ -39,4 +39,5 @@ urlpatterns = [
     
     # Verificación de edad
     path("verificar-edad/", views.verificar_edad_view, name="verificar_edad"),
+    path("terminos-y-condiciones/", views.terminos, name="terminos"),
 ]

@@ -3,193 +3,290 @@
 {% block title %}Confirmar pedido - SIPER Pirula{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-  <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-6">
-    Confirmar pedido
-  </h1>
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
+    <h1 class="text-3xl sm:text-4xl font-header font-bold text-pirula-dark dark:text-white uppercase tracking-wide">
+      Confirmar Pedido
+    </h1>
+    {% if not request.user.is_authenticated %}
+    <div class="mt-4 sm:mt-0 text-sm text-slate-600 dark:text-slate-400">
+      ¿Ya tienes cuenta?
+      <a href="{% url 'tienda:login' %}?next={% url 'tienda:checkout' %}"
+        class="text-pirula-dark dark:text-pirula-amber font-bold hover:underline">Iniciar sesión</a>
+    </div>
+    {% endif %}
+  </div>
 
   {% if items %}
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-    <!-- Resumen del carrito -->
-    <section class="lg:col-span-2 space-y-4">
-      <h2 class="text-base sm:text-lg font-semibold text-slate-900">
-        Resumen del carrito
-      </h2>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-      <div class="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-200">
-        <table class="min-w-full text-left text-xs sm:text-sm">
-          <thead class="bg-slate-50">
-            <tr>
-              <th class="px-3 sm:px-4 py-3 font-semibold text-slate-700 whitespace-nowrap">
-                Producto
-              </th>
-              <th class="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-center whitespace-nowrap">
-                Cantidad
-              </th>
-              <th class="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-right whitespace-nowrap">
-                Subtotal
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            {% for item in items %}
-            <tr>
-              <td class="px-3 sm:px-4 py-2">
-                {% if item.tipo == "PROMO" %}
-                <span class="text-xs font-semibold text-emerald-600 mr-2">Promo</span>
-                {% endif %}
-                {{ item.nombre }}
-              </td>
-              <td class="px-3 sm:px-4 py-2 text-center">
-                {{ item.cantidad }}
-              </td>
-              <td class="px-3 sm:px-4 py-2 text-right">
-                $ {{ item.subtotal|floatformat:0 }}
-              </td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="3" class="px-3 sm:px-4 py-4 text-center text-slate-500">
-                Tu carrito está vacío.
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-          <tfoot class="bg-slate-50">
-            <tr>
-              <td colspan="2" class="px-3 sm:px-4 py-3 text-right font-semibold text-slate-700">
-                Total
-              </td>
-              <td class="px-3 sm:px-4 py-3 text-right">
-                <span class="text-base sm:text-lg font-bold text-slate-900">
-                  $ {{ total|floatformat:0 }}
-                </span>
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+    <!-- Left Column: Order Summary -->
+    <section class="lg:col-span-2 space-y-6">
+      <div
+        class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden premium-card">
+        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+          <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide">
+            Resumen del Carrito
+          </h2>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+            <thead
+              class="bg-slate-50 dark:bg-slate-900/30 text-xs uppercase font-bold text-slate-500 dark:text-slate-400">
+              <tr>
+                <th class="px-6 py-4">Producto</th>
+                <th class="px-6 py-4 text-center">Cant.</th>
+                <th class="px-6 py-4 text-right">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+              {% for item in items %}
+              <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                <td class="px-6 py-4 font-medium text-slate-900 dark:text-white">
+                  {% if item.tipo == "PROMO" %}
+                  <span
+                    class="inline-block bg-pirula-amber text-pirula-dark text-[10px] font-bold px-1.5 py-0.5 rounded mr-2 uppercase">Promo</span>
+                  {% endif %}
+                  {{ item.nombre }}
+                </td>
+                <td class="px-6 py-4 text-center">
+                  {{ item.cantidad }}
+                </td>
+                <td class="px-6 py-4 text-right font-bold text-slate-900 dark:text-slate-100">
+                  $ {{ item.subtotal|floatformat:0 }}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot class="bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700">
+              <tr>
+                <td colspan="2"
+                  class="px-6 py-4 text-right font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+                  Total a Pagar
+                </td>
+                <td class="px-6 py-4 text-right">
+                  <span class="text-2xl font-bold text-pirula-dark dark:text-pirula-amber">
+                    $ {{ total|floatformat:0 }}
+                  </span>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       </div>
     </section>
 
-    <!-- Datos del cliente -->
-    <section class="bg-white rounded-xl shadow-sm border border-slate-200 px-4 sm:px-6 py-5 sm:py-6">
-      <h2 class="text-base sm:text-lg font-semibold text-slate-900 mb-4">
-        Tus datos
-      </h2>
+    <!-- Right Column: User Data & Payment -->
+    <section class="lg:col-span-1">
+      <div
+        class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 p-6 premium-card sticky top-24">
+        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide mb-6">
+          Datos de Envío
+        </h2>
 
-      <form method="post" class="space-y-4">
-        {% csrf_token %}
+        <form method="post" class="space-y-5">
+          {% csrf_token %}
 
-        <div>
-          <label class="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-            Nombre
-          </label>
-          {{ form.nombre }}
-          {% if form.nombre.errors %}
-          <p class="mt-1 text-xs text-red-600">
-            {{ form.nombre.errors.0 }}
-          </p>
+          <!-- User Data Fields -->
+          <div class="space-y-4">
+            <!-- Name -->
+            <div>
+              <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">
+                Nombre Completo
+              </label>
+              {% if request.user.is_authenticated %}
+              <input type="text" name="nombre" value="{{ form.nombre.value|default:'' }}" readonly
+                class="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-lg text-slate-700 dark:text-slate-300 cursor-not-allowed font-medium px-4 py-2">
+              {% else %}
+              <input type="text" name="nombre" value="{{ form.nombre.value|default:'' }}" required
+                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 text-slate-900 dark:text-white focus:ring-2 focus:ring-pirula-amber focus:border-transparent transition-all"
+                placeholder="Tu nombre">
+              {% if form.nombre.errors %}
+              <p class="text-xs text-red-500 mt-1">{{ form.nombre.errors.0 }}</p>
+              {% endif %}
+              {% endif %}
+            </div>
+
+            <!-- RUT -->
+            <div>
+              <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">
+                RUT
+              </label>
+              {% if request.user.is_authenticated %}
+              <input type="text" name="rut" value="{{ form.rut.value|default:'' }}" readonly
+                class="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-lg text-slate-700 dark:text-slate-300 cursor-not-allowed font-medium px-4 py-2">
+              {% else %}
+              <input type="text" name="rut" value="{{ form.rut.value|default:'' }}" required
+                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 text-slate-900 dark:text-white focus:ring-2 focus:ring-pirula-amber focus:border-transparent transition-all"
+                placeholder="12345678-9">
+              {% if form.rut.errors %}
+              <p class="text-xs text-red-500 mt-1">{{ form.rut.errors.0 }}</p>
+              {% endif %}
+              {% endif %}
+            </div>
+
+            <!-- Email -->
+            <div>
+              <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">
+                Correo Electrónico
+              </label>
+              {% if request.user.is_authenticated %}
+              <input type="email" name="correo" value="{{ form.correo.value|default:'' }}" readonly
+                class="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-lg text-slate-700 dark:text-slate-300 cursor-not-allowed font-medium px-4 py-2">
+              {% else %}
+              <input type="email" name="correo" value="{{ form.correo.value|default:'' }}" required
+                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 text-slate-900 dark:text-white focus:ring-2 focus:ring-pirula-amber focus:border-transparent transition-all"
+                placeholder="ejemplo@correo.com">
+              {% if form.correo.errors %}
+              <p class="text-xs text-red-500 mt-1">{{ form.correo.errors.0 }}</p>
+              {% endif %}
+              {% endif %}
+            </div>
+
+            <!-- Phone -->
+            <div>
+              <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide">
+                Teléfono <span class="text-[10px] font-normal lowercase">(opcional)</span>
+              </label>
+              {% if request.user.is_authenticated %}
+              <input type="text" name="telefono" value="{{ form.telefono.value|default:'' }}" readonly
+                class="w-full bg-slate-100 dark:bg-slate-900 border-none rounded-lg text-slate-700 dark:text-slate-300 cursor-not-allowed font-medium px-4 py-2">
+              {% else %}
+              <input type="text" name="telefono" value="{{ form.telefono.value|default:'' }}"
+                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 text-slate-900 dark:text-white focus:ring-2 focus:ring-pirula-amber focus:border-transparent transition-all"
+                placeholder="+56 9...">
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Age Verification Alert -->
+          {% if tiene_alcohol %}
+          <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4">
+            <div class="flex items-start gap-3">
+              <div class="mt-0.5 text-amber-600 dark:text-amber-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-amber-800 dark:text-amber-400 mb-1">Restricción de Edad</h4>
+                <label class="flex items-start gap-2 cursor-pointer group">
+                  <input type="checkbox" name="mayor_edad_checkout" id="mayor_edad_checkout" required
+                    onchange="toggleConfirmButton()"
+                    class="mt-1 rounded border-amber-300 text-amber-600 focus:ring-amber-500 cursor-pointer">
+                  <span
+                    class="text-xs text-amber-900 dark:text-amber-200 group-hover:text-amber-700 dark:group-hover:text-amber-100 transition-colors">
+                    Declaro ser mayor de 18 años y estar autorizado legalmente.
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
           {% endif %}
-        </div>
-        <div>
-          <label class="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-            RUT
-          </label>
-          {{ form.rut }}
-          {% if form.rut.errors %}
-          <p class="mt-1 text-xs text-red-600">
-            {{ form.rut.errors.0 }}
-          </p>
-          {% endif %}
-        </div>
-        <div>
-          <label class="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-            Correo electrónico
-          </label>
-          {{ form.correo }}
-          {% if form.correo.errors %}
-          <p class="mt-1 text-xs text-red-600">
-            {{ form.correo.errors.0 }}
-          </p>
-          {% endif %}
-        </div>
 
-        <div>
-          <label class="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-            Teléfono (opcional)
-          </label>
-          {{ form.telefono }}
-          {% if form.telefono.errors %}
-          <p class="mt-1 text-xs text-red-600">
-            {{ form.telefono.errors.0 }}
-          </p>
-          {% endif %}
-        </div>
-        {% if tiene_alcohol %}
-        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-          <p class="text-sm font-semibold text-amber-800 mb-3">
-            ⚠️ Tu pedido contiene productos con alcohol
-          </p>
-          <label class="flex items-start gap-2 cursor-pointer">
-            <input type="checkbox" 
-                   name="mayor_edad_checkout" 
-                   id="mayor_edad_checkout"
-                   required
-                   class="mt-1"
-                   onchange="toggleConfirmButton()">
-            <span class="text-sm text-amber-900">
-              Declaro ser mayor de 18 años y estar autorizado legalmente para comprar bebidas alcohólicas.
-            </span>
-          </label>
-          {% if form.mayor_edad_checkout.errors %}
-          <p class="mt-2 text-xs text-red-600">
-            {{ form.mayor_edad_checkout.errors.0 }}
-          </p>
-          {% endif %}
-        </div>
-        {% endif %}
+          <div class="border-t border-slate-200 dark:border-slate-700 pt-4">
+            <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide mb-4">
+              Forma de Pago
+            </h2>
+            <div class="space-y-3">
+              <!-- Pay at Store -->
+              <label
+                class="relative flex items-center p-4 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-pirula-amber dark:hover:border-pirula-amber transition-all group">
+                <input type="radio" name="forma_pago" value="RETIRO" checked
+                  class="h-4 w-4 text-slate-900 border-slate-300 focus:ring-slate-900 cursor-pointer">
+                <span class="ml-3 flex flex-col">
+                  <span
+                    class="block text-sm font-bold text-slate-900 dark:text-white group-hover:text-pirula-dark dark:group-hover:text-pirula-amber">
+                    Pagar al retirar
+                  </span>
+                  <span class="block text-xs text-slate-500 dark:text-slate-400">
+                    Efectivo o tarjeta en el local
+                  </span>
+                </span>
+                <span class="absolute right-4 text-slate-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </span>
+              </label>
 
-        <div class="space-y-4">
-          <h2 class="text-lg font-semibold text-slate-800">Forma de pago</h2>
+              <!-- Webpay -->
+              <label
+                class="relative flex items-center p-4 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-emerald-500 dark:hover:border-emerald-500 transition-all group">
+                <input type="radio" name="forma_pago" value="WEBPAY"
+                  class="h-4 w-4 text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer">
+                <span class="ml-3 flex flex-col">
+                  <span class="block text-sm font-bold text-slate-900 dark:text-white group-hover:text-emerald-600">
+                    Webpay Plus
+                  </span>
+                  <span class="block text-xs text-slate-500 dark:text-slate-400">
+                    Tarjetas de crédito / débito
+                  </span>
+                </span>
+                <span class="absolute right-4 text-emerald-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                </span>
+              </label>
+            </div>
 
-          <label class="flex items-center gap-2">
-            <input type="radio" name="forma_pago" value="RETIRO" checked>
-            <span>Pagar al retirar en la botillería</span>
-          </label>
+            <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <label class="flex items-start gap-3 cursor-pointer group">
+                <input type="checkbox" name="aceptar_terminos" id="aceptar_terminos" required
+                  onchange="toggleConfirmButton()"
+                  class="mt-1 rounded border-slate-300 text-pirula-amber focus:ring-pirula-amber cursor-pointer">
+                <span
+                  class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-300 transition-colors">
+                  He leído y acepto los <a href="{% url 'tienda:terminos' %}" target="_blank"
+                    class="text-pirula-dark dark:text-pirula-amber font-bold hover:underline">Términos y
+                    Condiciones</a>, incluyendo la política de venta de alcohol.
+                </span>
+              </label>
+              {% if form.aceptar_terminos.errors %}
+              <p class="text-xs text-red-500 mt-1 pl-7">{{ form.aceptar_terminos.errors.0 }}</p>
+              {% endif %}
+            </div>
 
-          <label class="flex items-center gap-2">
-            <input type="radio" name="forma_pago" value="WEBPAY">
-            <span>Pagar online con Webpay</span>
-          </label>
-        </div>
-        <p class="mt-2 text-[11px] sm:text-xs text-slate-500">
-          Al confirmar, tu pedido será enviado a la botillería para preparación.
-        </p>
+            <button type="submit" id="btn_confirmar_pedido" {% if tiene_alcohol %}disabled{% endif %}
+              class="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-4 rounded-xl font-bold uppercase tracking-widest hover:bg-pirula-amber hover:text-slate-900 dark:hover:bg-pirula-amber transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:bg-slate-300 disabled:cursor-not-allowed disabled:transform-none dark:disabled:bg-slate-700 dark:disabled:text-slate-500">
+              Confirmar Pedido
+            </button>
 
-        <div class="mt-4 flex flex-col sm:flex-row sm:justify-between gap-3">
-          <a href="{% url 'tienda:carrito_ver' %}"
-            class="inline-flex items-center justify-center rounded-full border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 w-full sm:w-auto">
-            Volver al carrito
-          </a>
-          <button type="submit"
-                  id="btn_confirmar_pedido"
-                  {% if tiene_alcohol %}disabled{% endif %}
-            class="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 w-full sm:w-auto disabled:bg-slate-400 disabled:cursor-not-allowed">
-            Confirmar pedido
-          </button>
-        </div>
+            <div class="text-center">
+              <a href="{% url 'tienda:carrito_ver' %}"
+                class="text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white underline">
+                Volver al carrito
+              </a>
+            </div>
 
-      </form>
+        </form>
+      </div>
     </section>
   </div>
   {% else %}
-  <div class="bg-white rounded-xl border border-dashed border-slate-300 px-4 sm:px-6 py-6 sm:py-8 text-center">
-    <p class="text-sm sm:text-base text-slate-500 mb-4">
-      Tu carrito está vacío.
-    </p>
+  <!-- Empty Cart State -->
+  <div
+    class="max-w-md mx-auto text-center py-20 px-6 bg-white dark:bg-slate-800 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700">
+    <div class="bg-slate-50 dark:bg-slate-700 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-slate-400" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+      </svg>
+    </div>
+    <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-2">Tu carrito está vacío</h2>
+    <p class="text-slate-500 dark:text-slate-400 mb-8">Agrega nuestros mejores licores para comenzar la fiesta.</p>
     <a href="{% url 'tienda:home' %}"
-      class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
-      Ir a la tienda
+      class="inline-block px-8 py-3 bg-pirula-dark dark:bg-pirula-amber text-white dark:text-pirula-dark font-bold rounded-full hover:bg-pirula-amber hover:text-slate-900 transition-all shadow-lg">
+      Ver Productos
     </a>
   </div>
   {% endif %}
@@ -198,17 +295,28 @@
 {% if tiene_alcohol %}
 <script>
   function toggleConfirmButton() {
-    const checkbox = document.getElementById('mayor_edad_checkout');
+    const ageCheckbox = document.getElementById('mayor_edad_checkout');
+    const termsCheckbox = document.getElementById('aceptar_terminos');
     const button = document.getElementById('btn_confirmar_pedido');
-    
-    if (checkbox.checked) {
+
+    // Check both if age restriction applies
+    if (ageCheckbox && ageCheckbox.checked && termsCheckbox && termsCheckbox.checked) {
       button.disabled = false;
-      button.classList.remove('bg-slate-400', 'cursor-not-allowed');
-      button.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
     } else {
       button.disabled = true;
-      button.classList.add('bg-slate-400', 'cursor-not-allowed');
-      button.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+    }
+  }
+</script>
+{% else %}
+<script>
+  function toggleConfirmButton() {
+    const termsCheckbox = document.getElementById('aceptar_terminos');
+    const button = document.getElementById('btn_confirmar_pedido');
+
+    if (termsCheckbox && termsCheckbox.checked) {
+      button.disabled = false;
+    } else {
+      button.disabled = true;
     }
   }
 </script>

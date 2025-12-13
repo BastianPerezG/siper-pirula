@@ -4,110 +4,248 @@
 
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-
-  <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-6">
-    Carrito de compras
+  <h1 class="text-3xl font-header font-bold text-pirula-dark dark:text-white mb-8 uppercase text-center sm:text-left">
+    Mi Carro <span class="text-lg font-normal text-slate-500 dark:text-slate-400 normal-case">({{ items|length }}
+      productos)</span>
   </h1>
 
   {% if items %}
-  <div class="space-y-6">
-    <div class="overflow-x-auto bg-white rounded-2xl shadow-sm border border-slate-200">
-      <table class="min-w-full text-left text-xs sm:text-sm">
-        <thead class="bg-slate-50">
-          <tr>
-            <th class="px-3 sm:px-4 py-3 font-semibold text-slate-700 whitespace-nowrap">
-              Producto
-            </th>
-            <th class="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-center whitespace-nowrap">
-              Cantidad
-            </th>
-            <th class="px-3 sm:px-4 py-3 font-semibold text-slate-700 text-right whitespace-nowrap">
-              Subtotal
-            </th>
-            <th class="px-3 sm:px-4 py-3"></th>
+  <div
+    class="bg-white dark:bg-slate-800 rounded-3xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden mb-8 premium-card">
+    <!-- Vista Escritorio (Tabla) -->
+    <div class="hidden md:block overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
+            <th class="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Producto</th>
+            <th class="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-center">
+              Cantidad</th>
+            <th class="p-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide text-right">
+              Subtotal</th>
+            <th class="p-4"></th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
           {% for item in items %}
-          <tr class="border-b last:border-b-0" data-item-key="{{ item.key }}" data-precio-unit="{{ item.precio_unit }}">
-            <td class="px-3 sm:px-4 py-2 align-middle">
-              {% if item.tipo == "PROMO" %}
-              <span class="text-xs font-semibold text-emerald-600 mr-2">Promo</span>
-              {% endif %}
-              {{ item.nombre }}
+          <tr class="group hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors cart-item-row"
+            data-item-key="{{ item.key }}" data-precio-unit="{{ item.precio_unit }}">
+            <td class="p-4 align-middle">
+              <div class="flex items-center gap-4">
+                {% if item.producto.imagen %}
+                <img src="{{ item.producto.imagen.url }}" alt="{{ item.producto.nombre }}"
+                  class="w-16 h-16 object-cover rounded-lg border border-slate-200 dark:border-slate-600">
+                {% else %}
+                <div
+                  class="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center text-slate-400 text-xs">
+                  Sin foto</div>
+                {% endif %}
+                <div>
+                  {% if item.tipo == "PROMO" %}
+                  <span
+                    class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-pirula-amber text-pirula-dark mb-1">PROMO</span>
+                  {% endif %}
+                  <h3 class="font-bold text-slate-800 dark:text-slate-100">{{ item.nombre }}</h3>
+                  {% if item.producto.categoria %}
+                  <p class="text-xs text-slate-500 dark:text-slate-400">{{ item.producto.categoria.nombre }}</p>
+                  {% endif %}
+                </div>
+              </div>
             </td>
-            <td class="text-center">
-              <input type="number" 
-                     name="cant_{{ item.key }}" 
-                     value="{{ item.cantidad }}" 
-                     min="1" 
-                     {% if item.max_cantidad %}max="{{ item.max_cantidad }}" {% endif %}
-                     data-item-key="{{ item.key }}"
-                     class="cantidad-input w-20 sm:w-24 text-center border rounded-lg px-2 py-1" />
+            <td class="p-4 text-center align-middle">
+              <div
+                class="inline-flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800">
+                <button type="button"
+                  class="btn-restar w-8 h-8 flex items-center justify-center text-slate-500 hover:text-pirula-dark dark:hover:text-pirula-amber transition-colors font-bold text-lg">-</button>
+                <input type="number" name="cant_{{ item.key }}" value="{{ item.cantidad }}" min="1" {% if item.max_cantidad %}max="{{ item.max_cantidad }}" {% endif %} data-item-key="{{ item.key }}"
+                  class="cantidad-input w-10 text-center border-none bg-transparent text-slate-800 dark:text-slate-100 font-semibold focus:ring-0 p-0 text-sm appearance-none mx-1"
+                  readonly />
+                <button type="button"
+                  class="btn-sumar w-8 h-8 flex items-center justify-center text-slate-500 hover:text-pirula-dark dark:hover:text-pirula-amber transition-colors font-bold text-lg">+</button>
+              </div>
             </td>
-            <td class="px-3 sm:px-4 py-2 text-right align-middle">
-              <span class="subtotal" data-item-key="{{ item.key }}">$ {{ item.subtotal|floatformat:0 }}</span>
+            <td class="p-4 text-right align-middle">
+              <span class="subtotal font-bold text-pirula-dark dark:text-pirula-amber">$ {{ item.subtotal|floatformat:0 }}</span>
             </td>
-            <td class="px-3 sm:px-4 py-2 text-right align-middle">
+            <td class="p-4 text-right align-middle">
               <a href="{% url 'tienda:carrito_eliminar' item.key %}"
-                class="inline-flex items-center text-xs sm:text-sm text-red-600 hover:text-red-800">
-                Eliminar
+                class="p-2 text-slate-400 hover:text-red-500 transition-colors inline-block" title="Eliminar">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                  stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
               </a>
             </td>
           </tr>
           {% endfor %}
         </tbody>
-        <tfoot class="bg-slate-50">
-          <tr>
-            <td colspan="2" class="px-3 sm:px-4 py-3 text-right font-semibold">
-              Total
-            </td>
-            <td class="text-right font-bold">
-              <span id="total-general">$ {{ total|floatformat:0 }}</span>
-            </td>
-            <td></td>
-          </tr>
-        </tfoot>
       </table>
     </div>
 
-    <div class="flex flex-col sm:flex-row justify-between gap-3 mt-6">
-      <a href="{% url 'tienda:productos' %}"
-        class="px-4 py-2 rounded-full border border-slate-300 text-slate-700 hover:bg-slate-50 text-center">
-        Seguir comprando
-      </a>
+    <!-- Vista Mobile (Tarjetas) -->
+    <div class="md:hidden divide-y divide-slate-100 dark:divide-slate-700">
+      {% for item in items %}
+      <div class="p-4 cart-item-row" data-item-key="{{ item.key }}" data-precio-unit="{{ item.precio_unit }}">
+        <div class="flex gap-4">
+          {# Imagen #}
+          <div class="flex-shrink-0">
+            {% if item.producto.imagen %}
+            <img src="{{ item.producto.imagen.url }}" alt="{{ item.producto.nombre }}"
+              class="w-20 h-20 object-cover rounded-lg border border-slate-200 dark:border-slate-600">
+            {% else %}
+            <div
+              class="w-20 h-20 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center text-slate-400 text-xs text-center p-1">
+              Sin foto</div>
+            {% endif %}
+          </div>
 
-      <div class="flex gap-3">
-        <form method="post" action="{% url 'tienda:carrito_actualizar' %}" id="checkout-form" class="inline">
-          {% csrf_token %}
-          {% for item in items %}
-            <input type="hidden" name="cant_{{ item.key }}" value="{{ item.cantidad }}" class="hidden-cantidad-input" data-item-key="{{ item.key }}">
-          {% endfor %}
-          <button type="submit" name="go_checkout" value="1"
-            class="px-5 py-2 rounded-full bg-slate-900 text-white hover:bg-slate-800 text-center">
-            Continuar a checkout
-          </button>
-        </form>
+          {# Contenido #}
+          <div class="flex-1 min-w-0 flex flex-col justify-between">
+            <div class="flex justify-between items-start gap-2">
+              <div>
+                {% if item.tipo == "PROMO" %}
+                <span
+                  class="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-pirula-amber text-pirula-dark mb-1 uppercase tracking-wider">Promo</span>
+                {% endif %}
+                <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 leading-tight mb-1">{{ item.nombre }}
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">$ {{ item.precio_unit|floatformat:0 }}
+                </p>
+              </div>
+              <a href="{% url 'tienda:carrito_eliminar' item.key %}" class="text-slate-400 hover:text-red-500 p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                  stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </a>
+            </div>
+
+            <div class="flex justify-between items-end mt-2">
+              {# Controles #}
+              <div
+                class="inline-flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 h-8">
+                <button type="button"
+                  class="btn-restar w-8 h-full flex items-center justify-center text-slate-500 hover:text-pirula-dark dark:hover:text-pirula-amber transition-colors font-bold">-</button>
+                <input type="number" name="cant_{{ item.key }}" value="{{ item.cantidad }}" min="1" {% if item.max_cantidad %}max="{{ item.max_cantidad }}" {% endif %} data-item-key="{{ item.key }}"
+                  class="cantidad-input w-8 text-center border-none bg-transparent text-slate-800 dark:text-slate-100 font-semibold focus:ring-0 p-0 text-sm appearance-none"
+                  readonly />
+                <button type="button"
+                  class="btn-sumar w-8 h-full flex items-center justify-center text-slate-500 hover:text-pirula-dark dark:hover:text-pirula-amber transition-colors font-bold">+</button>
+              </div>
+
+              {# Subtotal #}
+              <span class="subtotal font-bold text-slate-900 dark:text-white text-lg">$ {{ item.subtotal|floatformat:0 }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {# Footer del carrito #}
+    <div
+      class="bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-700 p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <a href="{% url 'tienda:carrito_vaciar' %}"
+        class="text-sm text-red-500 hover:text-red-700 font-medium hover:underline flex items-center gap-1 group">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 group-hover:rotate-12 transition-transform" fill="none"
+          viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+        Vaciar Carro
+      </a>
+      <div class="flex items-center gap-4">
+        <span class="text-slate-500 dark:text-slate-400 uppercase text-xs font-bold tracking-wider">Total a
+          Pagar:</span>
+        <span id="total-general" class="text-2xl font-header font-bold text-pirula-dark dark:text-white">$ {{ total|floatformat:0 }}</span>
       </div>
     </div>
   </div>
 
+  {# Botones de acción #}
+  <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-12">
+    <a href="{% url 'tienda:productos' %}"
+      class="px-6 py-3 rounded-full border-2 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 font-bold hover:border-pirula-amber hover:text-pirula-dark dark:hover:text-pirula-amber transition-colors">
+      ← Seguir Comprando
+    </a>
+
+    <div class="flex gap-3">
+      {# Input hidden form for actual checkout logic support if needed, but the button links directly #}
+      <form method="post" action="{% url 'tienda:carrito_actualizar' %}" id="checkout-form" class="hidden">
+        {% csrf_token %}
+        {% for item in items %}
+        <input type="hidden" name="cant_{{ item.key }}" value="{{ item.cantidad }}" class="hidden-cantidad-input"
+          data-item-key="{{ item.key }}">
+        {% endfor %}
+        <input type="hidden" name="go_checkout" value="1">
+      </form>
+
+      <a href="{% url 'tienda:checkout' %}"
+        onclick="event.preventDefault(); document.getElementById('checkout-form').submit();"
+        class="px-8 py-4 rounded-full bg-pirula-amber hover:bg-amber-400 text-pirula-dark font-header font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all flex items-center gap-2 cursor-pointer">
+        Ir a Pagar
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+        </svg>
+      </a>
+    </div>
+  </div>
+
   {% else %}
-  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-center text-slate-600">
-    Tu carrito está vacío.
+  {# Carrito vacío - Estado ilustrado #}
+  <div
+    class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 p-12 text-center max-w-2xl mx-auto flex flex-col items-center premium-card">
+    <div
+      class="w-24 h-24 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-6 text-slate-300 dark:text-slate-500">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    </div>
+    <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2">Tu carro está vacío</h2>
+    <p class="text-slate-500 dark:text-slate-400 mb-8 max-w-sm">
+      ¡Descubre nuestra selección de licores premium y encuentra algo especial para hoy!
+    </p>
+    <a href="{% url 'tienda:productos' %}"
+      class="px-8 py-3 rounded-full bg-pirula-amber hover:bg-amber-400 text-pirula-dark font-bold shadow-lg transition-transform hover:scale-105 active:scale-95">
+      Ver Catálogo
+    </a>
   </div>
   {% endif %}
 </div>
 
 <script>
+  // Manejo de botones +/-
+  document.querySelectorAll('.btn-sumar').forEach(btn => {
+    btn.addEventListener('click', function () {
+      const input = this.parentNode.querySelector('.cantidad-input');
+      const max = parseInt(input.getAttribute('max') || '99');
+      let val = parseInt(input.value || '0');
+      if (val < max) {
+        input.value = val + 1;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+  });
+
+  document.querySelectorAll('.btn-restar').forEach(btn => {
+    btn.addEventListener('click', function () {
+      const input = this.parentNode.querySelector('.cantidad-input');
+      let val = parseInt(input.value || '0');
+      if (val > 1) {
+        input.value = val - 1;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+  });
+
   document.querySelectorAll('.cantidad-input').forEach(input => {
     let timeoutId;
-    
+
     input.addEventListener('input', function () {
-      // Limpiar timeout anterior
       clearTimeout(timeoutId);
-      
-      // Validar inmediatamente
+
       let val = parseInt(this.value || '0');
       const max = parseInt(this.getAttribute('max') || '0');
 
@@ -119,62 +257,44 @@
       }
       this.value = val;
 
-      // Actualizar subtotal visualmente inmediatamente
-      const fila = this.closest('tr');
+      const fila = this.closest('.cart-item-row');
       const precioUnit = parseFloat(fila.dataset.precioUnit || '0');
       const subtotalEl = fila.querySelector('.subtotal');
-      
+
       if (subtotalEl && precioUnit > 0) {
         const nuevoSubtotal = precioUnit * val;
         subtotalEl.textContent = "$ " + Math.round(nuevoSubtotal).toLocaleString('es-CL');
       }
 
-      // Calcular total general visualmente
       calcularTotalGeneral();
 
-      // Guardar en servidor después de 500ms sin cambios (debounce)
+      // Debounce server update
       timeoutId = setTimeout(() => {
         actualizarCantidadEnServidor(this);
       }, 500);
-    });
-
-    // También actualizar al perder el foco
-    input.addEventListener('blur', function () {
-      clearTimeout(timeoutId);
-      actualizarCantidadEnServidor(this);
     });
   });
 
   function actualizarCantidadEnServidor(input) {
     const itemKey = input.dataset.itemKey;
     const cantidad = parseInt(input.value || '0');
-    
-    if (!itemKey || cantidad <= 0) {
-      return;
-    }
 
-    // Mostrar indicador de carga
-    const fila = input.closest('tr');
+    if (!itemKey || cantidad <= 0) return;
+
+    const fila = input.closest('.cart-item-row');
     const subtotalEl = fila.querySelector('.subtotal');
-    const originalText = subtotalEl.textContent;
-    subtotalEl.textContent = "Actualizando...";
+    // Optional: show loading state
 
-    // Actualizar input hidden para el formulario de checkout
+    // Update hidden input for checkout
     const hiddenInput = document.querySelector(`.hidden-cantidad-input[data-item-key="${itemKey}"]`);
     if (hiddenInput) {
       hiddenInput.value = cantidad;
     }
 
-    // Obtener CSRF token del formulario de checkout
     const csrfToken = document.querySelector('#checkout-form [name=csrfmiddlewaretoken]')?.value || '';
-    
-    if (!csrfToken) {
-      console.error('No se encontró el token CSRF');
-      subtotalEl.textContent = originalText;
-      return;
-    }
-    
-    // Llamar a la API
+
+    if (!csrfToken) return;
+
     fetch("{% url 'tienda:carrito_actualizar_item' %}", {
       method: 'POST',
       headers: {
@@ -183,29 +303,17 @@
       },
       body: `item_key=${encodeURIComponent(itemKey)}&cantidad=${cantidad}`
     })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        // Actualizar subtotal con el valor del servidor
-        const subtotalEl = fila.querySelector('.subtotal');
-        subtotalEl.textContent = "$ " + Math.round(data.subtotal).toLocaleString('es-CL');
-        
-        // Actualizar total general
-        const totalEl = document.getElementById("total-general");
-        if (totalEl) {
-          totalEl.textContent = "$ " + Math.round(data.total).toLocaleString('es-CL');
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          subtotalEl.textContent = "$ " + Math.round(data.subtotal).toLocaleString('es-CL');
+          const totalEl = document.getElementById("total-general");
+          if (totalEl) {
+            totalEl.textContent = "$ " + Math.round(data.total).toLocaleString('es-CL');
+          }
         }
-      } else {
-        // Error: restaurar valor anterior
-        subtotalEl.textContent = originalText;
-        alert(data.error || "Error al actualizar la cantidad");
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      subtotalEl.textContent = originalText;
-      alert("Error al actualizar la cantidad. Por favor, recarga la página.");
-    });
+      })
+      .catch(console.error);
   }
 
   function calcularTotalGeneral() {
@@ -217,10 +325,9 @@
     });
     const totalEl = document.getElementById("total-general");
     if (totalEl) {
+      // Approximate client-side calculation, server will be source of truth
       totalEl.textContent = "$ " + Math.round(total).toLocaleString('es-CL');
     }
   }
 </script>
-
-
 {% endblock %}
