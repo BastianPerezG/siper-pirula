@@ -175,7 +175,8 @@
   {% endif %}
 
 
-  <h2 class="text-xl font-semibold text-slate-800 mb-4">
+  <h2
+    class="text-3xl font-header font-bold text-pirula-dark dark:text-slate-100 mb-6 border-l-4 border-pirula-amber pl-4 uppercase">
     Categorías
   </h2>
 
@@ -183,9 +184,9 @@
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
     {% for grupo in categorias_data %}
     {% with categoria=grupo.categoria productos=grupo.productos %}
-    <div
-      class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col premium-card group">
-      {# Imagen de la categoría #}
+    <a href="{% url 'tienda:categoria_detalle' categoria.id %}"
+      class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col premium-card group cursor-pointer">
+      {# Imagen de la categoría - clickeable #}
       {% if categoria.imagen %}
       <div class="h-40 w-full overflow-hidden">
         <img src="{{ categoria.imagen.url }}" alt="{{ categoria.nombre }}"
@@ -198,7 +199,8 @@
       {% endif %}
 
       <div class="p-4 flex-1 flex flex-col">
-        <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-1">
+        <h3
+          class="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-1 group-hover:text-pirula-amber transition-colors">
           {{ categoria.nombre }}
         </h3>
 
@@ -222,13 +224,13 @@
         {% endif %}
 
         <div class="mt-auto flex justify-end">
-          <a href="{% url 'tienda:categoria_detalle' categoria.id %}"
-            class="inline-flex items-center px-4 py-2 rounded-lg bg-pirula-dark dark:bg-white text-white dark:text-pirula-dark text-xs font-bold uppercase tracking-wide hover:bg-pirula-brown dark:hover:bg-slate-200 transition-colors">
+          <span
+            class="inline-flex items-center px-4 py-2 rounded-lg bg-pirula-dark dark:bg-white text-white dark:text-pirula-dark text-xs font-bold uppercase tracking-wide group-hover:bg-pirula-amber group-hover:text-pirula-dark transition-colors">
             Ver Productos
-          </a>
+          </span>
         </div>
       </div>
-    </div>
+    </a>
     {% endwith %}
     {% endfor %}
   </div>
