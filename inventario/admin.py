@@ -1,6 +1,14 @@
 from django.contrib import admin
-from .models import Categoria, Producto, MovimientoInventario, Promo, PromoItem, Proveedor, Compra, CompraItem
+from .models import Categoria, Producto, MovimientoInventario, Promo, PromoItem, Proveedor, Compra, CompraItem, Marca
 # Register your models here.
+
+
+@admin.register(Marca)
+class MarcaAdmin(admin.ModelAdmin):
+    list_display = ("id", "nombre", "negocio", "activo", "creada")
+    list_filter = ("activo", "negocio")
+    search_fields = ("nombre",)
+    readonly_fields = ("creada", "actualizada")
 
 
 @admin.register(Categoria)
@@ -11,8 +19,8 @@ class CategoriaAdmin(admin.ModelAdmin):
 
 @admin.register(Producto)
 class ProductoAdmin(admin.ModelAdmin):
-    list_display = ("id", "nombre", "ean", "precio", "activo")
-    list_filter = ("categoria", "activo")
+    list_display = ("id", "nombre", "marca", "ean", "precio", "activo")
+    list_filter = ("categoria", "marca", "activo")
     search_fields = ("nombre", "ean", "sku")
 
 # Admin Inventario 

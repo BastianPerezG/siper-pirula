@@ -1,105 +1,136 @@
-{% extends "../../core/base.html" %}
+{% extends "core/base.html" %}
 
-{% block title %}Compra #{{ compra.id }} - SIPER Pirula{% endblock %}
+{% block title %}Compra #{{ compra.id }} - El Gran Pirula{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto">
-    <h1 class="text-2xl font-bold mb-2">
-        Compra #{{ compra.id }}
-        <span class="text-slate-500 font-normal">
-            - {{ compra.proveedor }}
-        </span>
-    </h1>
+<div class="space-y-6 max-w-5xl mx-auto">
+    <!-- Header -->
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-pirula-dark">
+                🛒 Compra #{{ compra.id }}
+            </h1>
+            <p class="text-lg text-pirula-medium mt-1">
+                {{ compra.proveedor.nombre }}
+            </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a href="{% url 'inventario:compra_lista' %}"
+                class="px-4 py-2 rounded-lg border border-pirula-beige text-pirula-dark text-sm font-medium hover:bg-pirula-cream transition-colors">
+                ← Volver a compras
+            </a>
+        </div>
+    </div>
 
     <!-- Datos principales -->
-    <div class="bg-white rounded-lg shadow-sm p-4 mb-6 text-sm">
-        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-                <dt class="font-semibold text-slate-500">Fecha</dt>
-                <dd>{{ compra.fecha }}</dd>
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-6">
+        <h2 class="text-lg font-bold text-pirula-dark mb-4 flex items-center gap-2">
+            <span class="text-xl">📋</span> Datos de la Compra
+        </h2>
+
+        <dl class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 text-sm">
+            <div class="p-4 rounded-lg bg-pirula-cream/50 border border-pirula-beige/30">
+                <dt class="font-semibold text-pirula-medium mb-1">📅 Fecha</dt>
+                <dd class="text-pirula-dark text-lg">{{ compra.fecha|date:"d/m/Y H:i" }}</dd>
             </div>
-            <div>
-                <dt class="font-semibold text-slate-500">Documento</dt>
-                <dd>{{ compra.doc_tipo }} {{ compra.doc_num }}</dd>
+
+            <div class="p-4 rounded-lg bg-pirula-cream/50 border border-pirula-beige/30">
+                <dt class="font-semibold text-pirula-medium mb-1">📄 Tipo de Documento</dt>
+                <dd class="text-pirula-dark text-lg">{{ compra.get_doc_tipo_display }}</dd>
             </div>
-            <div class="sm:col-span-2">
-                <dt class="font-semibold text-slate-500">Comentario</dt>
-                <dd>{{ compra.comentario|default:"(sin comentario)" }}</dd>
+
+            <div class="p-4 rounded-lg bg-pirula-cream/50 border border-pirula-beige/30">
+                <dt class="font-semibold text-pirula-medium mb-1">#️⃣ Número de Documento</dt>
+                <dd class="text-pirula-dark text-lg">{{ compra.doc_num|default:"(sin número)" }}</dd>
+            </div>
+
+            <div class="p-4 rounded-lg bg-pirula-cream/50 border border-pirula-beige/30 sm:col-span-2">
+                <dt class="font-semibold text-pirula-medium mb-1">💬 Comentario</dt>
+                <dd class="text-pirula-dark">{{ compra.comentario|default:"(sin comentario)" }}</dd>
+            </div>
+
+            <div class="p-4 rounded-lg bg-pirula-cream/50 border border-pirula-beige/30">
+                <dt class="font-semibold text-pirula-medium mb-1">📎 Archivo Adjunto</dt>
+                <dd class="text-pirula-dark">
+                    {% if compra.archivo %}
+                    <a href="{{ compra.archivo.url }}" target="_blank"
+                        class="inline-flex items-center gap-2 text-pirula-accent hover:text-pirula-dark font-semibold">
+                        📥 Ver archivo
+                    </a>
+                    {% else %}
+                    <span class="text-slate-400">(sin archivo)</span>
+                    {% endif %}
+                </dd>
             </div>
         </dl>
-        <div>
-            <dt class="font-semibold text-slate-500">Documento</dt>
-            <dd>{{ compra.doc_tipo }} {{ compra.doc_num }}</dd>
+    </section>
+
+    <!-- Ítems de la compra -->
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-6">
+        <h2 class="text-lg font-bold text-pirula-dark mb-4 flex items-center gap-2">
+            <span class="text-xl">📦</span> Productos Comprados
+        </h2>
+
+        {% if compra.items.all %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-pirula-cream border-b border-pirula-beige">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-bold text-pirula-dark">Producto</th>
+                        <th class="px-4 py-3 text-center font-bold text-pirula-dark w-28">Cantidad</th>
+                        <th class="px-4 py-3 text-right font-bold text-pirula-dark w-32">Costo Unit.</th>
+                        <th class="px-4 py-3 text-right font-bold text-pirula-dark w-32">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-pirula-beige/30">
+                    {% for item in compra.items.all %}
+                    <tr class="hover:bg-pirula-cream/30 transition-colors">
+                        <td class="px-4 py-3">
+                            <div class="font-medium text-pirula-dark">{{ item.producto.nombre }}</div>
+                            <div class="text-xs text-slate-400">SKU: {{ item.producto.sku }}</div>
+                        </td>
+                        <td class="px-4 py-3 text-center font-semibold">{{ item.cantidad }}</td>
+                        <td class="px-4 py-3 text-right">${{ item.costo_unit|floatformat:0 }}</td>
+                        <td class="px-4 py-3 text-right font-semibold text-pirula-dark">
+                            ${{ item.subtotal|floatformat:0 }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="bg-pirula-cream/50">
+                    <tr>
+                        <td colspan="3" class="px-4 py-4 text-right font-bold text-pirula-dark text-base">
+                            TOTAL COMPRA:
+                        </td>
+                        <td class="px-4 py-4 text-right">
+                            <span class="text-xl font-bold text-pirula-accent">${{ compra.total|floatformat:0 }}</span>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
-
-        <div>
-            <dt class="font-semibold text-slate-500">Archivo adjunto</dt>
-            <dd>
-                {% if compra.archivo %}
-                <a href="{{ compra.archivo.url }}" target="_blank" class="text-emerald-700 hover:underline">
-                    Ver archivo
-                </a>
-                {% else %}
-                <span class="text-slate-500">(sin archivo)</span>
-                {% endif %}
-            </dd>
+        {% else %}
+        <div class="text-center py-8 text-slate-500">
+            <span class="text-4xl mb-2 block">📭</span>
+            No hay ítems en esta compra.
         </div>
-    </div>
-
-    <!-- Ítems -->
-    <h2 class="text-lg font-semibold mb-3">Ítems</h2>
-
-    {% if compra.items.all %}
-    <div class="overflow-x-auto bg-white rounded-lg shadow-sm border border-slate-200">
-        <table class="min-w-full text-sm">
-            <thead class="bg-slate-50">
-                <tr>
-                    <th class="px-3 py-2 text-left border-b">Producto</th>
-                    <th class="px-3 py-2 text-right border-b">Cantidad</th>
-                    <th class="px-3 py-2 text-right border-b">Costo unitario</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in compra.items.all %}
-                <tr class="odd:bg-white even:bg-slate-50">
-                    <td class="px-3 py-2 border-b">
-                        {{ item.producto.nombre }}
-                    </td>
-                    <td class="px-3 py-2 border-b text-right">
-                        {{ item.cantidad }}
-                    </td>
-                    <td class="px-3 py-2 border-b text-right">
-                        ${{ item.costo_unit }}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <div class="bg-white rounded-lg shadow-sm p-4 text-sm text-slate-600">
-        No hay ítems en esta compra.
-    </div>
-    {% endif %}
+        {% endif %}
+    </section>
 
     <!-- Acciones -->
-    <!-- Acciones -->
-    <div class="mt-6 flex flex-wrap gap-3">
+    <div class="flex flex-wrap gap-3 justify-end">
         <a href="{% url 'inventario:compra_lista' %}"
-            class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
-            Volver a la lista
+            class="px-4 py-2 rounded-lg border border-pirula-beige text-pirula-dark text-sm font-medium hover:bg-pirula-cream transition-colors">
+            ← Volver a la lista
         </a>
-
-        <a href="{% url 'core:dashboard' %}"
-            class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
-            Volver al inicio
+        <a href="{% url 'inventario:compra_editar' compra.pk %}"
+            class="px-4 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-sm font-medium hover:bg-blue-100 transition-colors">
+            ✏️ Editar compra
         </a>
-
         <a href="{% url 'inventario:compra_eliminar' compra.pk %}"
-            class="px-4 py-2 rounded bg-red-600 text-white text-sm hover:bg-red-700">
-            Eliminar compra
+            class="px-4 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors">
+            🗑️ Eliminar compra
         </a>
     </div>
-
 </div>
 {% endblock %}

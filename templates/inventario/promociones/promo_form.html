@@ -2,214 +2,225 @@
 {% load humanize %}
 
 {% block title %}
-  {% if modo == "editar" %}Editar promoción{% else %}Nueva promoción{% endif %} - SIPER Pirula
+{% if modo == "editar" %}Editar{% else %}Nueva{% endif %} Promoción - El Gran Pirula
 {% endblock %}
 
 {% block content %}
-<div class="mb-6 flex items-center justify-between gap-3">
-  <div>
-    <h1 class="text-2xl font-bold text-slate-900">
-      {% if modo == "editar" %}Editar promoción{% else %}Nueva promoción{% endif %}
-    </h1>
-    <p class="text-sm text-slate-500 mt-1">
-      Define el pack, su precio y los productos que lo componen.
-    </p>
-  </div>
-
-  <a href="{% url 'inventario:promo_lista' %}"
-     class="inline-flex items-center px-4 py-2 rounded-full border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-    Volver al listado
-  </a>
-</div>
-
-<form method="post" enctype="multipart/form-data" class="space-y-6">
-  {% csrf_token %}
-
-  {% if form.non_field_errors %}
-  <div class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
-    {{ form.non_field_errors }}
-  </div>
-  {% endif %}
-
-  <!-- Datos básicos -->
-  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
-    <div class="px-5 py-4 border-b border-slate-100">
-      <h2 class="text-sm font-semibold text-slate-800">Datos de la promoción</h2>
-    </div>
-
-    <div class="px-5 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div class="space-y-3">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre</label>
-          {{ form.nombre }}
-          {% if form.nombre.errors %}
-          <p class="mt-1 text-xs text-red-600">{{ form.nombre.errors.0 }}</p>
-          {% endif %}
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Precio combo</label>
-          {{ form.precio_combo }}
-          {% if form.precio_combo.errors %}
-          <p class="mt-1 text-xs text-red-600">{{ form.precio_combo.errors.0 }}</p>
-          {% endif %}
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Descripción</label>
-          {{ form.descripcion }}
-          {% if form.descripcion.errors %}
-          <p class="mt-1 text-xs text-red-600">{{ form.descripcion.errors.0 }}</p>
-          {% endif %}
-        </div>
-      </div>
-
-      <div class="space-y-3">
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Vigencia desde</label>
-            {{ form.fecha_inicio }}
-            {% if form.fecha_inicio.errors %}
-            <p class="mt-1 text-xs text-red-600">{{ form.fecha_inicio.errors.0 }}</p>
-            {% endif %}
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Hasta</label>
-            {{ form.fecha_fin }}
-            {% if form.fecha_fin.errors %}
-            <p class="mt-1 text-xs text-red-600">{{ form.fecha_fin.errors.0 }}</p>
-            {% endif %}
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Imagen</label>
-          {{ form.imagen }}
-          {% if form.imagen.errors %}
-          <p class="mt-1 text-xs text-red-600">{{ form.imagen.errors.0 }}</p>
-          {% endif %}
-          {% if promo and promo.imagen %}
-          <p class="mt-2 text-xs text-slate-500">Imagen actual:</p>
-          <img src="{{ promo.imagen.url }}" alt="{{ promo.nombre }}" class="mt-1 h-20 rounded-lg object-cover border border-slate-200">
-          {% endif %}
-        </div>
-
-        <div class="flex gap-6 mt-1">
-          <label class="inline-flex items-center gap-2 text-xs text-slate-700">
-            {{ form.activo }}
-            <span>Promo activa</span>
-          </label>
-          <label class="inline-flex items-center gap-2 text-xs text-slate-700">
-            {{ form.mostrar_en_portada }}
-            <span>Mostrar en portada</span>
-          </label>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Productos del combo -->
-  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm">
-    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-      <div>
-        <h2 class="text-sm font-semibold text-slate-800">Productos incluidos</h2>
-        <p class="text-xs text-slate-500 mt-0.5">
-          Agrega los productos que forman el pack y la cantidad de cada uno.
-        </p>
-      </div>
-      <button type="button"
-              id="btn-agregar-fila"
-              class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800">
-        <span class="text-base leading-none">＋</span>
-        Agregar fila
-      </button>
-    </div>
-
-    <div class="px-5 py-4 overflow-x-auto">
-      {{ formset.management_form }}
-
-      <table id="items-table" class="min-w-full text-sm border border-slate-200 rounded-xl overflow-hidden">
-        <thead class="bg-slate-50 border-b border-slate-200">
-          <tr>
-            <th class="px-3 py-2 text-left font-semibold text-slate-700">Producto</th>
-            <th class="px-3 py-2 text-left font-semibold text-slate-700 w-32">Cantidad</th>
-            <th class="px-3 py-2 text-center font-semibold text-slate-700 w-28">Eliminar</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          {% for f in formset %}
-          <tr class="item-row">
-            {# hidden_fields para no romper el formset #}
-            {% for hidden in f.hidden_fields %}
-              {{ hidden }}
-            {% endfor %}
-
-            <td class="px-3 py-2">
-              {{ f.producto }}
-              {% if f.producto.errors %}
-              <p class="mt-1 text-xs text-red-600">{{ f.producto.errors.0 }}</p>
-              {% endif %}
-            </td>
-            <td class="px-3 py-2">
-              {{ f.cantidad }}
-              {% if f.cantidad.errors %}
-              <p class="mt-1 text-xs text-red-600">{{ f.cantidad.errors.0 }}</p>
-              {% endif %}
-            </td>
-            <td class="px-3 py-2 text-center">
-              <span class="hidden">
-                {{ f.DELETE }}
-              </span>
-              <button type="button"
-                      class="btn-eliminar text-xs font-semibold text-red-600 hover:text-red-800">
-                Eliminar
-              </button>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-
-      <p class="mt-2 text-xs text-slate-500">
-        Las filas vacías no se guardarán. Puedes usar “Eliminar” para quitar productos de esta promo.
+<div class="space-y-6 max-w-4xl mx-auto">
+  <!-- Header -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-pirula-dark">
+        🎉 {% if modo == "editar" %}Editar Promoción{% else %}Nueva Promoción{% endif %}
+      </h1>
+      <p class="text-sm text-slate-500 mt-1">
+        Define el pack, su precio y los productos que lo componen
       </p>
     </div>
+    <a href="{% url 'inventario:promo_lista' %}"
+      class="px-4 py-2 rounded-lg border border-pirula-beige text-pirula-dark text-sm font-medium hover:bg-pirula-cream transition-colors">
+      ← Volver al listado
+    </a>
   </div>
 
-  <!-- Botones -->
-  <div class="flex flex-col sm:flex-row sm:justify-between gap-3">
-    <a href="{% url 'inventario:promo_lista' %}"
-       class="inline-flex justify-center items-center px-4 py-2 rounded-full border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-      Cancelar
-    </a>
-    <button type="submit"
-            class="inline-flex justify-center items-center px-6 py-2.5 rounded-full bg-slate-900 text-white text-sm font-semibold shadow-sm hover:bg-slate-800">
-      Guardar promoción
-    </button>
-  </div>
-</form>
+  <form method="post" enctype="multipart/form-data" class="space-y-6">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
+      {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    <!-- Datos básicos -->
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 overflow-hidden">
+      <div class="px-6 py-4 border-b border-pirula-beige bg-pirula-cream/50">
+        <h2 class="font-bold text-pirula-dark">📝 Datos de la promoción</h2>
+      </div>
+
+      <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold text-pirula-dark mb-2">Nombre *</label>
+            <input type="text" name="nombre" value="{{ form.nombre.value|default:'' }}"
+              class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+              placeholder="Ej: Pack Asado Completo" required>
+            {% if form.nombre.errors %}
+            <p class="mt-1 text-xs text-red-600">{{ form.nombre.errors.0 }}</p>
+            {% endif %}
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-pirula-dark mb-2">💰 Precio combo *</label>
+            <input type="number" name="precio_combo" value="{{ form.precio_combo.value|default:'' }}"
+              class="w-40 border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+              placeholder="15000" min="0" required>
+            {% if form.precio_combo.errors %}
+            <p class="mt-1 text-xs text-red-600">{{ form.precio_combo.errors.0 }}</p>
+            {% endif %}
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-pirula-dark mb-2">📄 Descripción</label>
+            <textarea name="descripcion" rows="3"
+              class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+              placeholder="Describe el contenido del pack...">{{ form.descripcion.value|default:'' }}</textarea>
+            {% if form.descripcion.errors %}
+            <p class="mt-1 text-xs text-red-600">{{ form.descripcion.errors.0 }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-pirula-dark mb-2">📅 Vigencia desde</label>
+              <input type="date" name="fecha_inicio" value="{{ form.fecha_inicio.value|default:'' }}"
+                class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
+              {% if form.fecha_inicio.errors %}
+              <p class="mt-1 text-xs text-red-600">{{ form.fecha_inicio.errors.0 }}</p>
+              {% endif %}
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-pirula-dark mb-2">📅 Hasta</label>
+              <input type="date" name="fecha_fin" value="{{ form.fecha_fin.value|default:'' }}"
+                class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
+              {% if form.fecha_fin.errors %}
+              <p class="mt-1 text-xs text-red-600">{{ form.fecha_fin.errors.0 }}</p>
+              {% endif %}
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-pirula-dark mb-2">🖼️ Imagen</label>
+            <input type="file" name="imagen" accept="image/*"
+              class="w-full border border-pirula-beige rounded-lg px-3 py-2 text-sm file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-pirula-cream file:text-pirula-dark file:font-medium file:cursor-pointer hover:file:bg-pirula-beige">
+            {% if form.imagen.errors %}
+            <p class="mt-1 text-xs text-red-600">{{ form.imagen.errors.0 }}</p>
+            {% endif %}
+            {% if promo and promo.imagen %}
+            <div class="mt-2 flex items-center gap-3">
+              <img src="{{ promo.imagen.url }}" alt="{{ promo.nombre }}"
+                class="h-16 rounded-lg object-cover border border-pirula-beige">
+              <span class="text-xs text-slate-500">Imagen actual</span>
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="flex flex-wrap gap-4 pt-2">
+            <label
+              class="flex items-center gap-2 cursor-pointer p-3 rounded-lg bg-pirula-cream/50 border border-pirula-beige">
+              <input type="checkbox" name="activo"
+                class="w-5 h-5 rounded border-pirula-beige text-pirula-accent focus:ring-pirula-accent" {% if form.activo.value %}checked{% endif %}>
+              <span class="text-sm font-medium text-pirula-dark">✅ Promo activa</span>
+            </label>
+            <label
+              class="flex items-center gap-2 cursor-pointer p-3 rounded-lg bg-pirula-cream/50 border border-pirula-beige">
+              <input type="checkbox" name="mostrar_en_portada"
+                class="w-5 h-5 rounded border-pirula-beige text-pirula-accent focus:ring-pirula-accent" {% if form.mostrar_en_portada.value %}checked{% endif %}>
+              <span class="text-sm font-medium text-pirula-dark">🏠 Mostrar en portada</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Productos del combo -->
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 overflow-hidden">
+      <div class="px-6 py-4 border-b border-pirula-beige bg-pirula-cream/50 flex items-center justify-between">
+        <div>
+          <h2 class="font-bold text-pirula-dark">📦 Productos incluidos</h2>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Agrega los productos que forman el pack y la cantidad de cada uno
+          </p>
+        </div>
+        <button type="button" id="btn-agregar-fila"
+          class="px-4 py-2 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white text-sm font-bold transition-colors">
+          ➕ Agregar
+        </button>
+      </div>
+
+      <div class="p-6 overflow-x-auto">
+        {{ formset.management_form }}
+
+        <table id="items-table" class="min-w-full text-sm">
+          <thead class="bg-pirula-cream border-b border-pirula-beige">
+            <tr>
+              <th class="px-4 py-3 text-left font-bold text-pirula-dark">Producto</th>
+              <th class="px-4 py-3 text-left font-bold text-pirula-dark w-32">Cantidad</th>
+              <th class="px-4 py-3 text-center font-bold text-pirula-dark w-24">Eliminar</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-pirula-beige/30">
+            {% for f in formset %}
+            <tr class="item-row hover:bg-pirula-cream/30">
+              {% for hidden in f.hidden_fields %}
+              {{ hidden }}
+              {% endfor %}
+
+              <td class="px-4 py-3">
+                {{ f.producto }}
+                {% if f.producto.errors %}
+                <p class="mt-1 text-xs text-red-600">{{ f.producto.errors.0 }}</p>
+                {% endif %}
+              </td>
+              <td class="px-4 py-3">
+                {{ f.cantidad }}
+                {% if f.cantidad.errors %}
+                <p class="mt-1 text-xs text-red-600">{{ f.cantidad.errors.0 }}</p>
+                {% endif %}
+              </td>
+              <td class="px-4 py-3 text-center">
+                <span class="hidden">{{ f.DELETE }}</span>
+                <button type="button"
+                  class="btn-eliminar px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs font-medium hover:bg-red-100 transition-colors">
+                  🗑️
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <p class="mt-3 text-xs text-slate-400">
+          💡 Las filas vacías no se guardarán. Usa "🗑️" para quitar productos de esta promo.
+        </p>
+      </div>
+    </section>
+
+    <!-- Botones -->
+    <div class="flex flex-col sm:flex-row gap-3 pt-4">
+      <button type="submit"
+        class="flex-1 px-6 py-3 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white font-bold text-sm transition-colors">
+        💾 Guardar Promoción
+      </button>
+      <a href="{% url 'inventario:promo_lista' %}"
+        class="flex-1 text-center px-6 py-3 rounded-lg border border-pirula-beige text-pirula-dark font-medium text-sm hover:bg-pirula-cream transition-colors">
+        Cancelar
+      </a>
+    </div>
+  </form>
+</div>
 
 {# ---- FILA PROTOTIPO OCULTA PARA NUEVOS ÍTEMS ---- #}
 <table class="hidden">
   <tbody>
     <tr id="empty-form-row" class="item-row">
       {% for hidden in formset.empty_form.hidden_fields %}
-        {{ hidden }}
+      {{ hidden }}
       {% endfor %}
 
-      <td class="px-3 py-2">
+      <td class="px-4 py-3">
         {{ formset.empty_form.producto }}
       </td>
-      <td class="px-3 py-2">
+      <td class="px-4 py-3">
         {{ formset.empty_form.cantidad }}
       </td>
-      <td class="px-3 py-2 text-center">
-        <span class="hidden">
-          {{ formset.empty_form.DELETE }}
-        </span>
+      <td class="px-4 py-3 text-center">
+        <span class="hidden">{{ formset.empty_form.DELETE }}</span>
         <button type="button"
-                class="btn-eliminar text-xs font-semibold text-red-600 hover:text-red-800">
-          Eliminar
+          class="btn-eliminar px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs font-medium hover:bg-red-100 transition-colors">
+          🗑️
         </button>
       </td>
     </tr>
@@ -229,8 +240,8 @@
 
     if (btnEliminar && chkDelete) {
       btnEliminar.addEventListener("click", () => {
-        chkDelete.checked = true;       // marcado para borrar en el formset
-        row.style.display = "none";     // lo ocultamos visualmente
+        chkDelete.checked = true;
+        row.style.display = "none";
       });
     }
   }
@@ -243,7 +254,6 @@
     const emptyRowTemplate = document.getElementById("empty-form-row");
     if (!emptyRowTemplate) return null;
 
-    // clonamos la fila prototipo y reemplazamos __prefix__
     let newRowHtml = emptyRowTemplate.outerHTML.replace(/__prefix__/g, formIndex);
     const tbody = document.querySelector("#items-table tbody");
     const temp = document.createElement("tbody");
@@ -261,7 +271,6 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    // enganchar eventos a filas existentes
     document.querySelectorAll("#items-table tbody tr.item-row")
       .forEach(attachRowEvents);
 

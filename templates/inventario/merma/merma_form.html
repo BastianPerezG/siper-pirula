@@ -1,43 +1,80 @@
 {% extends "core/base.html" %}
 
-{% block title %}{% if merma %}Editar merma{% else %}Registrar merma{% endif %} - SIPER Pirula{% endblock %}
+{% block title %}{% if merma %}Editar{% else %}Registrar{% endif %} Merma - El Gran Pirula{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-semibold text-slate-800 mb-4">
-  {% if merma %}Editar merma{% else %}Registrar merma{% endif %}
-</h1>
-
-<form method="post" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
-  {% csrf_token %}
-  {{ form.non_field_errors }}
-
+<div class="space-y-6 max-w-xl mx-auto">
+  <!-- Header -->
   <div>
-    <label class="block text-sm font-medium text-slate-700 mb-1">Producto</label>
-    {{ form.producto.as_widget }}
-    {{ form.producto.errors }}
+    <h1 class="text-2xl font-bold text-pirula-dark">
+      🗑️ {% if merma %}Editar Merma{% else %}Registrar Merma{% endif %}
+    </h1>
+    <p class="text-sm text-slate-500 mt-1">
+      {% if merma %}Modifica el registro de pérdida{% else %}Registra una pérdida de producto{% endif %}
+    </p>
   </div>
 
-  <div>
-    <label class="block text-sm font-medium text-slate-700 mb-1">Cantidad</label>
-    {{ form.cantidad.as_widget }}
-    {{ form.cantidad.errors }}
-  </div>
+  <!-- Formulario -->
+  <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-6">
+    <form method="post" class="space-y-5">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
 
-  <div>
-    <label class="block text-sm font-medium text-slate-700 mb-1">Comentario</label>
-    {{ form.comentario.as_widget }}
-    {{ form.comentario.errors }}
-  </div>
+      <!-- Producto -->
+      <div>
+        <label for="id_producto" class="block text-sm font-semibold text-pirula-dark mb-2">
+          📦 Producto *
+        </label>
+        <select name="producto" id="id_producto" required
+          class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
+          <option value="">-- Selecciona un producto --</option>
+          {% for option in form.producto %}
+          {{ option }}
+          {% endfor %}
+        </select>
+        {% if form.producto.errors %}
+        <p class="text-red-600 text-xs mt-1">{{ form.producto.errors|striptags }}</p>
+        {% endif %}
+      </div>
 
-  <div class="flex justify-between mt-6">
-    <a href="{% url 'inventario:merma_lista' %}"
-       class="px-4 py-2 rounded-full border border-slate-300 text-slate-700 text-sm hover:bg-slate-50">
-      Cancelar
-    </a>
-    <button type="submit"
-            class="px-4 py-2 rounded-full bg-slate-900 text-white text-sm hover:bg-slate-800">
-      Guardar
-    </button>
-  </div>
-</form>
+      <!-- Cantidad -->
+      <div>
+        <label for="id_cantidad" class="block text-sm font-semibold text-pirula-dark mb-2">
+          🔢 Cantidad perdida *
+        </label>
+        <input type="number" name="cantidad" id="id_cantidad" value="{{ form.cantidad.value|default:1 }}" min="1"
+          required
+          class="w-32 border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
+        {% if form.cantidad.errors %}
+        <p class="text-red-600 text-xs mt-1">{{ form.cantidad.errors|striptags }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Comentario -->
+      <div>
+        <label for="id_comentario" class="block text-sm font-semibold text-pirula-dark mb-2">
+          💬 Motivo / Comentario
+        </label>
+        <textarea name="comentario" id="id_comentario" rows="3"
+          class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+          placeholder="Ej: Producto vencido, Rotura, etc.">{{ form.comentario.value|default:'' }}</textarea>
+        {% if form.comentario.errors %}
+        <p class="text-red-600 text-xs mt-1">{{ form.comentario.errors|striptags }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Botones -->
+      <div class="flex flex-col sm:flex-row gap-3 pt-4">
+        <button type="submit"
+          class="flex-1 px-6 py-2.5 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white font-bold text-sm transition-colors">
+          💾 {% if merma %}Guardar Cambios{% else %}Registrar Merma{% endif %}
+        </button>
+        <a href="{% url 'inventario:merma_lista' %}"
+          class="flex-1 text-center px-6 py-2.5 rounded-lg border border-pirula-beige text-pirula-dark font-medium text-sm hover:bg-pirula-cream transition-colors">
+          Cancelar
+        </a>
+      </div>
+    </form>
+  </section>
+</div>
 {% endblock %}

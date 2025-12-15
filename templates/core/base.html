@@ -8,395 +8,423 @@
     <title>{% block title %}SIPER Pirula{% endblock %}</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        pirula: {
+                            dark: '#3d2314',
+                            medium: '#5c3d2e',
+                            accent: '#6b4423',
+                            light: '#8b5a3a',
+                            cream: '#f5f0e8',
+                            beige: '#d4c4b0',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+
+    <style>
+        /* Custom Notyf styles with brand colors */
+        .notyf__toast--success {
+            background: #16a34a !important;
+        }
+
+        .notyf__toast--error {
+            background: #dc2626 !important;
+        }
+
+        /* Sidebar transitions */
+        .sidebar-link {
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            padding-left: 1.25rem;
+        }
+
+        .sidebar-link.active {
+            background: rgba(255, 255, 255, 0.15);
+            border-left: 3px solid #d4c4b0;
+        }
+
+        /* Scrollbar styling */
+        .sidebar-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+    </style>
 
     {% block extra_head %}
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     {% endblock %}
 </head>
 
-<body class="bg-slate-100 min-h-screen flex flex-col">
+<body class="bg-pirula-cream min-h-screen">
+    {% if request.user.is_authenticated %}
+    <!-- Layout con Sidebar para usuarios autenticados -->
+    <div class="flex min-h-screen">
 
-    <header class="bg-slate-900 text-slate-100">
-        <div class="max-w-6xl mx-auto px-4 py-3">
-            <div class="flex items-center justify-between gap-4">
-                <a href="{% url 'core:dashboard' %}" class="font-bold text-lg tracking-wide">
-                    SIPER Pirula
+        <!-- Sidebar Desktop -->
+        <aside id="sidebar"
+            class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-pirula-dark text-white transform -translate-x-full lg:translate-x-0 transition-transform duration-300 flex flex-col">
+
+            <!-- Logo y Marca -->
+            <div class="p-4 border-b border-pirula-medium">
+                <a href="{% url 'core:dashboard' %}" class="flex items-center gap-3">
+                    <img src="{% static 'img/logo_gran_pirula_marron.jpg' %}" alt="El Gran Pirula"
+                        class="h-12 w-12 rounded-full object-cover border-2 border-pirula-beige">
+                    <div>
+                        <h1 class="font-bold text-lg text-pirula-beige">El Gran Pirula</h1>
+                        <p class="text-xs text-pirula-light">Sistema SIPER</p>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Navegación Principal -->
+            <nav class="flex-1 overflow-y-auto sidebar-content py-4">
+
+                <!-- Dashboard -->
+                <a href="{% url 'core:dashboard' %}"
+                    class="sidebar-link flex items-center gap-3 px-4 py-2.5 text-sm text-pirula-beige hover:text-white">
+                    <span>🏠</span>
+                    <span>Dashboard</span>
                 </a>
 
-                {% if request.user.is_authenticated %}
-                {# ====================== NAV LOGUEADO ====================== #}
-                
-                <nav class="hidden lg:flex flex-wrap gap-4 text-sm">
-                    {# ----- Menú Inventario ----- #}
-                    <div class="relative group">
-                        <button class="hover:text-amber-300 flex items-center gap-1">
-                            Inventario
-                            <span class="text-[10px]">▾</span>
-                        </button>
-
-                        <div
-                            class="absolute hidden group-hover:block pt-2 w-52 z-50 text-xs bg-slate-800 rounded shadow-lg overflow-hidden">
-                            <a href="{% url 'inventario:producto_lista' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Productos
-                            </a>
-
-                            <a href="{% url 'inventario:producto_stock_critico' %}"
-                                class="flex items-center justify-between px-4 py-2 hover:bg-slate-700">
-                                <span>Stock crítico</span>
-                                <span class="inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold
-                                    {% if stock_critico_count %}
-                                        bg-red-500 text-white
-                                    {% else %}
-                                        bg-slate-500 text-white
-                                    {% endif %}">
-                                    {{ stock_critico_count|default:"0" }}
-                                </span>
-                            </a>
-
-                            <a href="{% url 'inventario:scan_ean' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Escanear producto
-                            </a>
-
-                            {% if request.user.perfilusuario.rol == 'ADMIN' %}
-                            <div class="border-t border-slate-700 my-1"></div>
-                            <a href="{% url 'inventario:categoria_lista' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Categorías
-                            </a>
-                            <a href="{% url 'inventario:proveedor_lista' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Proveedores
-                            </a>
-                            <a href="{% url 'inventario:compra_lista' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Compras
-                            </a>
-                            <a href="{% url 'inventario:merma_lista' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Mermas
-                            </a>
-                            <a href="{% url 'inventario:promo_lista' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Promociones
-                            </a>
-                            <a href="{% url 'inventario:flujos_inventario' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Flujos de inventario
-                            </a>
-                            {% endif %}
-                        </div>
-                    </div>
-                
-                    {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
-                    {# ----- Menú Operaciones ----- #}
-                    <div class="relative group">
-                        <button class="hover:text-amber-300 flex items-center gap-1">
-                            Operaciones
-                            <span class="text-[10px]">▾</span>
-                        </button>
-
-                        <div
-                            class="absolute hidden group-hover:block pt-2 w-56 z-50 text-xs bg-slate-800 rounded shadow-lg overflow-hidden">
-
-                            {# --- Sección Ventas (ADMIN y CAJERO) --- #}
-                            {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
-                            <a href="{% url 'ventas:venta_crear' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Punto de venta (POS)
-                            </a>
-                            <a href="{% url 'ventas:venta_lista' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Todas las ventas
-                            </a>
-                            <a href="{% url 'ventas:ventas_en_espera_lista' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Ventas en espera
-                            </a>
-                            {% if request.user.perfilusuario.rol == 'ADMIN' %}
-                            <a href="{% url 'ventas:pago_pendiente_lista' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Pagos pendientes
-                            </a>
-                            {% endif %}
-
-                            <div class="border-t border-slate-700 my-1"></div>
-
-                            {# --- Caja y arqueos --- #}
-                            <a href="{% url 'ventas:caja_apertura' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Apertura de caja
-                            </a>
-                            <a href="{% url 'ventas:caja_arqueo_parcial' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Arqueo parcial
-                            </a>
-                            <a href="{% url 'ventas:caja_cierre' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Cierre de caja
-                            </a>
-                            {% else %}
-                            <p class="px-4 py-2 text-slate-400">
-                                No tienes permisos para operar caja/ventas.
-                            </p>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endif %}
-                    
-                    {# ----- Menú Pedidos ----- #}
-                    <div class="relative group">
-                        <button class="hover:text-amber-300 flex items-center gap-1">
-                            Pedidos
-                            <span class="text-[10px]">▾</span>
-                        </button>
-
-                        <div
-                            class="absolute hidden group-hover:block pt-2 w-52 z-50 text-xs bg-slate-800 rounded shadow-lg overflow-hidden">
-                            <a href="{% url 'pedidos:pedido_lista' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Listado de pedidos
-                            </a>
-                            <a href="{% url 'pedidos:pedidos_monitor' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Monitor de pedidos
-                            </a>
-                        </div>
-                    </div>
-                    
-                    {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
-                    {# ----- Menú Reportes ----- #}
-                    <div class="relative group">
-                        <button class="hover:text-amber-300 flex items-center gap-1">
-                            Reportes
-                            <span class="text-[10px]">▾</span>
-                        </button>
-
-                        <div
-                            class="absolute hidden group-hover:block pt-2 w-48 z-50 text-xs bg-slate-800 rounded shadow-lg overflow-hidden">
-                            {# Reportes principales visibles para ADMIN y CAJERO #}
-                            {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
-                            <a href="{% url 'reportes:ventas' %}"
-                                class="block px-4 py-2 hover:bg-slate-700">
-                                Ventas
-                            </a>
-                            <a href="{% url 'reportes:dia-hora' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Día × Hora
-                            </a>
-                            <a href="{% url 'reportes:no-retira' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Tasa no retira
-                            </a>
-                            <a href="{% url 'reportes:mermas-proveedor' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Mermas por proveedor
-                            </a>
-                            <a href="{% url 'reportes:reporte_quiebres' %}" class="block px-4 py-2 hover:bg-slate-700">
-                                Stock / quiebres
-                            </a>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    {# ----- Menú Administración (solo ADMIN) ----- #}
-                    {% if request.user.perfilusuario.rol == 'ADMIN' %}
-                    <div class="relative group">
-                        <button class="hover:text-amber-300 flex items-center gap-1">
-                            Administración
-                            <span class="text-[10px]">▾</span>
-                        </button>
-
-                        <div class="absolute hidden group-hover:block pt-2 w-48 z-50 text-xs bg-slate-800 rounded shadow-lg overflow-hidden" > 
-                            <a href="{% url 'core:usuarios_lista' %}" class="block px-4 py-2 hover:bg-slate-700">
-                            👥 Usuarios del sistema
-                            </a>
-
-                            <a href="{% url 'ventas:descuento_reglas' %}"
-                                class="block px-4 py-2 hover:bg-slate-700">
-                                🎯 Reglas de descuento por rol
-                            </a>
-
-                            <a href="{% url 'ventas:codigo_descuento_lista' %}"
-                                class="block px-4 py-2 hover:bg-slate-700">
-                                🔐 Códigos de autorización de descuento
-                            </a>
-
-                            <a href="{% url 'ventas:descuento_auditoria' %}"
-                                class="block px-4 py-2 hover:bg-slate-700">
-                                📁 Auditoría de descuentos
-                            </a>
-                            <a href="{% url 'core:admin_bitacoras' %}"
-                                class="block px-4 py-2 hover:bg-slate-700">
-                                Bitácoras del sistema
-                            </a>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    {# ----- Botón Tienda (todos los usuarios) ----- #}
-                    <a href="{% url 'tienda:home' %}" 
-                        target="_blank"
-                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold transition-colors">
-                        🛒 Ver tienda
-                        <span class="text-[10px]">↗</span>
+                <!-- Sección: Inventario -->
+                <div class="mt-4">
+                    <p class="px-4 text-xs font-bold text-pirula-light uppercase tracking-wider mb-2">Inventario</p>
+                    <a href="{% url 'inventario:producto_lista' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>📦</span>
+                        <span>Productos</span>
+                        {% if stock_critico_count %}
+                        <span class="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{{ stock_critico_count }}</span>
+                        {% endif %}
                     </a>
-                </nav>
+                    <a href="{% url 'inventario:scan_ean' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>📷</span>
+                        <span>Escanear</span>
+                    </a>
+                    {% if request.user.perfilusuario.rol == 'ADMIN' %}
+                    <a href="{% url 'inventario:categoria_lista' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>🏷️</span>
+                        <span>Categorías</span>
+                    </a>
+                    <a href="{% url 'inventario:marca_lista' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>🎨</span>
+                        <span>Marcas</span>
+                    </a>
+                    <a href="{% url 'inventario:proveedor_lista' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>🤝</span>
+                        <span>Proveedores</span>
+                    </a>
+                    <a href="{% url 'inventario:compra_lista' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>🧾</span>
+                        <span>Compras</span>
+                    </a>
+                    <a href="{% url 'inventario:merma_lista' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>🗑️</span>
+                        <span>Mermas</span>
+                    </a>
+                    <a href="{% url 'inventario:promo_lista' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>🎁</span>
+                        <span>Promociones</span>
+                    </a>
+                    {% endif %}
+                </div>
 
-                <button id="mobile-menu-btn" class="lg:hidden p-2 rounded hover:bg-slate-800">
+                {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
+                <!-- Sección: Operaciones -->
+                <div class="mt-4">
+                    <p class="px-4 text-xs font-bold text-pirula-light uppercase tracking-wider mb-2">Operaciones</p>
+                    <a href="{% url 'ventas:venta_crear' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>💳</span>
+                        <span>Punto de Venta</span>
+                    </a>
+                    <a href="{% url 'ventas:venta_lista' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>💵</span>
+                        <span>Historial Ventas</span>
+                    </a>
+                    <a href="{% url 'ventas:ventas_en_espera_lista' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>⏳</span>
+                        <span>Ventas en Espera</span>
+                    </a>
+                    {% if request.user.perfilusuario.rol == 'ADMIN' %}
+                    <a href="{% url 'ventas:pago_pendiente_lista' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>📋</span>
+                        <span>Pagos Pendientes</span>
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'ventas:caja_apertura' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>🔓</span>
+                        <span>Apertura Caja</span>
+                    </a>
+                    <a href="{% url 'ventas:caja_arqueo_parcial' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>🔢</span>
+                        <span>Arqueo Parcial</span>
+                    </a>
+                    <a href="{% url 'ventas:caja_cierre' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>🔒</span>
+                        <span>Cierre Caja</span>
+                    </a>
+                </div>
+                {% endif %}
+
+                <!-- Sección: Pedidos -->
+                <div class="mt-4">
+                    <p class="px-4 text-xs font-bold text-pirula-light uppercase tracking-wider mb-2">Pedidos Online</p>
+                    <a href="{% url 'pedidos:pedido_lista' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>🛒</span>
+                        <span>Listado</span>
+                    </a>
+                    <a href="{% url 'pedidos:pedidos_monitor' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>📡</span>
+                        <span>Monitor Cocina</span>
+                    </a>
+                </div>
+
+                {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
+                <!-- Sección: Reportes -->
+                <div class="mt-4">
+                    <p class="px-4 text-xs font-bold text-pirula-light uppercase tracking-wider mb-2">Reportes</p>
+                    <a href="{% url 'reportes:ventas' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>📊</span>
+                        <span>Ventas</span>
+                    </a>
+                    <a href="{% url 'reportes:dia-hora' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>🕒</span>
+                        <span>Día × Hora</span>
+                    </a>
+                    <a href="{% url 'reportes:no-retira' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>🚫</span>
+                        <span>Tasa No Retira</span>
+                    </a>
+                    <a href="{% url 'reportes:mermas-proveedor' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>📉</span>
+                        <span>Mermas/Proveedor</span>
+                    </a>
+                    <a href="{% url 'reportes:reporte_quiebres' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>⚡</span>
+                        <span>Stock/Quiebres</span>
+                    </a>
+                </div>
+                {% endif %}
+
+                {% if request.user.perfilusuario.rol == 'ADMIN' %}
+                <!-- Sección: Administración -->
+                <div class="mt-4">
+                    <p class="px-4 text-xs font-bold text-pirula-light uppercase tracking-wider mb-2">Administración</p>
+                    <a href="{% url 'core:usuarios_lista' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>👥</span>
+                        <span>Usuarios</span>
+                    </a>
+                    <a href="{% url 'ventas:descuento_reglas' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>🎯</span>
+                        <span>Reglas Descuento</span>
+                    </a>
+                    <a href="{% url 'ventas:codigo_descuento_lista' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>🔐</span>
+                        <span>Códigos Auth</span>
+                    </a>
+                    <a href="{% url 'ventas:descuento_auditoria' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>📁</span>
+                        <span>Auditoría Dctos</span>
+                    </a>
+                    <a href="{% url 'core:admin_bitacoras' %}"
+                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                        <span>📋</span>
+                        <span>Bitácora</span>
+                    </a>
+                </div>
+                {% endif %}
+
+                <!-- Tienda Online -->
+                <div class="mt-4 px-4">
+                    <a href="{% url 'tienda:home' %}" target="_blank"
+                        class="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg transition-colors">
+                        🛒 Ver Tienda
+                        <span class="text-xs">↗</span>
+                    </a>
+                </div>
+            </nav>
+
+            <!-- Usuario y Logout -->
+            <div class="p-4 border-t border-pirula-medium bg-pirula-medium/30">
+                <div class="flex items-center gap-3 mb-3">
+                    <div
+                        class="w-10 h-10 rounded-full bg-pirula-beige text-pirula-dark flex items-center justify-center font-bold">
+                        {{ request.user.username|slice:":1"|upper }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-white truncate">{{ request.user.get_full_name|default:request.user.username }}</p>
+                        <p class="text-xs text-pirula-beige">
+                            {% if request.user.perfilusuario %}{{ request.user.perfilusuario.get_rol_display }}{% else %}Sin perfil{% endif %}
+                        </p>
+                    </div>
+                </div>
+                <form method="post" action="{% url 'core:logout_interno' %}">
+                    {% csrf_token %}
+                    <button type="submit"
+                        class="w-full px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition-colors">
+                        Cerrar Sesión
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- Overlay para móvil -->
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden" onclick="toggleSidebar()">
+        </div>
+
+        <!-- Contenido Principal (Autenticado) -->
+        <div class="flex-1 flex flex-col min-h-screen">
+
+            <!-- Header móvil -->
+            <header
+                class="lg:hidden bg-pirula-dark text-white px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+                <button onclick="toggleSidebar()" class="p-2 hover:bg-pirula-medium rounded-lg transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16"></path>
                     </svg>
                 </button>
+                <img src="{% static 'img/logo_gran_pirula_marron.jpg' %}" alt="El Gran Pirula"
+                    class="h-8 w-8 rounded-full">
+                <span class="text-sm font-semibold text-pirula-beige">{{ request.user.username }}</span>
+            </header>
 
+            <!-- Main Content -->
+            <main class="flex-1 p-4 lg:p-6">
+                {% block content %}{% endblock %}
+            </main>
 
-                <div class="flex items-center gap-3 text-xs sm:text-sm shrink-0">
-                    <div class="text-right leading-tight hidden sm:block">
-                        <p class="text-xs uppercase tracking-wide text-slate-400">
-                            Sesión actual
-                        </p>
-                        <p class="font-semibold">
-                            {{ request.user.get_full_name|default:request.user.username }}
-                        </p>
-                    </div>
-                    <div class="text-amber-300 text-[11px]">
-                        {% if request.user.perfilusuario %}
-                            {{ request.user.perfilusuario.get_rol_display }}
-                        {% else %}
-                            Sin perfil
-                        {% endif %}
-                    </div>
-                    <form method="post" action="{% url 'core:logout_interno' %}">
-                        {% csrf_token %} 
-                        <button type="submit" 
-                                class="px-3 py-1 rounded bg-red-600 hover:bg-red-500 text-xs sm:text-sm">
-                            Salir
-                        </button>
-                    </form>
+            <!-- Footer -->
+            <footer class="bg-pirula-dark text-pirula-beige text-xs py-3 px-4">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-2">
+                    <span>El Gran Pirula © {% now "Y" %} - Sistema SIPER</span>
+                    <span class="text-pirula-light">Proyecto de título</span>
                 </div>
-                {% else %}
-                {# ====================== NAV SIN LOGIN ====================== #}
-                <a href="{% url 'core:login_interno' %}" 
-                   class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold transition-colors">
+            </footer>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Sin autenticación - Layout simple -->
+    <div class="min-h-screen flex flex-col">
+        <header class="bg-pirula-dark text-white py-4 px-6">
+            <div class="max-w-6xl mx-auto flex justify-between items-center">
+                <a href="{% url 'core:dashboard' %}" class="flex items-center gap-3">
+                    <img src="{% static 'img/logo_gran_pirula_marron.jpg' %}" alt="El Gran Pirula"
+                        class="h-10 w-10 rounded-full">
+                    <span class="font-bold text-lg text-pirula-beige">El Gran Pirula</span>
+                </a>
+                <a href="{% url 'core:login_interno' %}"
+                    class="px-4 py-2 bg-pirula-accent hover:bg-pirula-light text-white text-sm font-semibold rounded-lg transition-colors">
                     Iniciar Sesión
                 </a>
-                {% endif %}
             </div>
-        </div>
+        </header>
 
-        <div id="mobile-menu" class="hidden lg:hidden bg-slate-800 text-sm py-2">
-            <div class="max-w-6xl mx-auto px-4 space-y-2">
-                
-                {# Contenido del menú móvil: replicamos los enlaces principales #}
-                <p class="px-2 pt-1 font-semibold text-slate-400">INVENTARIO</p>
-                <a href="{% url 'inventario:producto_lista' %}" class="block px-4 py-2 hover:bg-slate-700 rounded-lg">Productos</a>
-                <a href="{% url 'inventario:producto_stock_critico' %}" class="block px-4 py-2 hover:bg-slate-700 rounded-lg">Stock crítico</a>
-                
-                {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
-                <p class="px-2 pt-3 font-semibold text-slate-400">OPERACIONES</p>
-                <a href="{% url 'ventas:venta_crear' %}" class="block px-4 py-2 hover:bg-slate-700 rounded-lg">Punto de venta (POS)</a>
-                <a href="{% url 'ventas:caja_cierre' %}" class="block px-4 py-2 hover:bg-slate-700 rounded-lg">Cierre de caja</a>
-                {% endif %}
+        <main class="flex-1 p-4 lg:p-6">
+            {% block content_noauth %}{% endblock %}
+        </main>
 
-                <p class="px-2 pt-3 font-semibold text-slate-400">PEDIDOS</p>
-                <a href="{% url 'pedidos:pedido_lista' %}" class="block px-4 py-2 hover:bg-slate-700 rounded-lg">Listado de pedidos</a>
-                
-                {% if request.user.perfilusuario.rol == 'ADMIN' %}
-                <p class="px-2 pt-3 font-semibold text-slate-400">ADMINISTRACIÓN</p>
-                <a href="{% url 'core:usuarios_lista' %}" class="block px-4 py-2 hover:bg-slate-700 rounded-lg">Usuarios del sistema</a>
-                <a href="{% url 'core:admin_bitacoras' %}" class="block px-4 py-2 hover:bg-slate-700 rounded-lg">Bitácoras del sistema</a>
-                {% endif %}
-
-            </div>
-        </div>
-    </header>
-
-    <main class="flex-1">
-        <div class="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
-
-            {# Mensajes de Django #}
-            {% if messages %}
-            <div class="mb-4 space-y-2">
-                {% for message in messages %}
-                <div class="px-4 py-2 rounded text-sm
-                    {% if message.tags == 'success' %}
-                        bg-emerald-100 text-emerald-800
-                    {% elif message.tags == 'error' or message.tags == 'danger' %}
-                        bg-red-100 text-red-800
-                    {% elif message.tags == 'warning' %}
-                        bg-amber-100 text-amber-800
-                    {% else %}
-                        bg-slate-200 text-slate-800
-                    {% endif %}">
-                    {{ message }}
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-
-            {% block content %}{% endblock %}
-        </div>
-    </main>
-
-    <footer class="bg-slate-900 text-slate-400 text-xs">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between">
-            <span>SIPER Pirula &copy; {% now "Y" %}</span>
-            <span>Proyecto de título</span>
-        </div>
-    </footer>
+        <footer class="bg-pirula-dark text-pirula-beige text-xs py-3 px-4 text-center">
+            El Gran Pirula © {% now "Y" %} - Sistema SIPER
+        </footer>
+    </div>
+    {% endif %}
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"
         integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
-
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     {% block extra_js %}{% endblock %}
 
     <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
-    
+
     <script>
-        // Esperamos a que el DOM esté completamente cargado (jQuery ready)
-        $(document).ready(function() {
-            
-            // Instancia global de Notyf
+        // Toggle sidebar para móvil
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            if (sidebar && overlay) {
+                sidebar.classList.toggle('-translate-x-full');
+                overlay.classList.toggle('hidden');
+            }
+        }
+
+        // Notyf para mensajes
+        $(document).ready(function () {
             const notyf = new Notyf({
                 duration: 4000,
                 position: { x: 'right', y: 'top' },
-                dismissible: true
+                dismissible: true,
+                types: [
+                    { type: 'warning', background: '#d97706', icon: false },
+                    { type: 'info', background: '#0284c7', icon: false }
+                ]
             });
 
             {% if messages %}
-                {% for message in messages %}
-                    // 1. Usamos una IIFE para aislar el scope de 'level' y 'msg'
-                    (function () {
-                        // Obtenemos el nivel de tag de Django
-                        const level = "{{ message.tags }}"; 
-                        // Obtenemos el mensaje de Django, usando escapejs para seguridad
-                        const msg = "{{ message|escapejs }}";
+            {% for message in messages %}
+            (function () {
+                const level = "{{ message.tags }}";
+                const msg = "{{ message|escapejs }}";
 
-                        // 2. Mapeo más explícito de tags de Django a métodos de Notyf
-                        if (level.includes("error") || level.includes("danger")) {
-                            notyf.error(msg);
-                            
-                        } else if (level.includes("warning")) {
-                            notyf.open({
-                                type: 'warning',
-                                message: msg
-                            });
-                            
-                        } else if (level.includes("success")) {
-                            notyf.success(msg);
-                            
-                        } else {
-                            // Default: para 'info' u otros tags no mapeados
-                            notyf.open({
-                                type: 'info',
-                                message: msg
-                            });
-                        }
-                    })();
-                {% endfor %}
+                if (level.includes("error") || level.includes("danger")) {
+                    notyf.error(msg);
+                } else if (level.includes("warning")) {
+                    notyf.open({ type: 'warning', message: msg });
+                } else if (level.includes("success")) {
+                    notyf.success(msg);
+                } else {
+                    notyf.open({ type: 'info', message: msg });
+                }
+            })();
+            {% endfor %}
             {% endif %}
-
-        }); // Fin de $(document).ready()
-    </script>
-    
-    {# 3. RESOLUCIÓN DEL CONFLICTO: Se mantiene la lógica del menú móvil #}
-    <script>
-        // Menú móvil toggle
-        document.addEventListener('DOMContentLoaded', function() {
-            const menuBtn = document.getElementById('mobile-menu-btn');
-            const mobileMenu = document.getElementById('mobile-menu');
-            
-            if (menuBtn && mobileMenu) {
-                menuBtn.addEventListener('click', function() {
-                    mobileMenu.classList.toggle('hidden');
-                });
-            }
         });
     </script>
 

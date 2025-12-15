@@ -83,3 +83,31 @@ class RegistroClienteForm(forms.ModelForm):
         if p1 and p2 and p1 != p2:
             raise forms.ValidationError("Las contraseñas no coinciden.")
         return cleaned
+
+
+class EditarPerfilForm(forms.ModelForm):
+    """
+    Formulario para editar datos del cliente (Nombre, Teléfono, Dirección).
+    El correo se maneja con cuidado ya que está ligado al User.
+    """
+    email = forms.EmailField(label="Correo electrónico", required=True)
+
+    class Meta:
+        model = Cliente
+        fields = ["nombre", "telefono", "direccion"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Estilizar campos
+        for field in self.fields.values():
+            field.widget.attrs.update({
+                "class": "w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-pirula-amber dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+            })
+
+    def clean_email(self):
+        # Validar que si cambia el email, no exista otro usuario con ese email
+        email = self.cleaned_data.get("email")
+        if self.instance.user:
+            if User.objects.exclude(pk=self.instance.user.pk).filter(email=email).exists():
+                 raise forms.ValidationError("Este correo ya está en uso por otro usuario.")
+        return email

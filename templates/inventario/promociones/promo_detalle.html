@@ -1,0 +1,201 @@
+{% extends "core/base.html" %}
+{% load humanize %}
+
+{% block title %}{{ promo.nombre }} - El Gran Pirula{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-pirula-dark">
+                🎉 {{ promo.nombre }}
+            </h1>
+            <div class="flex items-center gap-2 mt-2">
+                {% if promo.activo %}
+                <span class="px-3 py-1 rounded-full text-sm font-bold bg-green-100 text-green-700">
+                    ✓ Activa
+                </span>
+                {% else %}
+                <span class="px-3 py-1 rounded-full text-sm font-bold bg-slate-100 text-slate-500">
+                    Inactiva
+                </span>
+                {% endif %}
+                {% if promo.mostrar_en_portada %}
+                <span class="px-3 py-1 rounded-full text-sm font-bold bg-pirula-cream text-pirula-dark">
+                    🏠 En portada
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a href="{% url 'inventario:promo_editar' promo.pk %}"
+                class="px-4 py-2 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white text-sm font-bold shadow-md transition-colors">
+                ✏️ Editar
+            </a>
+            <a href="{% url 'inventario:promo_lista' %}"
+                class="px-4 py-2 rounded-lg border border-pirula-beige text-pirula-dark text-sm font-medium hover:bg-pirula-cream transition-colors">
+                ← Volver a promociones
+            </a>
+        </div>
+    </div>
+
+    <!-- Info principal -->
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 overflow-hidden">
+        <div class="grid md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-pirula-beige/30">
+            <!-- Imagen -->
+            <div class="p-6 flex flex-col items-center justify-center bg-pirula-cream/30">
+                {% if promo.imagen %}
+                <img src="{{ promo.imagen.url }}" alt="{{ promo.nombre }}"
+                    class="w-48 h-48 object-cover rounded-xl border-2 border-pirula-beige shadow-md">
+                {% else %}
+                <div
+                    class="w-48 h-48 rounded-xl bg-pirula-cream flex items-center justify-center text-6xl border-2 border-pirula-beige">
+                    🎁
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Detalles -->
+            <div class="p-6 col-span-2">
+                <dl class="space-y-4">
+                    <!-- Precio -->
+                    <div class="flex items-center justify-between pb-4 border-b border-pirula-beige/30">
+                        <dt class="text-sm font-semibold text-pirula-dark">💰 Precio del combo:</dt>
+                        <dd class="text-2xl font-bold text-pirula-accent">${{ promo.precio_combo|intcomma }}</dd>
+                    </div>
+
+                    <!-- Descripción -->
+                    {% if promo.descripcion %}
+                    <div>
+                        <dt class="text-sm font-semibold text-pirula-dark mb-1">📄 Descripción:</dt>
+                        <dd class="text-slate-600 bg-pirula-cream/50 p-3 rounded-lg">{{ promo.descripcion }}</dd>
+                    </div>
+                    {% endif %}
+
+                    <!-- Vigencia -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <dt class="text-sm font-semibold text-pirula-dark mb-1">📅 Vigencia desde:</dt>
+                            <dd class="text-slate-600">
+                                {% if promo.fecha_inicio %}
+                                {{ promo.fecha_inicio|date:"d/m/Y" }}
+                                {% else %}
+                                <span class="text-slate-400">Sin fecha de inicio</span>
+                                {% endif %}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-semibold text-pirula-dark mb-1">📅 Hasta:</dt>
+                            <dd class="text-slate-600">
+                                {% if promo.fecha_fin %}
+                                {{ promo.fecha_fin|date:"d/m/Y" }}
+                                {% else %}
+                                <span class="text-slate-400">Sin fecha de fin</span>
+                                {% endif %}
+                            </dd>
+                        </div>
+                    </div>
+                </dl>
+            </div>
+        </div>
+    </section>
+
+    <!-- Productos incluidos -->
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 overflow-hidden">
+        <div class="px-6 py-4 border-b border-pirula-beige bg-pirula-cream/50">
+            <h2 class="font-bold text-pirula-dark">📦 Productos incluidos en el combo</h2>
+        </div>
+
+        {% if promo.items.all %}
+        <div class="divide-y divide-pirula-beige/30">
+            {% for item in promo.items.all %}
+            <div class="px-6 py-4 flex items-center gap-4 hover:bg-pirula-cream/30 transition-colors">
+                <!-- Imagen producto -->
+                <div class="flex-shrink-0">
+                    {% if item.producto.imagen %}
+                    <img src="{{ item.producto.imagen.url }}" alt="{{ item.producto.nombre }}"
+                        class="w-12 h-12 object-cover rounded-lg border border-pirula-beige/30">
+                    {% else %}
+                    <div class="w-12 h-12 rounded-lg bg-pirula-cream flex items-center justify-center text-xl">
+                        📦
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Info producto -->
+                <div class="flex-1 min-w-0">
+                    <h3 class="font-bold text-pirula-dark truncate">{{ item.producto.nombre }}</h3>
+                    <p class="text-xs text-slate-500">
+                        {% if item.producto.sku %}SKU: {{ item.producto.sku }}{% endif %}
+                        {% if item.producto.ean %} • EAN: {{ item.producto.ean }}{% endif %}
+                    </p>
+                </div>
+
+                <!-- Cantidad -->
+                <div class="text-right">
+                    <span class="px-3 py-1.5 rounded-full bg-pirula-cream text-pirula-dark font-bold text-lg">
+                        x{{ item.cantidad }}
+                    </span>
+                </div>
+
+                <!-- Precio unitario -->
+                <div class="text-right hidden sm:block">
+                    <p class="text-xs text-slate-400">Precio unit.</p>
+                    <p class="font-semibold text-pirula-dark">${{ item.producto.precio|intcomma }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Resumen -->
+        <div class="px-6 py-4 bg-pirula-cream/50 border-t border-pirula-beige">
+            <div class="flex justify-between items-center">
+                <span class="text-sm text-pirula-dark">
+                    Total de productos: <strong>{{ promo.items.all.count }}</strong>
+                </span>
+                <span class="text-lg font-bold text-pirula-accent">
+                    💰 Precio combo: ${{ promo.precio_combo|intcomma }}
+                </span>
+            </div>
+        </div>
+        {% else %}
+        <div class="p-8 text-center">
+            <span class="text-4xl mb-2 block">📭</span>
+            <p class="text-slate-500">Esta promoción no tiene productos asignados.</p>
+            <a href="{% url 'inventario:promo_editar' promo.pk %}"
+                class="inline-block mt-4 px-4 py-2 rounded-lg bg-pirula-accent text-white text-sm font-bold">
+                ➕ Agregar productos
+            </a>
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- Toggle estado -->
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="font-bold text-pirula-dark">Estado de la promoción</h3>
+                <p class="text-sm text-slate-500">
+                    {% if promo.activo %}
+                    Esta promoción está visible para los clientes.
+                    {% else %}
+                    Esta promoción está oculta y no aparece en la tienda.
+                    {% endif %}
+                </p>
+            </div>
+            <form method="post" action="{% url 'inventario:promo_toggle' promo.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="px-4 py-2 rounded-lg text-sm font-bold transition-colors
+                    {% if promo.activo %}
+                        bg-red-50 text-red-600 hover:bg-red-100
+                    {% else %}
+                        bg-green-50 text-green-600 hover:bg-green-100
+                    {% endif %}">
+                    {% if promo.activo %}🔴 Desactivar{% else %}🟢 Activar{% endif %}
+                </button>
+            </form>
+        </div>
+    </section>
+</div>
+{% endblock %}

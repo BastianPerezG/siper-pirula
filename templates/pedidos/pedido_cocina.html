@@ -1,166 +1,331 @@
 {% extends "core/base.html" %}
 
-{% block title %}Monitor de pedidos - SIPER Pirula{% endblock %}
+{% block title %}Monitor de Pedidos - {{ negocio.nombre }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+<script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-6">Monitor de pedidos</h1>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-<form method="get" class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-    {# ESTADO #}
-    <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">
-            ESTADO
-        </label>
-        <select name="estado"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <option value="TODOS">Todos</option>
-            {% for value, label in ESTADO_CHOICES %}
-            <option value="{{ value }}" {% if estado == value %} selected{% endif %}>
-                {{ label }}
-            </option>
-            {% endfor %}
-        </select>
+    <!-- Header con Stats -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-slate-900 dark:text-white mb-6">🍽️ Monitor de Pedidos</h1>
+
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div class="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-700 rounded-xl p-4">
+                <div class="text-sm font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Nuevos</div>
+                <div class="text-3xl font-bold text-blue-700 dark:text-blue-300 mt-1">{{ stats.recibidos }}</div>
+            </div>
+            <div
+                class="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-700 rounded-xl p-4">
+                <div class="text-sm font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide">En
+                    Preparación</div>
+                <div class="text-3xl font-bold text-amber-700 dark:text-amber-300 mt-1">{{ stats.preparando }}</div>
+            </div>
+            <div
+                class="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-700 rounded-xl p-4">
+                <div class="text-sm font-semibold text-green-600 dark:text-green-400 uppercase tracking-wide">Listos
+                </div>
+                <div class="text-3xl font-bold text-green-700 dark:text-green-300 mt-1">{{ stats.listos }}</div>
+            </div>
+        </div>
     </div>
 
-    {# BUSCAR #}
-    <div class="md:col-span-2">
-        <label class="block text-xs font-semibold text-slate-600 mb-1">
-            BUSCAR
-        </label>
-        <input type="text" name="q" value="{{ q }}" placeholder="Código, nombre, RUT o correo"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-    </div>
+    <!-- Filtros -->
+    <form method="get"
+        class="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
 
-    {# FILTRO POR DÍAS #}
-    <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">
-            DÍAS
-        </label>
-        <select name="dias"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <option value="">Todos</option>
-            <option value="1" {% if dias == "1" %}selected{% endif %}>Últimas 24 horas</option>
-            <option value="3" {% if dias == "3" %}selected{% endif %}>Últimos 3 días</option>
-            <option value="7" {% if dias == "7" %}selected{% endif %}>Última semana</option>
-            <option value="30" {% if dias == "30" %}selected{% endif %}>Último mes</option>
-        </select>
-    </div>
+            <!-- Estado de Preparación -->
+            <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wide">
+                    📦 Estado
+                </label>
+                <select name="estado"
+                    class="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="TODOS">Todos los estados</option>
+                    {% for value, label in ESTADO_PREPARACION_CHOICES %}
+                    <option value="{{ value }}" {% if estado == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
 
-    <div class="md:col-span-4 flex gap-2 justify-end">
-        <button type="submit"
-            class="px-5 py-2 rounded-full bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">
-            Filtrar
-        </button>
-        <a href="{% url 'pedidos:pedidos_monitor' %}"
-            class="px-4 py-2 rounded-full border text-sm font-semibold text-slate-600 hover:bg-slate-50">
-            Limpiar
-        </a>
-    </div>
-</form>
+            <!-- Buscar -->
+            <div class="md:col-span-2 lg:col-span-2">
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wide">
+                    🔍 Buscar
+                </label>
+                <input type="text" name="q" value="{{ q }}" placeholder="Código, nombre, RUT, correo..."
+                    class="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    {% for pedido in pedidos %}
-    <div class="bg-white shadow rounded-lg p-4 border-l-4
-            {% if pedido.estado == 'RECIBIDO' %}
+            <!-- Días -->
+            <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wide">
+                    📅 Período
+                </label>
+                <select name="dias"
+                    class="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Todos</option>
+                    <option value="1" {% if dias == "1" %}selected{% endif %}>Últimas 24h</option>
+                    <option value="3" {% if dias == "3" %}selected{% endif %}>Últimos 3 días</option>
+                    <option value="7" {% if dias == "7" %}selected{% endif %}>Última semana</option>
+                    <option value="30" {% if dias == "30" %}selected{% endif %}>Último mes</option>
+                </select>
+            </div>
+
+            <!-- Botones -->
+            <div class="flex items-end gap-2">
+                <button type="submit"
+                    class="flex-1 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-lg hover:shadow-xl transition-all">
+                    Filtrar
+                </button>
+                <a href="{% url 'pedidos:pedidos_monitor' %}"
+                    class="px-4 py-2.5 rounded-lg border-2 border-slate-300 dark:border-slate-600 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
+                    Limpiar
+                </a>
+            </div>
+        </div>
+
+        <!-- Toggle mostrar finalizados -->
+        <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <label class="flex items-center cursor-pointer">
+                <input type="checkbox" name="finalizados" value="si" {% if mostrar_finalizados %}checked{% endif %}
+                    onchange="this.form.submit()"
+                    class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                <span class="ml-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Mostrar pedidos finalizados (retirados, cancelados)
+                </span>
+            </label>
+        </div>
+    </form>
+
+    <!-- Grid de Pedidos -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for pedido in pedidos %}
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 border-l-4 overflow-hidden
+            {% if pedido.estado_preparacion == 'RECIBIDO' %}
                 border-blue-500
-            {% elif pedido.estado == 'PREPARANDO' %}
+            {% elif pedido.estado_preparacion == 'PREPARANDO' %}
                 border-amber-500
-            {% elif pedido.estado == 'LISTO' %}
+            {% elif pedido.estado_preparacion == 'LISTO' %}
                 border-green-500
-            {% elif pedido.estado == 'CANCELADO' or pedido.estado == 'NO_RETIRA' %}
-                border-red-500
+            {% elif pedido.estado_preparacion == 'CANCELADO' or pedido.estado_preparacion == 'NO_RETIRA' %}
+                border-red-500 opacity-60
+            {% elif pedido.estado_preparacion == 'RETIRADO' %}
+                border-slate-400 opacity-75
             {% else %}
                 border-slate-300
-            {% endif %}
-        ">
-        <div class="flex justify-between items-start mb-2">
-            <div>
-                <div class="text-sm font-bold">{{ pedido.codigo }}</div>
-                <div class="text-xs text-slate-500">
-                    {{ pedido.fecha|timesince }} atrás
+            {% endif %}">
+
+            <!-- Header del pedido -->
+            <div
+                class="p-5 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-750 border-b border-slate-200 dark:border-slate-700">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <div class="text-xl font-bold text-slate-900 dark:text-white">#{{ pedido.codigo }}</div>
+                        <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            🕐 {{ pedido.fecha|timesince }} atrás
+                        </div>
+                    </div>
+
+                    <!-- Badge Estado de Pago - MUY VISIBLE -->
+                    <div class="flex flex-col gap-1.5">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm
+                            {% if pedido.estado_pago == 'PAGADO' %}
+                                bg-green-500 text-white ring-2 ring-green-200
+                            {% elif pedido.estado_pago == 'PENDIENTE' %}
+                                bg-amber-400 text-amber-900 ring-2 ring-amber-200
+                            {% else %}
+                                bg-red-500 text-white ring-2 ring-red-200
+                            {% endif %}">
+                            {% if pedido.estado_pago == 'PAGADO' %}
+                            🔒 PAGADO
+                            {% elif pedido.estado_pago == 'PENDIENTE' %}
+                            ⏱️ PENDIENTE
+                            {% else %}
+                            ❌ {{ pedido.get_estado_pago_display|upper }}
+                            {% endif %}
+                        </span>
+
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold
+                            {% if pedido.forma_pago == 'WEBPAY' %}
+                                bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300
+                            {% else %}
+                                bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300
+                            {% endif %}">
+                            {{ pedido.get_forma_pago_display }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Estado de Preparación -->
+                <div class="flex items-center justify-between">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold
+                        {% if pedido.estado_preparacion == 'RECIBIDO' %}
+                            bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300
+                        {% elif pedido.estado_preparacion == 'PREPARANDO' %}
+                            bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300
+                        {% elif pedido.estado_preparacion == 'LISTO' %}
+                            bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300
+                        {% elif pedido.estado_preparacion == 'RETIRADO' %}
+                            bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300
+                        {% else %}
+                            bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300
+                        {% endif %}">
+                        📦 {{ pedido.get_estado_preparacion_display }}
+                    </span>
+                </div>
+
+                <!-- Cliente info -->
+                <div class="text-sm text-slate-600 dark:text-slate-400 mt-3">
+                    {% if pedido.cliente %}
+                    👤 {{ pedido.cliente.nombre }}
+                    {% if pedido.cliente.rut %}<span class="text-xs ml-1">({{ pedido.cliente.rut }})</span>{% endif %}
+                    {% elif pedido.nombre %}
+                    👤 {{ pedido.nombre }}
+                    {% else %}
+                    👤 Cliente anónimo
+                    {% endif %}
                 </div>
             </div>
 
-            {# BADGE PAGADO / POR PAGAR #}
-            <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold
-                    {% if pedido.est_pagado %}
-                        bg-green-100 text-green-700
-                    {% else %}
-                        bg-amber-100 text-amber-700
+            <!-- Productos -->
+            <div class="p-5">
+                <div class="space-y-2 mb-4">
+                    {% for item in pedido.items.all %}
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-slate-700 dark:text-slate-300 font-medium">{{ item.producto.nombre }}</span>
+                        <span
+                            class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded-full text-xs font-bold text-slate-700 dark:text-slate-300">
+                            ×{{ item.cantidad }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Total -->
+                <div class="pt-3 border-t border-slate-200 dark:border-slate-700">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-semibold text-slate-600 dark:text-slate-400">Total:</span>
+                        <span class="text-lg font-bold text-slate-900 dark:text-white">${{ pedido.total|floatformat:0 }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="p-5 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700">
+                <form method="post" class="flex flex-wrap gap-2" onsubmit="return handleFormSubmit(event, this)">
+                    {% csrf_token %}
+                    <input type="hidden" name="pedido_id" value="{{ pedido.id }}">
+
+                    {% if pedido.estado_preparacion == 'RECIBIDO' %}
+                    <button name="accion" value="next" type="submit"
+                        class="flex-1 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-md hover:shadow-lg transition-all">
+                        ▶️ Iniciar Preparación
+                    </button>
+                    <button name="accion" value="cancelar" type="submit"
+                        class="px-3 py-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold transition-all">
+                        Cancelar
+                    </button>
+                    {% elif pedido.estado_preparacion == 'PREPARANDO' %}
+                    <button name="accion" value="next" type="submit"
+                        class="flex-1 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold shadow-md hover:shadow-lg transition-all">
+                        ✅ Marcar Listo
+                    </button>
+                    <button name="accion" value="cancelar" type="submit"
+                        class="px-3 py-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold transition-all">
+                        Cancelar
+                    </button>
+                    {% elif pedido.estado_preparacion == 'LISTO' %}
+                    <button name="accion" value="next" type="submit"
+                        class="flex-1 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold shadow-md hover:shadow-lg transition-all">
+                        🎉 Marcar Retirado
+                    </button>
+                    <button name="accion" value="no_retira" type="submit"
+                        class="px-3 py-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold transition-all">
+                        No Retira
+                    </button>
+                    {% elif pedido.estado_preparacion == 'RETIRADO' %}
+                    <div class="w-full text-center text-sm font-semibold text-green-600 dark:text-green-400">
+                        ✅ Pedido completado
+                    </div>
+                    {% elif pedido.estado_preparacion == 'CANCELADO' or pedido.estado_preparacion == 'NO_RETIRA' %}
+                    <div class="w-full text-center text-sm font-semibold text-red-600 dark:text-red-400">
+                        ❌ {{ pedido.get_estado_preparacion_display }}
+                    </div>
                     {% endif %}
-                ">
-                {% if pedido.estado == "PAGADO" %}Pagado{% else %}Por pagar{% endif %}
-            </span>
+
+                    <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
+                        class="w-full text-center px-3 py-2 rounded-lg border-2 border-slate-300 dark:border-slate-600 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
+                        📋 Ver Detalle Completo
+                    </a>
+                </form>
+            </div>
         </div>
-
-        <div class="text-xs text-slate-500 mb-2">
-            {{ pedido.get_estado_display }}
-            {% if pedido.cliente %}
-            · {{ pedido.cliente.nombre }} ({{ pedido.cliente.rut }})
-            {% elif pedido.nombre %}
-            · {{ pedido.nombre }}
-            {% endif %}
+        {% empty %}
+        <div class="col-span-full">
+            <div
+                class="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-12 text-center border border-slate-200 dark:border-slate-700">
+                <div class="text-6xl mb-4">🔍</div>
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2">No hay pedidos</h3>
+                <p class="text-slate-600 dark:text-slate-400">No se encontraron pedidos que coincidan con los filtros
+                    aplicados.</p>
+            </div>
         </div>
-
-        <ul class="space-y-1 text-sm mb-3">
-            {% for item in pedido.items.all %}
-            <li class="flex justify-between">
-                <span>{{ item.producto.nombre }}</span>
-                <span class="font-semibold">x{{ item.cantidad }}</span>
-            </li>
-            {% endfor %}
-        </ul>
-
-        <div class="mt-3 flex justify-between items-center gap-2">
-            {# FORM PARA CAMBIAR ESTADO #}
-            <form method="post" class="flex gap-2">
-                {% csrf_token %}
-                <input type="hidden" name="pedido_id" value="{{ pedido.id }}">
-
-                {# Botón de "siguiente" estado #}
-                {% if pedido.estado == 'RECIBIDO' %}
-                <button name="accion" value="next"
-                    class="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold hover:bg-blue-200">
-                    Preparando
-                </button>
-                {% elif pedido.estado == 'PREPARANDO' %}
-                <button name="accion" value="next"
-                    class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold hover:bg-emerald-200">
-                    Listo para retiro
-                </button>
-                {% elif pedido.estado == 'LISTO' %}
-                <button name="accion" value="next"
-                    class="px-3 py-1 rounded-full bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800">
-                    Marcar retirado
-                </button>
-                {% endif %}
-
-                {% if pedido.estado == 'RECIBIDO' or pedido.estado == 'PREPARANDO' %}
-                <button name="accion" value="cancelar"
-                    class="px-3 py-1 rounded-full bg-red-100 text-red-700 text-[11px] font-semibold hover:bg-red-200">
-                    Cancelar
-                </button>
-                {% endif %}
-
-                {# Botón NO RETIRA solo cuando está listo #}
-                {% if pedido.estado == 'LISTO' %}
-                <button name="accion" value="no_retira"
-                    class="px-3 py-1 rounded-full bg-red-100 text-red-700 text-[11px] font-semibold hover:bg-red-200">
-                    No retira
-                </button>
-                {% endif %}
-            </form>
-
-            <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
-                class="text-xs text-slate-600 hover:underline ml-auto">
-                Ver detalle →
-            </a>
-        </div>
+        {% endfor %}
     </div>
-    {% empty %}
-    <div class="col-span-3 text-center text-slate-500">
-        No hay pedidos que coincidan con los filtros.
-    </div>
-    {% endfor %}
 </div>
-{% endblock %}
+
+<!-- Notyf Integration -->
+<script>
+    // Initialize Notyf
+    const notyf = new Notyf({
+        duration: 3000,
+        position: { x: 'right', y: 'top' },
+        dismissible: true,
+        ripple: true
+    });
+
+    // Convert Django messages to Notyf
+    {% if messages %}
+    {% for message in messages %}
+    {% if message.tags == 'success' %}
+    notyf.success('{{ message|escapejs }}');
+    {% elif message.tags == 'error' or message.tags == 'danger' %}
+    notyf.error('{{ message|escapejs }}');
+    {% elif message.tags == 'warning' %}
+    notyf.open({ type: 'warning', message: '{{ message|escapejs }}', background: '#f59e0b', icon: '⚠️' });
+    {% else %}
+    notyf.open({ type: 'info', message: '{{ message|escapejs }}', background: '#3b82f6', icon: 'ℹ️' });
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+    // Handle form submission
+    function handleFormSubmit(event, form) {
+        const accion = event.submitter?.value;
+
+        // Confirm destructive actions
+        if (accion === 'cancelar') {
+            if (!confirm('¿Estás seguro de que deseas cancelar este pedido? Se liberará el stock reservado.')) {
+                event.preventDefault();
+                return false;
+            }
+        } else if (accion === 'no_retira') {
+            if (!confirm('¿El cliente no retiró el pedido? Se liberará el stock reservado.')) {
+                event.preventDefault();
+                return false;
+            }
+        }
+
+        return true;
+    }
+</script>
+{% endblock %}"

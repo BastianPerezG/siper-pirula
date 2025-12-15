@@ -13,7 +13,7 @@ from django.db.models import Q
 from .models import PerfilUsuario, Negocio, BitacoraAccion
 from .forms import UsuarioCrearForm, UsuarioEditarForm
 from .mixins import RolRequeridoMixin, rol_requerido
-
+from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import render, get_object_or_404
 from django.utils.decorators import method_decorator
 from django.db.models import Q
@@ -38,6 +38,94 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             return render(request, "403.html", status=403)
         
         return super().dispatch(request, *args, **kwargs)
+    
+    def get_context_data(self, **kwargs):
+        from django.utils import timezone
+        from django.db.models import Sum, Count
+        from datetime import timedelta
+        
+        context = super().get_context_data(**kwargs)
+        hoy = timezone.now().date()
+        inicio_semana = hoy - timedelta(days=hoy.weekday())
+        perfil = getattr(self.request.user, "perfilusuario", None)
+        
+        # Solo calcular métricas para ADMIN y CAJERO
+        if perfil and perfil.rol in ['ADMIN', 'CAJERO']:
+            try:
+                from ventas.models import Venta
+                from pedidos.models import Pedido
+                from inventario.models import Producto
+                
+                negocio = perfil.negocio
+                
+                # Ventas de hoy
+                ventas_hoy = Venta.objects.filter(
+                    negocio=negocio,
+                    fecha__date=hoy,
+                    estado=Venta.EST_CERRADA
+                )
+                context['ventas_hoy_count'] = ventas_hoy.count()
+                context['ventas_hoy_total'] = ventas_hoy.aggregate(
+                    total=Sum('monto_total')
+                )['total'] or 0
+                
+                # Ventas de la semana
+                ventas_semana = Venta.objects.filter(
+                    negocio=negocio,
+                    fecha__date__gte=inicio_semana,
+                    estado=Venta.EST_CERRADA
+                )
+                context['ventas_semana_total'] = ventas_semana.aggregate(
+                    total=Sum('monto_total')
+                )['total'] or 0
+                
+                # Pedidos pendientes (no finalizados)
+                pedidos_pendientes = Pedido.objects.filter(
+                    negocio=negocio,
+                ).exclude(
+                    estado_preparacion__in=[
+                        Pedido.PREP_RETIRADO, 
+                        Pedido.PREP_CANCELADO, 
+                        Pedido.PREP_NO_RETIRA
+                    ]
+                )
+                context['pedidos_pendientes'] = pedidos_pendientes.count()
+                
+                # Pedidos por estado
+                context['pedidos_recibidos'] = pedidos_pendientes.filter(
+                    estado_preparacion=Pedido.PREP_RECIBIDO
+                ).count()
+                context['pedidos_preparando'] = pedidos_pendientes.filter(
+                    estado_preparacion=Pedido.PREP_PREPARANDO
+                ).count()
+                context['pedidos_listos'] = pedidos_pendientes.filter(
+                    estado_preparacion=Pedido.PREP_LISTO
+                ).count()
+                
+                # Stock crítico
+                from django.db.models import F
+                stock_critico = Producto.objects.filter(
+                    negocio=negocio,
+                    activo=True,
+                    stock__lte=F('stock_minimo')
+                )
+                context['stock_critico_count'] = stock_critico.count()
+                context['productos_stock_critico'] = stock_critico[:5]
+                
+                # Productos sin stock
+                context['sin_stock_count'] = Producto.objects.filter(
+                    negocio=negocio,
+                    activo=True,
+                    stock=0
+                ).count()
+                
+            except Exception as e:
+                # Si hay error en las importaciones, no mostramos métricas
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Error cargando métricas del dashboard: {str(e)}")
+        
+        return context
 
 
 # ---------------------------
@@ -343,7 +431,7 @@ def usuario_toggle_activo_view(request, pk):
     messages.info(request, f"Usuario {perfil.user.username} {estado_txt}.")
     return redirect("core:usuarios_lista")
 
-class BitacoraListView(ListView):
+class BitacoraListView(LoginRequiredMixin, ListView):
     model = BitacoraAccion
     template_name = 'core/bitacora/bitacoras.html'
     context_object_name = 'logs'
@@ -353,25 +441,207 @@ class BitacoraListView(ListView):
     AREAS_FUNCIONALES = [
         'Venta', 'Inventario', 'PedidoOnline', 'Caja', 'Usuario','Log'
     ]
+    
+    # Tipos de acción disponibles
+    TIPOS_ACCION = [
+        ('CREACION_USUARIO', 'Creación de Usuario'),
+        ('EDICION_USUARIO', 'Edición de Usuario'),
+        ('USUARIO_ACTIVADO', 'Usuario Activado'),
+        ('USUARIO_DESACTIVADO', 'Usuario Desactivado'),
+        ('LOGIN', 'Inicio de Sesión'),
+        ('LOGOUT', 'Cierre de Sesión'),
+        ('CAMBIO_ESTADO', 'Cambio de Estado'),
+        ('CAMBIO_ESTADO_PREPARACION', 'Cambio Estado Preparación'),
+        ('CANCELACION_PEDIDO', 'Cancelación'),
+        ('NO_RETIRA_PEDIDO', 'No Retira'),
+    ]
 
     def get_queryset(self):
-        # 1. Obtener el QuerySet base (todos los registros)
-        queryset = super().get_queryset().select_related('usuario').order_by('-fecha_hora')
+        from django.utils import timezone
+        from datetime import datetime, timedelta
         
-        # 2. Leer el parámetro de filtro 'area' de la URL
+        # 1. Obtener el QuerySet base
+        queryset = super().get_queryset().select_related('usuario', 'negocio').order_by('-fecha_hora')
+        
+        # 2. Filtro por área
         filtro_area = self.request.GET.get('area')
-        
         if filtro_area and filtro_area in self.AREAS_FUNCIONALES:
-            # 3. Aplicar el filtro si se especificó un área válida
             queryset = queryset.filter(nombre_modelo__iexact=filtro_area)
+        
+        # 3. Filtro por tipo de acción
+        filtro_tipo = self.request.GET.get('tipo_accion')
+        if filtro_tipo:
+            queryset = queryset.filter(tipo_accion=filtro_tipo)
+        
+        # 4. Filtro por usuario
+        filtro_usuario = self.request.GET.get('usuario')
+        if filtro_usuario:
+            queryset = queryset.filter(usuario_id=filtro_usuario)
+        
+        # 5. Filtro por rango de fechas
+        fecha_desde = self.request.GET.get('fecha_desde')
+        fecha_hasta = self.request.GET.get('fecha_hasta')
+        
+        if fecha_desde:
+            try:
+                fecha_desde_obj = datetime.strptime(fecha_desde, '%Y-%m-%d')
+                queryset = queryset.filter(fecha_hora__gte=fecha_desde_obj)
+            except ValueError:
+                pass
+        
+        if fecha_hasta:
+            try:
+                fecha_hasta_obj = datetime.strptime(fecha_hasta, '%Y-%m-%d')
+                # Incluir todo el día hasta las 23:59:59
+                fecha_hasta_obj = fecha_hasta_obj.replace(hour=23, minute=59, second=59)
+                queryset = queryset.filter(fecha_hora__lte=fecha_hasta_obj)
+            except ValueError:
+                pass
+        
+        # 6. Búsqueda de texto en acción
+        q = (self.request.GET.get('q') or '').strip()
+        if q:
+            queryset = queryset.filter(accion__icontains=q)
             
         return queryset
 
     def get_context_data(self, **kwargs):
+        from django.contrib.auth.models import User
+        
         context = super().get_context_data(**kwargs)
         
-        # 4. Pasar las áreas disponibles y el filtro activo a la plantilla
+        # Pasar opciones de filtro
         context['areas_funcionales'] = self.AREAS_FUNCIONALES
-        context['area_activa'] = self.request.GET.get('area')
+        context['tipos_accion'] = self.TIPOS_ACCION
+        context['usuarios'] = User.objects.filter(is_active=True).order_by('username')
+        
+        # Pasar valores actuales de filtros
+        context['area_activa'] = self.request.GET.get('area', '')
+        context['tipo_accion_activo'] = self.request.GET.get('tipo_accion', '')
+        context['usuario_activo'] = self.request.GET.get('usuario', '')
+        context['fecha_desde'] = self.request.GET.get('fecha_desde', '')
+        context['fecha_hasta'] = self.request.GET.get('fecha_hasta', '')
+        context['q'] = self.request.GET.get('q', '')
+        
+        # Contar total de resultados (sin paginación)
+        context['total_resultados'] = self.get_queryset().count()
         
         return context
+
+
+@login_required
+def bitacora_export_csv(request):
+    """Exporta los resultados filtrados de la bitácora a CSV"""
+    import csv
+    from django.http import HttpResponse
+    from django.utils import timezone
+    
+    # Reutilizar la lógica de filtrado del ListView
+    view = BitacoraListView()
+    view.request = request
+    queryset = view.get_queryset()
+    
+    # Crear respuesta CSV
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="bitacora_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+    response.write('\ufeff')  # BOM para Excel UTF-8
+    
+    writer = csv.writer(response)
+    
+    # Encabezados
+    writer.writerow([
+        'Fecha/Hora',
+        'Usuario',
+        'Área',
+        'Tipo Acción',
+        'Acción',
+        'ID Entidad',
+    ])
+    
+    # Datos
+    for log in queryset[:1000]:  # Limitar a 1000 registros
+        writer.writerow([
+            log.fecha_hora.strftime('%Y-%m-%d %H:%M:%S'),
+            log.usuario.username if log.usuario else 'Sistema',
+            log.nombre_modelo,
+            log.tipo_accion,
+            log.accion,
+            log.entidad_id,
+        ])
+    
+    return response
+
+
+@login_required
+def bitacora_export_pdf(request):
+    """Exporta los resultados filtrados de la bitácora a PDF usando xhtml2pdf"""
+    from django.http import HttpResponse
+    from django.template.loader import render_to_string
+    from django.utils import timezone
+    from xhtml2pdf import pisa
+    from io import BytesIO
+    
+    # Reutilizar la lógica de filtrado del ListView
+    view = BitacoraListView()
+    view.request = request
+    queryset = view.get_queryset()[:500]  # Limitar a 500 para PDF
+    
+    # Obtener filtros aplicados
+    filtros_aplicados = []
+    if request.GET.get('area'):
+        filtros_aplicados.append(f"Área: {request.GET.get('area')}")
+    if request.GET.get('tipo_accion'):
+        filtros_aplicados.append(f"Tipo: {request.GET.get('tipo_accion')}")
+    if request.GET.get('usuario'):
+        user = User.objects.filter(id=request.GET.get('usuario')).first()
+        if user:
+            filtros_aplicados.append(f"Usuario: {user.username}")
+    if request.GET.get('fecha_desde'):
+        filtros_aplicados.append(f"Desde: {request.GET.get('fecha_desde')}")
+    if request.GET.get('fecha_hasta'):
+        filtros_aplicados.append(f"Hasta: {request.GET.get('fecha_hasta')}")
+    if request.GET.get('q'):
+        filtros_aplicados.append(f"Búsqueda: {request.GET.get('q')}")
+    
+    # Contexto para el template
+    context = {
+        'logs': queryset,
+        'fecha_generacion': timezone.now(),
+        'usuario_exportacion': request.user,
+        'filtros_aplicados': filtros_aplicados,
+        'total_registros': queryset.count(),
+    }
+    
+    # Renderizar HTML
+    html_string = render_to_string('core/bitacora/bitacora_pdf.html', context)
+    
+    # Generar PDF con xhtml2pdf
+    result = BytesIO()
+    pdf = pisa.pisaDocument(BytesIO(html_string.encode("UTF-8")), result)
+    
+    if pdf.err:
+        return HttpResponse('Error al generar PDF', status=500)
+    
+    # Crear respuesta
+    response = HttpResponse(result.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="bitacora_{timezone.now().strftime("%Y%m%d_%H%M%S")}.pdf"'
+    
+    return response
+
+
+@login_required
+def bitacora_detalle_view(request, pk):
+    """Vista de detalle para una entrada de bitácora"""
+    import json
+    
+    log = get_object_or_404(BitacoraAccion, pk=pk)
+    
+    # Formatear JSON para mejor visualización
+    detalles_formateados = json.dumps(log.detalles, indent=2, ensure_ascii=False) if log.detalles else '{}'
+    
+    context = {
+        'log': log,
+        'detalles_json': detalles_formateados,
+    }
+    
+    return render(request, 'core/bitacora/bitacora_detalle.html', context)

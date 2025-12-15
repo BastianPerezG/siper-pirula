@@ -1,39 +1,78 @@
 {% extends "core/base.html" %}
 
-{% block title %}Eliminar merma - SIPER Pirula{% endblock %}
+{% block title %}Eliminar Merma - El Gran Pirula{% endblock %}
 
 {% block content %}
-<h1 class="text-xl sm:text-2xl font-semibold text-slate-800 mb-4">
-  Eliminar merma
-</h1>
-
-<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4 max-w-xl">
-  <p class="text-sm sm:text-base text-slate-700">
-    ¿Seguro que quieres eliminar la merma de
-    <strong>{{ merma.cantidad }}</strong> unidad(es) de
-    <strong>{{ merma.producto.nombre }}</strong> registrada el
-    {{ merma.fecha|date:"d/m/Y H:i" }}?
-  </p>
-
-  {% if merma.comentario %}
-    <p class="text-sm text-slate-500">
-      <span class="font-medium">Comentario:</span>
-      {{ merma.comentario }}
+<div class="max-w-xl mx-auto space-y-6">
+  <!-- Header -->
+  <div>
+    <h1 class="text-2xl font-bold text-pirula-dark">
+      ⚠️ Eliminar Merma
+    </h1>
+    <p class="text-sm text-slate-500 mt-1">
+      Esta acción no se puede deshacer
     </p>
-  {% endif %}
+  </div>
 
-  <form method="post" class="flex flex-col sm:flex-row gap-3 mt-4">
-    {% csrf_token %}
-    <a href="{% url 'inventario:merma_lista' %}"
-       class="inline-flex justify-center px-4 py-2 rounded-full border border-slate-300
-              text-sm text-slate-700 hover:bg-slate-50">
-      Cancelar
-    </a>
-    <button type="submit"
-            class="inline-flex justify-center px-4 py-2 rounded-full bg-red-600 text-white
-                   text-sm hover:bg-red-700">
-      Eliminar definitivamente
-    </button>
-  </form>
+  <!-- Card de confirmación -->
+  <section class="bg-white rounded-xl shadow-md border-2 border-red-200 overflow-hidden">
+    <!-- Header rojo -->
+    <div class="bg-red-50 px-6 py-4 border-b border-red-200">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl">🗑️</span>
+        <div>
+          <h2 class="font-bold text-red-700 text-lg">
+            ¿Eliminar esta merma?
+          </h2>
+          <p class="text-sm text-red-600">
+            {{ merma.producto.nombre }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detalles -->
+    <div class="p-6">
+      <dl class="space-y-3 text-sm">
+        <div class="flex justify-between">
+          <dt class="font-semibold text-pirula-dark">📅 Fecha:</dt>
+          <dd class="text-slate-600">{{ merma.fecha|date:"d/m/Y H:i" }}</dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="font-semibold text-pirula-dark">🔢 Cantidad:</dt>
+          <dd class="font-bold text-red-600">-{{ merma.cantidad }} unidades</dd>
+        </div>
+        {% if merma.comentario %}
+        <div>
+          <dt class="font-semibold text-pirula-dark mb-1">💬 Comentario:</dt>
+          <dd class="text-slate-600 bg-pirula-cream/50 p-2 rounded-lg">{{ merma.comentario }}</dd>
+        </div>
+        {% endif %}
+      </dl>
+
+      <!-- Advertencia -->
+      <div class="mt-4 p-4 rounded-lg bg-amber-50 border border-amber-200">
+        <p class="text-sm text-amber-700">
+          <strong>⚠️ Nota:</strong> Al eliminar esta merma, el stock del producto <strong>NO</strong> será restaurado
+          automáticamente.
+        </p>
+      </div>
+    </div>
+
+    <!-- Botones -->
+    <div class="px-6 pb-6">
+      <form method="post" class="flex flex-col sm:flex-row gap-3">
+        {% csrf_token %}
+        <button type="submit"
+          class="flex-1 px-6 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-sm transition-colors">
+          🗑️ Sí, eliminar
+        </button>
+        <a href="{% url 'inventario:merma_lista' %}"
+          class="flex-1 text-center px-6 py-3 rounded-lg border border-pirula-beige text-pirula-dark font-medium text-sm hover:bg-pirula-cream transition-colors">
+          ← No, volver
+        </a>
+      </form>
+    </div>
+  </section>
 </div>
 {% endblock %}

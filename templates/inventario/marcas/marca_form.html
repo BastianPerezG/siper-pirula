@@ -1,0 +1,77 @@
+{% extends "core/base.html" %}
+
+{% block title %}{% if object %}Editar{% else %}Nueva{% endif %} Marca - El Gran Pirula{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-xl mx-auto">
+    <!-- Header -->
+    <div>
+        <h1 class="text-2xl font-bold text-pirula-dark">
+            🏷️ {% if object %}Editar Marca{% else %}Nueva Marca{% endif %}
+        </h1>
+        <p class="text-sm text-slate-500 mt-1">
+            {% if object %}Modifica los datos de la marca{% else %}Crea una nueva marca para tus productos{% endif %}
+        </p>
+    </div>
+
+    <!-- Formulario -->
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-6">
+        <form method="post" enctype="multipart/form-data" class="space-y-5">
+            {% csrf_token %}
+
+            <!-- Nombre -->
+            <div>
+                <label for="id_nombre" class="block text-sm font-semibold text-pirula-dark mb-2">
+                    Nombre de la marca *
+                </label>
+                <input type="text" name="nombre" id="id_nombre" value="{{ form.nombre.value|default:'' }}"
+                    class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+                    placeholder="Ej: Concha y Toro" required autofocus>
+                {% if form.nombre.errors %}
+                <p class="text-red-600 text-xs mt-1">{{ form.nombre.errors|striptags }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Imagen -->
+            <div>
+                <label for="id_imagen" class="block text-sm font-semibold text-pirula-dark mb-2">
+                    Logo de la marca
+                </label>
+                {% if object.imagen %}
+                <div class="mb-3 flex items-center gap-3">
+                    <img src="{{ object.imagen.url }}" alt="{{ object.nombre }}"
+                        class="w-16 h-16 object-contain rounded-lg bg-white border border-pirula-beige">
+                    <span class="text-sm text-slate-500">Logo actual</span>
+                </div>
+                {% endif %}
+                <input type="file" name="imagen" id="id_imagen"
+                    class="w-full border border-pirula-beige rounded-lg px-3 py-2 text-sm file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-pirula-cream file:text-pirula-dark file:font-medium file:cursor-pointer hover:file:bg-pirula-beige"
+                    accept="image/*">
+                <p class="text-xs text-slate-400 mt-1">JPG, PNG. Recomendado: 200x200px</p>
+            </div>
+
+            <!-- Activo -->
+            <div class="flex items-center">
+                <label
+                    class="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-pirula-cream/50 border border-pirula-beige w-full">
+                    <input type="checkbox" name="activo" id="id_activo"
+                        class="w-5 h-5 rounded border-pirula-beige text-pirula-accent focus:ring-pirula-accent" {% if form.activo.value or not object %}checked{% endif %}>
+                    <span class="text-sm font-medium text-pirula-dark">✅ Marca activa</span>
+                </label>
+            </div>
+
+            <!-- Botones -->
+            <div class="flex flex-col sm:flex-row gap-3 pt-4">
+                <button type="submit"
+                    class="flex-1 px-6 py-2.5 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white font-bold text-sm transition-colors">
+                    💾 {% if object %}Guardar Cambios{% else %}Crear Marca{% endif %}
+                </button>
+                <a href="{% url 'inventario:marca_lista' %}"
+                    class="flex-1 text-center px-6 py-2.5 rounded-lg border border-pirula-beige text-pirula-dark font-medium text-sm hover:bg-pirula-cream transition-colors">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </section>
+</div>
+{% endblock %}

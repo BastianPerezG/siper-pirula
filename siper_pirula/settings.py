@@ -96,7 +96,8 @@ DATABASES = {
 
 # 5) Static/Media (útil para despliegue)
 STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"      
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]  # Para archivos static en desarrollo
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
@@ -108,26 +109,25 @@ CSRF_TRUSTED_ORIGINS = env.list(
     default=["https://*.pythonanywhere.com"]
 )
 
-# Para desarrollo: imprime los correos en la consola
-EMAIL_BACKEND = "core.emails_backend.smtpInseguroBackend"
-DEFAULT_FROM_EMAIL = "no-reply@siperpirula.local"
-SITE_URL = "http://localhost:8000"  
-
-
-EMAIL_BACKEND = "core.emails_backend.smtpInseguroBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-
-
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
-
-DEFAULT_FROM_EMAIL = f"SIPER Pirula <{EMAIL_HOST_USER}>"
-
-
 # Datos Webpay
 WEBPAY_COMMERCE_CODE = "597055555532"
 WEBPAY_API_KEY = "579B532A7440BB0C9079DED94D31EA1615BACEB56610332264630D42D0A36B1C"
 
 TRANSBANK_ENVIRONMENT = os.environ.get("TRANSBANK_ENVIRONMENT", "INTEGRATION")
+
+# Configuración de Login
+LOGIN_URL = "core:login_interno"
+LOGIN_REDIRECT_URL = "core:dashboard"
+LOGOUT_REDIRECT_URL = "core:login_interno"
+
+# Configuración de Email (Gmail SMTP)
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.environ.get("EMAIL_HOST_USER", "noreply@granpirula.cl")
+
+# URL del sitio (para emails)
+SITE_URL = os.environ.get("SITE_URL", "http://127.0.0.1:8000")

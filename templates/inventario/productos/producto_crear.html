@@ -1,171 +1,275 @@
-{% extends "../../core/base.html" %}
+{% extends "core/base.html" %}
 
-{% block title %}Crear producto - SIPER Pirula{% endblock %}
+{% block title %}Crear Producto - El Gran Pirula{% endblock %}
 
 {% block content %}
-<div class="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
-    <div>
-        <h1 class="text-2xl font-bold">Crear producto</h1>
-        <p class="text-sm text-slate-500">
-            Registra un nuevo producto en el catálogo. Los campos marcados con * son obligatorios.
-        </p>
-    </div>
-
-    <a href="{% url 'inventario:producto_lista' %}"
-       class="inline-flex items-center px-3 py-1.5 rounded border border-slate-300 text-sm hover:bg-slate-50">
-        Volver al listado
-    </a>
-</div>
-
-<form method="post" enctype="multipart/form-data" class="space-y-6 max-w-5xl">
-    {% csrf_token %}
-
-    {% if form.non_field_errors %}
-        <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
-            {{ form.non_field_errors }}
+<div class="space-y-6 max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-pirula-dark">➕ Crear Producto</h1>
+            <p class="text-sm text-slate-500 mt-1">
+                Registra un nuevo producto en el catálogo. Los campos marcados con * son obligatorios.
+            </p>
         </div>
-    {% endif %}
-
-    <!-- Datos principales -->
-    <section class="bg-white shadow-sm rounded-lg p-6 space-y-4">
-        <h2 class="text-base font-semibold text-slate-800">Datos principales</h2>
-        <div class="grid gap-4 md:grid-cols-2 text-sm">
-            <div>
-                {{ form.ean.label_tag }}
-                {{ form.ean }}
-                {% if form.ean.errors %}
-                    <p class="text-red-600 text-xs mt-1">{{ form.ean.errors|striptags }}</p>
-                {% endif %}
-                {% if form.ean.help_text %}
-                    <p class="text-xs text-slate-500 mt-1">{{ form.ean.help_text }}</p>
-                {% endif %}
-            </div>
-
-            <div>
-                {{ form.nombre.label_tag }}
-                {{ form.nombre }}
-                {% if form.nombre.errors %}
-                    <p class="text-red-600 text-xs mt-1">{{ form.nombre.errors|striptags }}</p>
-                {% endif %}
-            </div>
-
-            <div>
-                {{ form.categoria.label_tag }}
-                {{ form.categoria }}
-                {% if form.categoria.errors %}
-                    <p class="text-red-600 text-xs mt-1">{{ form.categoria.errors|striptags }}</p>
-                {% endif %}
-            </div>
-
-            <div>
-                {{ form.proveedor.label_tag }}
-                {{ form.proveedor }}
-                {% if form.proveedor.errors %}
-                    <p class="text-red-600 text-xs mt-1">{{ form.proveedor.errors|striptags }}</p>
-                {% endif %}
-            </div>
-        </div>
-    </section>
-
-    <!-- Venta y costos -->
-    <section class="bg-white shadow-sm rounded-lg p-6 space-y-4">
-        <h2 class="text-base font-semibold text-slate-800">Venta y costos</h2>
-        <div class="grid gap-4 md:grid-cols-3 text-sm">
-            <div>
-                {{ form.precio.label_tag }}
-                {{ form.precio }}
-                {% if form.precio.errors %}
-                    <p class="text-red-600 text-xs mt-1">{{ form.precio.errors|striptags }}</p>
-                {% endif %}
-            </div>
-
-            <div>
-                {{ form.costo.label_tag }}
-                {{ form.costo }}
-                {% if form.costo.errors %}
-                    <p class="text-red-600 text-xs mt-1">{{ form.costo.errors|striptags }}</p>
-                {% endif %}
-            </div>
-
-            <div>
-                {{ form.contiene_alcohol.label_tag }}
-                <div class="flex items-center gap-2">
-                    {{ form.contiene_alcohol }}
-                    <span class="text-xs text-slate-500">Marcar si el producto contiene alcohol.</span>
-                </div>
-                {% if form.contiene_alcohol.errors %}
-                    <p class="text-red-600 text-xs mt-1">{{ form.contiene_alcohol.errors|striptags }}</p>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="grid gap-4 md:grid-cols-2 text-sm">
-            <div>
-                {{ form.unidad_de_venta.label_tag }}
-                {{ form.unidad_de_venta }}
-                {% if form.unidad_de_venta.errors %}
-                    <p class="text-red-600 text-xs mt-1">{{ form.unidad_de_venta.errors|striptags }}</p>
-                {% endif %}
-            </div>
-
-            <div>
-                {{ form.formato.label_tag }}
-                {{ form.formato }}
-                {% if form.formato.errors %}
-                    <p class="text-red-600 text-xs mt-1">{{ form.formato.errors|striptags }}</p>
-                {% endif %}
-            </div>
-        </div>
-    </section>
-
-    <!-- Stock y bodega -->
-    <section class="bg-white shadow-sm rounded-lg p-6 space-y-4">
-        <h2 class="text-base font-semibold text-slate-800">Stock y bodega</h2>
-        <div class="grid gap-4 md:grid-cols-3 text-sm">
-            <div>
-                {{ form.stock_min.label_tag }}
-                {{ form.stock_min }}
-                {% if form.stock_min.errors %}
-                    <p class="text-red-600 text-xs mt-1">{{ form.stock_min.errors|striptags }}</p>
-                {% endif %}
-            </div>
-
-            <div>
-                {{ form.ubicacion.label_tag }}
-                {{ form.ubicacion }}
-                {% if form.ubicacion.errors %}
-                    <p class="text-red-600 text-xs mt-1">{{ form.ubicacion.errors|striptags }}</p>
-                {% endif %}
-            </div>
-
-            <div class="flex items-center gap-2 mt-6 md:mt-0">
-                {{ form.activo }}
-                {{ form.activo.label_tag }}
-                {% if form.activo.errors %}
-                    <p class="text-red-600 text-xs mt-1">{{ form.activo.errors|striptags }}</p>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="text-sm">
-            {{ form.imagen.label_tag }}
-            {{ form.imagen }}
-            {% if form.imagen.errors %}
-                <p class="text-red-600 text-xs mt-1">{{ form.imagen.errors|striptags }}</p>
-            {% endif %}
-        </div>
-    </section>
-
-    <div class="flex flex-wrap gap-3">
-        <button type="submit"
-                class="px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
-            Guardar
-        </button>
-
         <a href="{% url 'inventario:producto_lista' %}"
-           class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
-            Cancelar
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-pirula-beige text-pirula-dark text-sm font-medium hover:bg-pirula-cream transition-colors">
+            ← Volver al listado
         </a>
     </div>
-</form>
+
+    <form method="post" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-4">
+            {{ form.non_field_errors }}
+        </div>
+        {% endif %}
+
+        <!-- Datos principales -->
+        <section class="bg-white shadow-md rounded-xl border border-pirula-beige/30 p-6">
+            <h2 class="text-lg font-bold text-pirula-dark mb-4 flex items-center gap-2">
+                <span class="text-xl">📦</span> Datos principales
+            </h2>
+            <div class="grid gap-5 md:grid-cols-2">
+                <div>
+                    <label for="{{ form.ean.id_for_label }}" class="block text-sm font-semibold text-pirula-dark mb-2">
+                        EAN (Código de barras)
+                    </label>
+                    <input type="text" name="ean" id="{{ form.ean.id_for_label }}"
+                        value="{{ form.ean.value|default:'' }}"
+                        class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+                        placeholder="Ej: 7801234567890">
+                    {% if form.ean.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.ean.errors|striptags }}</p>
+                    {% endif %}
+                    {% if form.ean.help_text %}
+                    <p class="text-xs text-slate-500 mt-1">{{ form.ean.help_text }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.nombre.id_for_label }}"
+                        class="block text-sm font-semibold text-pirula-dark mb-2">
+                        Nombre del producto *
+                    </label>
+                    <input type="text" name="nombre" id="{{ form.nombre.id_for_label }}"
+                        value="{{ form.nombre.value|default:'' }}"
+                        class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+                        placeholder="Ej: Cerveza Escudo 473ml" required>
+                    {% if form.nombre.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.nombre.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.categoria.id_for_label }}"
+                        class="block text-sm font-semibold text-pirula-dark mb-2">
+                        Categoría *
+                    </label>
+                    {{ form.categoria }}
+                    {% if form.categoria.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.categoria.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.proveedor.id_for_label }}"
+                        class="block text-sm font-semibold text-pirula-dark mb-2">
+                        Proveedor
+                    </label>
+                    {{ form.proveedor }}
+                    {% if form.proveedor.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.proveedor.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Venta y costos -->
+        <section class="bg-white shadow-md rounded-xl border border-pirula-beige/30 p-6">
+            <h2 class="text-lg font-bold text-pirula-dark mb-4 flex items-center gap-2">
+                <span class="text-xl">💵</span> Venta y costos
+            </h2>
+            <div class="grid gap-5 md:grid-cols-3">
+                <div>
+                    <label for="{{ form.precio.id_for_label }}"
+                        class="block text-sm font-semibold text-pirula-dark mb-2">
+                        Precio de venta *
+                    </label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                        <input type="number" name="precio" id="{{ form.precio.id_for_label }}"
+                            value="{{ form.precio.value|default:'' }}"
+                            class="w-full border border-pirula-beige rounded-lg pl-8 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+                            placeholder="0" required>
+                    </div>
+                    {% if form.precio.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.precio.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.costo.id_for_label }}"
+                        class="block text-sm font-semibold text-pirula-dark mb-2">
+                        Costo de compra
+                    </label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                        <input type="number" name="costo" id="{{ form.costo.id_for_label }}"
+                            value="{{ form.costo.value|default:'' }}"
+                            class="w-full border border-pirula-beige rounded-lg pl-8 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+                            placeholder="0">
+                    </div>
+                    {% if form.costo.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.costo.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="flex items-end">
+                    <label
+                        class="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-pirula-cream/50 border border-pirula-beige w-full h-[46px]">
+                        {{ form.contiene_alcohol }}
+                        <span class="text-sm font-medium text-pirula-dark">🍺 Contiene alcohol</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="grid gap-5 md:grid-cols-2 mt-5">
+                <div>
+                    <label for="{{ form.unidad_de_venta.id_for_label }}"
+                        class="block text-sm font-semibold text-pirula-dark mb-2">
+                        Unidad de venta
+                    </label>
+                    <input type="text" name="unidad_de_venta" id="{{ form.unidad_de_venta.id_for_label }}"
+                        value="{{ form.unidad_de_venta.value|default:'' }}"
+                        class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+                        placeholder="Ej: Unidad, Pack, Caja">
+                    {% if form.unidad_de_venta.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.unidad_de_venta.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.formato.id_for_label }}"
+                        class="block text-sm font-semibold text-pirula-dark mb-2">
+                        Formato / Presentación
+                    </label>
+                    <input type="text" name="formato" id="{{ form.formato.id_for_label }}"
+                        value="{{ form.formato.value|default:'' }}"
+                        class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+                        placeholder="Ej: 473ml, Pack 6, 1kg">
+                    {% if form.formato.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.formato.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Stock y bodega -->
+        <section class="bg-white shadow-md rounded-xl border border-pirula-beige/30 p-6">
+            <h2 class="text-lg font-bold text-pirula-dark mb-4 flex items-center gap-2">
+                <span class="text-xl">📊</span> Stock y bodega
+            </h2>
+            <div class="grid gap-5 md:grid-cols-3">
+                <div>
+                    <label for="{{ form.stock_min.id_for_label }}"
+                        class="block text-sm font-semibold text-pirula-dark mb-2">
+                        Stock mínimo
+                    </label>
+                    <input type="number" name="stock_min" id="{{ form.stock_min.id_for_label }}"
+                        value="{{ form.stock_min.value|default:'5' }}"
+                        class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+                        placeholder="5">
+                    {% if form.stock_min.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.stock_min.errors|striptags }}</p>
+                    {% endif %}
+                    <p class="text-xs text-slate-500 mt-1">Se alertará cuando el stock baje de este valor.</p>
+                </div>
+
+                <div>
+                    <label for="{{ form.ubicacion.id_for_label }}"
+                        class="block text-sm font-semibold text-pirula-dark mb-2">
+                        Ubicación en bodega
+                    </label>
+                    <input type="text" name="ubicacion" id="{{ form.ubicacion.id_for_label }}"
+                        value="{{ form.ubicacion.value|default:'' }}"
+                        class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+                        placeholder="Ej: Pasillo A, Estante 3">
+                    {% if form.ubicacion.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.ubicacion.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="flex items-end">
+                    <label
+                        class="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-emerald-50 border border-emerald-200 w-full h-[46px]">
+                        {{ form.activo }}
+                        <span class="text-sm font-medium text-emerald-700">✅ Producto activo</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Imagen -->
+            <div class="mt-5">
+                <label for="{{ form.imagen.id_for_label }}" class="block text-sm font-semibold text-pirula-dark mb-2">
+                    📷 Imagen del producto
+                </label>
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-20 h-20 rounded-lg bg-pirula-beige/50 flex items-center justify-center text-3xl border-2 border-dashed border-pirula-beige">
+                        🍾
+                    </div>
+                    <div class="flex-1">
+                        {{ form.imagen }}
+                        {% if form.imagen.errors %}
+                        <p class="text-red-600 text-xs mt-1">{{ form.imagen.errors|striptags }}</p>
+                        {% endif %}
+                        <p class="text-xs text-slate-500 mt-1">Formatos: JPG, PNG. Tamaño recomendado: 400x400px.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Botones -->
+        <div class="flex flex-wrap gap-3 justify-end">
+            <a href="{% url 'inventario:producto_lista' %}"
+                class="px-6 py-2.5 rounded-lg border border-pirula-beige text-pirula-dark text-sm font-medium hover:bg-pirula-cream transition-colors">
+                Cancelar
+            </a>
+            <button type="submit"
+                class="px-6 py-2.5 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white text-sm font-bold shadow-md transition-colors">
+                💾 Guardar Producto
+            </button>
+        </div>
+    </form>
+</div>
+
+{% block extra_js %}
+<style>
+    /* Mejorar estilos de selects generados por Django */
+    select {
+        width: 100%;
+        border: 1px solid #d4c4b0;
+        border-radius: 0.5rem;
+        padding: 0.625rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    select:focus {
+        outline: none;
+        ring: 2px;
+        ring-color: #6b4423;
+        border-color: #6b4423;
+    }
+
+    /* Checkbox styling */
+    input[type="checkbox"] {
+        width: 1.25rem;
+        height: 1.25rem;
+        accent-color: #6b4423;
+    }
+</style>
+{% endblock %}
 {% endblock %}

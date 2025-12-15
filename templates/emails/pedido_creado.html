@@ -1,27 +1,107 @@
 {% extends "emails/base_email.html" %}
+{% load humanize %}
 {% block content %}
-    <h1 style="font-size:20px;margin:0 0 12px 0;color:#222222;">
-        Hemos recibido tu pedido 🍷
-    </h1>
+<!-- Título -->
+<h1 style="font-size:24px;margin:0 0 8px 0;color:#5d4037;font-weight:700;">
+    🎉 ¡Pedido Recibido!
+</h1>
+<p style="font-size:14px;color:#8d6e63;margin:0 0 24px 0;">
+    Gracias por tu compra en El Gran Pirula
+</p>
 
-    <p style="font-size:14px;color:#444444;margin:0 0 8px 0;">
-        Hola {{ pedido.nombre|default:"cliente" }},
-    </p>
+<!-- Saludo -->
+<p style="font-size:15px;color:#444444;margin:0 0 16px 0;">
+    Hola <strong>{{ pedido.nombre|default:"estimado cliente" }}</strong>,
+</p>
 
-    <p style="font-size:14px;color:#444444;margin:0 0 8px 0;">
-        Tu pedido <strong>{{ pedido.codigo }}</strong> ha sido registrado correctamente en El Gran Pirula.
-    </p>
+<p style="font-size:15px;color:#444444;margin:0 0 24px 0;">
+    Hemos recibido tu pedido correctamente. Te notificaremos cuando esté <strong>listo para retirar</strong> en nuestra
+    botillería.
+</p>
 
-    <p style="font-size:14px;color:#444444;margin:0 0 8px 0;">
-        Monto total: <strong>${{ pedido.total }}</strong>
-    </p>
+<!-- Card del pedido -->
+<table width="100%" cellpadding="0" cellspacing="0"
+    style="background-color:#f5f0e6;border-radius:12px;border:2px solid #d4c4b0;margin-bottom:24px;">
+    <tr>
+        <td style="padding:24px;">
+            <!-- Código del pedido -->
+            <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                    <td style="text-align:center;padding-bottom:16px;">
+                        <p
+                            style="font-size:12px;color:#8d6e63;margin:0 0 4px 0;text-transform:uppercase;letter-spacing:1px;">
+                            Código de tu pedido
+                        </p>
+                        <p style="font-size:28px;font-weight:700;color:#5d4037;margin:0;letter-spacing:2px;">
+                            {{ pedido.codigo }}
+                        </p>
+                    </td>
+                </tr>
+            </table>
 
-    <p style="font-size:14px;color:#444444;margin:0 0 8px 0;">
-        Te enviaremos un correo cuando tu pedido esté <strong>LISTO para retirar</strong> en la botillería.
-    </p>
+            <!-- Código de barras -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+                <tr>
+                    <td style="text-align:center;padding:16px 0;">
+                        <img src="https://barcodeapi.org/api/128/{{ pedido.codigo }}"
+                            alt="Código de barras {{ pedido.codigo }}"
+                            style="max-width:280px;height:60px;display:block;margin:0 auto;">
+                        <p style="font-size:10px;color:#a1887f;margin:8px 0 0 0;">
+                            Presenta este código en caja para agilizar tu retiro
+                        </p>
+                    </td>
+                </tr>
+            </table>
 
-    <p style="font-size:13px;color:#666666;margin-top:16px;">
-        Gracias por preferirnos,<br>
-        <strong>El Gran Pirula</strong>
-    </p>
+            <!-- Separador -->
+            <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                    <td style="border-top:1px dashed #d4c4b0;padding-top:16px;">
+                        <!-- Info del pedido -->
+                        <table width="100%" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td width="50%" style="padding:8px 0;">
+                                    <p style="font-size:12px;color:#8d6e63;margin:0;">Monto Total</p>
+                                    <p style="font-size:20px;font-weight:700;color:#c28b4e;margin:4px 0 0 0;">
+                                        ${{ pedido.total|floatformat:0 }}
+                                    </p>
+                                </td>
+                                <td width="50%" style="padding:8px 0;text-align:right;">
+                                    <p style="font-size:12px;color:#8d6e63;margin:0;">Estado</p>
+                                    <p style="font-size:14px;font-weight:600;color:#5d4037;margin:4px 0 0 0;">
+                                        📋 {{ pedido.get_estado_display|default:"Pendiente" }}
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+<!-- Instrucciones -->
+<table width="100%" cellpadding="0" cellspacing="0"
+    style="background-color:#fff8e1;border-radius:8px;border-left:4px solid #c28b4e;margin-bottom:24px;">
+    <tr>
+        <td style="padding:16px;">
+            <p style="font-size:14px;color:#5d4037;margin:0;">
+                <strong>📍 ¿Cómo retiro mi pedido?</strong>
+            </p>
+            <p style="font-size:13px;color:#666666;margin:8px 0 0 0;">
+                Cuando recibas el correo de confirmación, acércate a nuestra botillería con tu <strong>código de
+                    pedido</strong> o presenta el <strong>código de barras</strong> en tu celular.
+            </p>
+        </td>
+    </tr>
+</table>
+
+<!-- Despedida -->
+<p style="font-size:15px;color:#444444;margin:0;">
+    ¡Gracias por preferirnos! 🍷
+</p>
+<p style="font-size:14px;color:#8d6e63;margin:8px 0 0 0;">
+    Equipo <strong>El Gran Pirula</strong>
+</p>
 {% endblock %}

@@ -1,154 +1,205 @@
-{% extends "../../core/base.html" %}
+{% extends "core/base.html" %}
 {% load static %}
 
-{% block title %}Registrar compra - SIPER Pirula{% endblock %}
+{% block title %}{% if modo == "editar" %}Editar Compra #{{ compra.id }}{% else %}Registrar Compra{% endif %} - El Gran
+Pirula{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">
-    {% if modo == "editar" %}
-    Editar compra #{{ compra.id }}
-    {% else %}
-    Registrar compra
-    {% endif %}
-</h1>
-
-<form method="post" enctype="multipart/form-data" class="space-y-6">
-    {% csrf_token %}
-
-    <!-- DATOS DE LA COMPRA -->
-    <section class="bg-white rounded-lg shadow-sm p-6">
-        <h2 class="text-lg font-semibold mb-4 text-slate-700">Datos de la compra</h2>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-                <label class="block text-slate-600 font-medium mb-1">
-                    Proveedor
-                </label>
-                {{ form.proveedor }}
-            </div>
-
-            <div>
-                <label class="block text-slate-600 font-medium mb-1">
-                    Tipo documento
-                </label>
-                {{ form.doc_tipo }}
-            </div>
-
-            <div>
-                <label class="block text-slate-600 font-medium mb-1">
-                    Número documento
-                </label>
-                {{ form.doc_num }}
-            </div>
-
-            <div class="md:col-span-2">
-                <label class="block text-slate-600 font-medium mb-1">
-                    Comentario
-                </label>
-                {{ form.comentario }}
-            </div>
-            <div>
-                <label class="block text-slate-600 font-medium mb-1">
-                    Archivo (boleta/factura)
-                </label>
-                {{ form.archivo }}
-            </div>
+<div class="space-y-6 max-w-5xl mx-auto">
+    <!-- Header -->
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-pirula-dark">
+                {% if modo == "editar" %}✏️ Editar Compra #{{ compra.id }}{% else %}🛒 Registrar Compra{% endif %}
+            </h1>
+            <p class="text-sm text-slate-500 mt-1">
+                Registra una compra a proveedor para actualizar el inventario automáticamente.
+            </p>
         </div>
-    </section>
-
-    <!-- ÍTEMS -->
-    <section class="bg-white rounded-lg shadow-sm p-6">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-slate-700">Ítems</h2>
-
-            <div class="flex items-center gap-2 text-sm">
-                <label for="ean-input" class="text-slate-600">Escanear EAN</label>
-                <input id="ean-input" type="text" autocomplete="off" placeholder="EAN..."
-                    class="border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring focus:ring-amber-300 focus:border-amber-400">
-                <button type="button" id="btn-agregar-fila"
-                    class="ml-2 px-3 py-1.5 rounded bg-slate-900 text-white text-xs font-medium hover:bg-slate-800">
-                    + Agregar fila
-                </button>
-            </div>
-        </div>
-
-        {{ formset.management_form }}
-
-        <div class="overflow-x-auto">
-            <table id="items-table" class="min-w-full text-sm border border-slate-200">
-                <thead class="bg-slate-50">
-                    <tr>
-                        <th class="px-3 py-2 text-left border-b border-slate-200">Producto</th>
-                        <th class="px-3 py-2 text-center border-b border-slate-200 w-28">Cantidad</th>
-                        <th class="px-3 py-2 text-center border-b border-slate-200 w-32">Costo unitario</th>
-                        <th class="px-3 py-2 text-center border-b border-slate-200 w-32">Subtotal</th>
-                        <th class="px-3 py-2 text-center border-b border-slate-200 w-16">Eliminar</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for f in formset %}
-                    <tr class="item-row border-b border-slate-100">
-                        <!-- IMPORTANTE: hidden_fields para no romper el formset -->
-                        {% for hidden in f.hidden_fields %}
-                        {{ hidden }}
-                        {% endfor %}
-
-                        <td class="px-3 py-2">
-                            {{ f.producto }}
-                        </td>
-                        <td class="px-3 py-2 text-center">
-                            {{ f.cantidad }}
-                        </td>
-                        <td class="px-3 py-2 text-center">
-                            {{ f.costo_unit }}
-                        </td>
-                        <td class="px-3 py-2 text-center">
-                            <span data-subtotal>—</span>
-                        </td>
-                        <td class="px-3 py-2 text-center">
-                            <span class="hidden">
-                                {{ f.DELETE }}
-                            </span>
-                            <button type="button" class="btn-eliminar text-red-600 font-semibold hover:text-red-800"
-                                title="Eliminar fila">
-                                ✕
-                            </button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <p class="mt-2 text-xs text-slate-500">
-            Las filas vacías no se guardarán. Puedes usar “Eliminar” para quitar ítems de esta compra.
-        </p>
-    </section>
-
-    <!-- BOTONES -->
-    <div class="flex flex-wrap gap-3">
-        <button type="submit"
-            class="px-4 py-2 rounded bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">
-            {% if modo == "editar" %}Guardar cambios{% else %}Guardar compra{% endif %}
-        </button>
-
-
         <a href="{% url 'inventario:compra_lista' %}"
-            class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
-            Volver a la lista
-        </a>
-
-        <a href="{% url 'core:dashboard' %}"
-            class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
-            Volver al inicio
+            class="px-4 py-2 rounded-lg border border-pirula-beige text-pirula-dark text-sm font-medium hover:bg-pirula-cream transition-colors">
+            ← Volver a compras
         </a>
     </div>
-</form>
+
+    <form method="post" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+
+        <!-- DATOS DE LA COMPRA -->
+        <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-6">
+            <h2 class="text-lg font-bold text-pirula-dark mb-4 flex items-center gap-2">
+                <span class="text-xl">📋</span> Datos de la Compra
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-sm font-semibold text-pirula-dark mb-2">
+                        🤝 Proveedor *
+                    </label>
+                    <select name="proveedor" id="id_proveedor"
+                        class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
+                        <option value="">-- Selecciona un proveedor --</option>
+                        {% for option in form.proveedor %}
+                        {{ option }}
+                        {% endfor %}
+                    </select>
+                    {% if form.proveedor.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.proveedor.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-pirula-dark mb-2">
+                        📄 Tipo de Documento
+                    </label>
+                    <select name="doc_tipo" id="id_doc_tipo"
+                        class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
+                        {% for option in form.doc_tipo %}
+                        {{ option }}
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-pirula-dark mb-2">
+                        #️⃣ Número de Documento
+                    </label>
+                    <input type="text" name="doc_num" id="id_doc_num" value="{{ form.doc_num.value|default:'' }}"
+                        class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+                        placeholder="Ej: F-12345, B-67890">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-pirula-dark mb-2">
+                        📎 Archivo (boleta/factura)
+                    </label>
+                    <input type="file" name="archivo" id="id_archivo"
+                        class="w-full border border-pirula-beige rounded-lg px-3 py-2 text-sm file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-pirula-cream file:text-pirula-dark file:font-medium file:cursor-pointer hover:file:bg-pirula-beige"
+                        accept=".pdf,.jpg,.jpeg,.png">
+                    <p class="text-xs text-slate-400 mt-1">PDF, JPG o PNG. Máximo 5MB.</p>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-pirula-dark mb-2">
+                        💬 Comentario
+                    </label>
+                    <textarea name="comentario" id="id_comentario" rows="2"
+                        class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+                        placeholder="Notas adicionales sobre esta compra...">{{ form.comentario.value|default:'' }}</textarea>
+                </div>
+            </div>
+        </section>
+
+        <!-- ÍTEMS DE LA COMPRA -->
+        <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                <h2 class="text-lg font-bold text-pirula-dark flex items-center gap-2">
+                    <span class="text-xl">📦</span> Productos de la Compra
+                </h2>
+
+                <!-- Buscador rápido -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="relative">
+                        <input id="buscar-producto" type="text" autocomplete="off"
+                            placeholder="Buscar por nombre, SKU o EAN..."
+                            class="w-64 border border-pirula-beige rounded-lg px-4 py-2 pl-10 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                    </div>
+                    <button type="button" id="btn-agregar-fila"
+                        class="px-4 py-2 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white text-sm font-semibold transition-colors">
+                        ➕ Nueva fila
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sugerencia de proveedor -->
+            <div id="proveedor-hint"
+                class="hidden mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-700">
+                💡 <strong>Tip:</strong> Selecciona un proveedor arriba para filtrar los productos y hacer la selección
+                más rápida.
+            </div>
+
+            {{ formset.management_form }}
+
+            <div class="overflow-x-auto">
+                <table id="items-table" class="min-w-full text-sm">
+                    <thead class="bg-pirula-cream border-b border-pirula-beige">
+                        <tr>
+                            <th class="px-3 py-3 text-left font-bold text-pirula-dark">Producto</th>
+                            <th class="px-3 py-3 text-center font-bold text-pirula-dark w-28">Cantidad</th>
+                            <th class="px-3 py-3 text-center font-bold text-pirula-dark w-32">Costo Unit.</th>
+                            <th class="px-3 py-3 text-center font-bold text-pirula-dark w-32">Subtotal</th>
+                            <th class="px-3 py-3 text-center font-bold text-pirula-dark w-16">❌</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-pirula-beige/30">
+                        {% for f in formset %}
+                        <tr class="item-row hover:bg-pirula-cream/30 transition-colors">
+                            {% for hidden in f.hidden_fields %}
+                            {{ hidden }}
+                            {% endfor %}
+
+                            <td class="px-3 py-2">
+                                {{ f.producto }}
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                {{ f.cantidad }}
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                {{ f.costo_unit }}
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                <span data-subtotal class="font-semibold text-pirula-dark">—</span>
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                <span class="hidden">{{ f.DELETE }}</span>
+                                <button type="button"
+                                    class="btn-eliminar text-red-500 hover:text-red-700 font-bold text-lg transition-colors"
+                                    title="Eliminar fila">
+                                    🗑️
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="bg-pirula-cream/50">
+                        <tr>
+                            <td colspan="3" class="px-3 py-3 text-right font-bold text-pirula-dark">
+                                TOTAL COMPRA:
+                            </td>
+                            <td class="px-3 py-3 text-center">
+                                <span id="total-compra" class="text-xl font-bold text-pirula-accent">$0</span>
+                            </td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <p class="mt-3 text-xs text-slate-500">
+                💡 Las filas vacías no se guardarán. Al seleccionar un producto, el costo se autocompleta si está
+                registrado.
+            </p>
+        </section>
+
+        <!-- BOTONES -->
+        <div class="flex flex-wrap gap-3 justify-end">
+            <a href="{% url 'inventario:compra_lista' %}"
+                class="px-6 py-2.5 rounded-lg border border-pirula-beige text-pirula-dark text-sm font-medium hover:bg-pirula-cream transition-colors">
+                Cancelar
+            </a>
+            <button type="submit"
+                class="px-6 py-2.5 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white text-sm font-bold shadow-md transition-colors">
+                💾 {% if modo == "editar" %}Guardar Cambios{% else %}Registrar Compra{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
 
 {# ---- FILA PROTOTIPO OCULTA PARA NUEVOS ÍTEMS ---- #}
 <table class="hidden">
     <tbody>
-        <tr id="empty-form-row" class="item-row border-b border-slate-100">
+        <tr id="empty-form-row" class="item-row">
             {% for hidden in formset.empty_form.hidden_fields %}
             {{ hidden }}
             {% endfor %}
@@ -163,31 +214,58 @@
                 {{ formset.empty_form.costo_unit }}
             </td>
             <td class="px-3 py-2 text-center">
-                <span data-subtotal>—</span>
+                <span data-subtotal class="font-semibold text-pirula-dark">—</span>
             </td>
             <td class="px-3 py-2 text-center">
-                <span class="hidden">
-                    {{ formset.empty_form.DELETE }}
-                </span>
-                <button type="button" class="btn-eliminar text-red-600 font-semibold hover:text-red-800"
+                <span class="hidden">{{ formset.empty_form.DELETE }}</span>
+                <button type="button"
+                    class="btn-eliminar text-red-500 hover:text-red-700 font-bold text-lg transition-colors"
                     title="Eliminar fila">
-                    ✕
+                    🗑️
                 </button>
             </td>
         </tr>
     </tbody>
 </table>
-
 {% endblock %}
 
 {% block extra_js %}
+<style>
+    /* Estilos para selects de Django */
+    #items-table select {
+        width: 100%;
+        min-width: 200px;
+        border: 1px solid #d4c4b0;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    #items-table input[type="number"] {
+        width: 100%;
+        border: 1px solid #d4c4b0;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        text-align: center;
+    }
+
+    #items-table select:focus,
+    #items-table input:focus {
+        outline: none;
+        border-color: #6b4423;
+        box-shadow: 0 0 0 2px rgba(107, 68, 35, 0.2);
+    }
+</style>
+
 <script>
-    // Mapas que manda la view:
-    // - COSTOS: { id_producto: costo_unitario }
-    // - EAN_MAP: { ean: id_producto }
+    // Mapas de datos del backend
     const COSTOS = JSON.parse('{{ costos_json|escapejs }}');
     const EAN_MAP = JSON.parse('{{ ean_map_json|escapejs }}');
+    const PRODUCTOS_POR_PROVEEDOR = JSON.parse('{{ productos_por_proveedor_json|escapejs }}');
+    const BUSQUEDA_MAP = JSON.parse('{{ busqueda_map_json|escapejs }}');
 
+    let proveedorSeleccionado = null;
 
     function recalcularSubtotalFila(row) {
         const qtyInput = row.querySelector("input[name$='-cantidad']");
@@ -200,7 +278,58 @@
         const cost = parseFloat(costInput.value) || 0;
         const subtotal = qty * cost;
 
-        subtotalEl.textContent = subtotal > 0 ? subtotal.toString() : "—";
+        subtotalEl.textContent = subtotal > 0 ? "$" + subtotal.toLocaleString('es-CL') : "—";
+
+        recalcularTotalCompra();
+    }
+
+    function recalcularTotalCompra() {
+        let total = 0;
+        document.querySelectorAll("#items-table tbody tr.item-row").forEach(row => {
+            if (row.style.display === "none") return;
+            const qtyInput = row.querySelector("input[name$='-cantidad']");
+            const costInput = row.querySelector("input[name$='-costo_unit']");
+            if (qtyInput && costInput) {
+                const qty = parseFloat(qtyInput.value) || 0;
+                const cost = parseFloat(costInput.value) || 0;
+                total += qty * cost;
+            }
+        });
+        document.getElementById("total-compra").textContent = "$" + total.toLocaleString('es-CL');
+    }
+
+    function filtrarProductosPorProveedor(provId) {
+        proveedorSeleccionado = provId;
+        const hint = document.getElementById("proveedor-hint");
+
+        if (!provId) {
+            hint.classList.remove("hidden");
+            return;
+        }
+        hint.classList.add("hidden");
+
+        // Obtener productos del proveedor
+        const productosValidos = PRODUCTOS_POR_PROVEEDOR[provId] || [];
+        const idsValidos = new Set(productosValidos.map(p => String(p.id)));
+
+        // Filtrar opciones en todos los selects de productos
+        document.querySelectorAll("#items-table select[name$='-producto']").forEach(select => {
+            const valorActual = select.value;
+
+            Array.from(select.options).forEach(option => {
+                if (option.value === "") {
+                    option.style.display = "";
+                    return;
+                }
+
+                // Mostrar/ocultar según el proveedor
+                if (idsValidos.size === 0 || idsValidos.has(option.value)) {
+                    option.style.display = "";
+                } else {
+                    option.style.display = "none";
+                }
+            });
+        });
     }
 
     function attachRowEvents(row) {
@@ -218,12 +347,21 @@
                 } else {
                     costInput.value = "";
                 }
-                // Si elegimos producto nuevo y cantidad está vacía, ponemos 1
                 if (prodId && qtyInput && !qtyInput.value) {
                     qtyInput.value = 1;
                 }
                 recalcularSubtotalFila(row);
+
+                // Auto-agregar nueva fila cuando se selecciona un producto
+                if (prodId && !filaVaciaDisponible()) {
+                    agregarFila();
+                }
             });
+
+            // Aplicar filtro de proveedor si ya hay uno seleccionado
+            if (proveedorSeleccionado) {
+                filtrarProductosPorProveedor(proveedorSeleccionado);
+            }
         }
 
         if (qtyInput) {
@@ -235,12 +373,12 @@
 
         if (btnEliminar && chkDelete) {
             btnEliminar.addEventListener("click", () => {
-                chkDelete.checked = true;     // lo marca para el formset
-                row.style.display = "none";   // lo ocultamos visualmente
+                chkDelete.checked = true;
+                row.style.display = "none";
+                recalcularTotalCompra();
             });
         }
 
-        // Recalcular al cargar (por si venimos con datos)
         recalcularSubtotalFila(row);
     }
 
@@ -256,7 +394,6 @@
         const emptyRowTemplate = document.getElementById("empty-form-row");
         if (!emptyRowTemplate) return null;
 
-        // Clone de la fila prototipo, reemplazando __prefix__ por el índice
         let newRowHtml = emptyRowTemplate.outerHTML.replace(/__prefix__/g, formIndex);
         const tbody = document.querySelector("#items-table tbody");
         const temp = document.createElement("tbody");
@@ -267,13 +404,9 @@
         newRow.style.display = "";
         tbody.appendChild(newRow);
 
-        // Actualizamos TOTAL_FORMS
         totalFormsInput.value = formIndex + 1;
-
-        // Enganchamos eventos
         attachRowEvents(newRow);
 
-        // Si nos pasaron un producto (por la pistola)
         if (prodId) {
             const selectProd = newRow.querySelector("select[name$='-producto']");
             const qtyInput = newRow.querySelector("input[name$='-cantidad']");
@@ -301,57 +434,144 @@
         return null;
     }
 
-    function manejarScanEAN(ean) {
-        if (!ean) return;
-        const prodId = EAN_MAP[ean];
-        if (!prodId) {
-            alert("EAN no encontrado en el catálogo.");
-            return;
+    function buscarProducto(termino) {
+        if (!termino) return null;
+
+        const terminoLower = termino.toLowerCase().trim();
+
+        // Búsqueda exacta primero
+        if (BUSQUEDA_MAP[terminoLower]) {
+            return BUSQUEDA_MAP[terminoLower];
         }
 
-        // Buscamos una fila vacía; si no hay, la creamos
-        let row = filaVaciaDisponible();
-        if (!row) {
-            row = agregarFila();
+        // Búsqueda parcial
+        for (const [key, prodId] of Object.entries(BUSQUEDA_MAP)) {
+            if (key.includes(terminoLower) || terminoLower.includes(key)) {
+                return prodId;
+            }
         }
-        if (!row) return;
 
-        const selectProd = row.querySelector("select[name$='-producto']");
-        const qtyInput = row.querySelector("input[name$='-cantidad']");
-
-        if (selectProd) {
-            selectProd.value = prodId;
-            selectProd.dispatchEvent(new Event("change"));
-        }
-        if (qtyInput && !qtyInput.value) {
-            qtyInput.value = 1;
-        }
+        return null;
     }
 
     document.addEventListener("DOMContentLoaded", () => {
         // Enganchar eventos a las filas iniciales
-        document.querySelectorAll("#items-table tbody tr.item-row")
-            .forEach(attachRowEvents);
+        document.querySelectorAll("#items-table tbody tr.item-row").forEach(attachRowEvents);
 
         // Botón agregar fila manual
         const btnAgregar = document.getElementById("btn-agregar-fila");
         if (btnAgregar) {
-            btnAgregar.addEventListener("click", () => {
-                agregarFila();
+            btnAgregar.addEventListener("click", () => agregarFila());
+        }
+
+        // Escuchar cambio de proveedor
+        const proveedorSelect = document.getElementById("id_proveedor");
+        if (proveedorSelect) {
+            proveedorSelect.addEventListener("change", () => {
+                filtrarProductosPorProveedor(proveedorSelect.value);
+            });
+
+            // Aplicar filtro inicial si hay proveedor preseleccionado
+            if (proveedorSelect.value) {
+                filtrarProductosPorProveedor(proveedorSelect.value);
+            } else {
+                document.getElementById("proveedor-hint").classList.remove("hidden");
+            }
+        }
+
+        // Buscador de productos
+        const buscarInput = document.getElementById("buscar-producto");
+        if (buscarInput) {
+            buscarInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    const termino = buscarInput.value.trim();
+                    const prodId = buscarProducto(termino);
+
+                    if (prodId) {
+                        let row = filaVaciaDisponible();
+                        if (!row) {
+                            row = agregarFila();
+                        }
+                        if (row) {
+                            const selectProd = row.querySelector("select[name$='-producto']");
+                            const qtyInput = row.querySelector("input[name$='-cantidad']");
+                            if (selectProd) {
+                                selectProd.value = prodId;
+                                selectProd.dispatchEvent(new Event("change"));
+                            }
+                            if (qtyInput && !qtyInput.value) {
+                                qtyInput.value = 1;
+                            }
+                        }
+                        buscarInput.value = "";
+                    } else {
+                        alert("Producto no encontrado. Intenta con otro término de búsqueda.");
+                    }
+                }
             });
         }
 
-        // Escáner EAN
-        const eanInput = document.getElementById("ean-input");
-        if (eanInput) {
-            eanInput.addEventListener("keydown", (e) => {
-                if (e.key === "Enter") {
-                    e.preventDefault();   // importante para que NO envíe el form
-                    const ean = eanInput.value.trim();
-                    manejarScanEAN(ean);
-                    eanInput.value = "";
+        // Calcular total inicial
+        recalcularTotalCompra();
+
+        // === INTEGRACIÓN CON PLANTILLA DE PROVEEDOR ===
+        // Si venimos de la plantilla, pre-cargar los productos
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('from_plantilla') === '1') {
+            const plantillaData = sessionStorage.getItem('plantilla_compra_data');
+            if (plantillaData) {
+                try {
+                    const data = JSON.parse(plantillaData);
+
+                    // Seleccionar el proveedor
+                    const proveedorSelect = document.getElementById('id_proveedor');
+                    if (proveedorSelect && data.proveedor) {
+                        proveedorSelect.value = data.proveedor;
+                        proveedorSelect.dispatchEvent(new Event('change'));
+                    }
+
+                    // Esperar un momento para que se filtre el proveedor, luego agregar productos
+                    setTimeout(() => {
+                        if (data.productos && data.productos.length > 0) {
+                            data.productos.forEach((prod, index) => {
+                                let row;
+                                if (index === 0) {
+                                    row = filaVaciaDisponible();
+                                }
+                                if (!row) {
+                                    row = agregarFila();
+                                }
+
+                                if (row) {
+                                    const selectProd = row.querySelector("select[name$='-producto']");
+                                    const qtyInput = row.querySelector("input[name$='-cantidad']");
+                                    const costoInput = row.querySelector("input[name$='-costo_unitario']");
+
+                                    if (selectProd) {
+                                        selectProd.value = prod.id;
+                                        selectProd.dispatchEvent(new Event('change'));
+                                    }
+                                    if (qtyInput) {
+                                        qtyInput.value = prod.cantidad;
+                                    }
+                                    if (costoInput && prod.costo) {
+                                        costoInput.value = prod.costo;
+                                    }
+                                }
+                            });
+
+                            // Recalcular total
+                            recalcularTotalCompra();
+                        }
+
+                        // Limpiar sessionStorage
+                        sessionStorage.removeItem('plantilla_compra_data');
+                    }, 300);
+                } catch (e) {
+                    console.error('Error cargando datos de plantilla:', e);
                 }
-            });
+            }
         }
     });
 </script>

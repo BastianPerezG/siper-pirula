@@ -72,7 +72,35 @@ class Pedido(models.Model):
         default=FORMA_RETIRO,
     )
 
-    # Estados
+    # Estados de preparación del pedido (workflow de preparación)
+    PREP_RECIBIDO = "RECIBIDO"
+    PREP_PREPARANDO = "PREPARANDO"
+    PREP_LISTO = "LISTO"
+    PREP_RETIRADO = "RETIRADO"
+    PREP_CANCELADO = "CANCELADO"
+    PREP_NO_RETIRA = "NO_RETIRA"
+
+    ESTADO_PREPARACION_CHOICES = [
+        (PREP_RECIBIDO, "Recibido"),
+        (PREP_PREPARANDO, "Preparando"),
+        (PREP_LISTO, "Listo para retiro"),
+        (PREP_RETIRADO, "Retirado"),
+        (PREP_CANCELADO, "Cancelado"),
+        (PREP_NO_RETIRA, "No retira"),
+    ]
+
+    # Estados de pago
+    PAGO_PENDIENTE = "PENDIENTE"
+    PAGO_PAGADO = "PAGADO"
+    PAGO_CANCELADO = "CANCELADO"
+
+    ESTADO_PAGO_CHOICES = [
+        (PAGO_PENDIENTE, "Pendiente de pago"),
+        (PAGO_PAGADO, "Pagado"),
+        (PAGO_CANCELADO, "Pago cancelado"),
+    ]
+
+    # Mantener constantes antiguas para compatibilidad temporal
     EST_RECIBIDO = "RECIBIDO"
     EST_PREPARANDO = "PREPARANDO"
     EST_LISTO = "LISTO"
@@ -111,6 +139,23 @@ class Pedido(models.Model):
     )
 
     fecha = models.DateTimeField(auto_now_add=True)
+    
+    # Nuevos campos de estado separados
+    estado_preparacion = models.CharField(
+        max_length=20,
+        choices=ESTADO_PREPARACION_CHOICES,
+        default=PREP_RECIBIDO,
+        verbose_name="Estado de preparación"
+    )
+    
+    estado_pago = models.CharField(
+        max_length=20,
+        choices=ESTADO_PAGO_CHOICES,
+        default=PAGO_PENDIENTE,
+        verbose_name="Estado de pago"
+    )
+    
+    # Mantener campo antiguo por compatibilidad (será eliminado después)
     estado = models.CharField(
         max_length=20,
         choices=ESTADO_CHOICES,
@@ -150,7 +195,7 @@ class Pedido(models.Model):
         ordering = ["-fecha"]
 
     def __str__(self):
-        return f"Pedido {self.codigo} ({self.get_estado_display()})"
+        return f"Pedido {self.codigo} - Prep: {self.get_estado_preparacion_display()}, Pago: {self.get_estado_pago_display()}"
 
     @property
     def total(self) -> int:
@@ -163,13 +208,44 @@ class Pedido(models.Model):
             self.save(update_fields=["total_monto"])
 
     def cambiar_estado(self, nuevo_estado, usuario=None):
-        """Helper centralizado para cambiar estado + log."""
+        """Helper centralizado para cambiar estado + log (mantener por compatibilidad)."""
         self.estado = nuevo_estado
         self.save(update_fields=["estado"])
         PedidoEstadoLog.objects.create(
             pedido=self,
             estado=nuevo_estado,
             usuario=usuario,
+            tipo_estado="PREPARACION",  # Por defecto
+        )
+        enviar_correo_cambio_estado(self)
+    
+    def cambiar_estado_preparacion(self, nuevo_estado, usuario=None):
+        """Cambia el estado de preparación del pedido."""
+        self.estado_preparacion = nuevo_estado
+        # También actualizar estado antiguo por compatibilidad
+        if nuevo_estado != self.PREP_RECIBIDO or self.estado_pago != self.PAGO_PAGADO:
+            self.estado = nuevo_estado
+        self.save(update_fields=["estado_preparacion", "estado"])
+        PedidoEstadoLog.objects.create(
+            pedido=self,
+            estado=nuevo_estado,
+            usuario=usuario,
+            tipo_estado="PREPARACION",
+        )
+        enviar_correo_cambio_estado(self)
+    
+    def cambiar_estado_pago(self, nuevo_estado, usuario=None):
+        """Cambia el estado de pago del pedido."""
+        self.estado_pago = nuevo_estado
+        # También actualizar estado antiguo por compatibilidad
+        if nuevo_estado == self.PAGO_PAGADO:
+            self.estado = self.EST_PAGADO
+        self.save(update_fields=["estado_pago", "estado"])
+        PedidoEstadoLog.objects.create(
+            pedido=self,
+            estado=nuevo_estado,
+            usuario=usuario,
+            tipo_estado="PAGO",
         )
         enviar_correo_cambio_estado(self)
 
@@ -203,14 +279,13 @@ class Pedido(models.Model):
     def marcar_pagado_descontar_stock(self, usuario=None):
         """
         Se llama cuando Webpay confirma el pago.
-        - Marca el pedido como PAGADO.
+        - Marca el estado_pago como PAGADO.
+        - Mantiene el estado_preparacion como RECIBIDO para que el funcionario pueda gestionarlo.
         - Por ahora NO tocamos las reservas de inventario porque ya
           se descuentan al crear el pedido.
         """
-        # Si quisieras hacer algo extra con inventario, este es el lugar.
-        # De momento sólo cambiamos el estado y registramos en el log.
         self.actualizar_total()
-        self.cambiar_estado(self.EST_PAGADO, usuario=usuario)
+        self.cambiar_estado_pago(self.PAGO_PAGADO, usuario=usuario)
     
     def marcar_cancelado_revertir_reserva(self, usuario=None):
         """
@@ -220,21 +295,41 @@ class Pedido(models.Model):
         # 1) Devolver stock (elimina los movimientos de tipo RESERVA)
         self.liberar_reservas_inventario()
 
-        # 2) Marcar el pedido como cancelado y registrar en el log
-        self.cambiar_estado(self.EST_CANCELADO, usuario=usuario)
+        # 2) Marcar ambos estados como cancelado
+        self.estado_pago = self.PAGO_CANCELADO
+        self.estado_preparacion = self.PREP_CANCELADO
+        self.estado = self.EST_CANCELADO  # Compatibilidad
+        self.save(update_fields=["estado_pago", "estado_preparacion", "estado"])
+        
+        # 3) Registrar en el log
+        PedidoEstadoLog.objects.create(
+            pedido=self,
+            estado=self.PAGO_CANCELADO,
+            usuario=usuario,
+            tipo_estado="PAGO",
+        )
+        PedidoEstadoLog.objects.create(
+            pedido=self,
+            estado=self.PREP_CANCELADO,
+            usuario=usuario,
+            tipo_estado="PREPARACION",
+        )
+        enviar_correo_cambio_estado(self)
     
     def marcar_pendiente_retiro(self, usuario=None):
         """
         Caso: pedido con pago al retirar en la botillería.
         - Crea las reservas de inventario.
-        - Deja el pedido en estado 'RECIBIDO'.
+        - Deja el pedido en estado 'RECIBIDO' para preparación y 'PENDIENTE' para pago.
         """
         # Reservar stock para este pedido
         self.crear_reservas_inventario()
 
-        # Actualizar estado
-        self.estado = self.EST_RECIBIDO
-        self.save(update_fields=["estado"])
+        # Actualizar estados
+        self.estado_preparacion = self.PREP_RECIBIDO
+        self.estado_pago = self.PAGO_PENDIENTE
+        self.estado = self.EST_RECIBIDO  # Compatibilidad
+        self.save(update_fields=["estado_preparacion", "estado_pago", "estado"])
     
     def _generar_codigo_unico(self):
         """
@@ -281,10 +376,24 @@ class PedidoItem(models.Model):
 
 
 class PedidoEstadoLog(models.Model):
+    TIPO_PREPARACION = "PREPARACION"
+    TIPO_PAGO = "PAGO"
+    
+    TIPO_ESTADO_CHOICES = [
+        (TIPO_PREPARACION, "Estado de preparación"),
+        (TIPO_PAGO, "Estado de pago"),
+    ]
+    
     pedido = models.ForeignKey(
         Pedido,
         on_delete=models.CASCADE,
         related_name="estado_log",
+    )
+    tipo_estado = models.CharField(
+        max_length=20,
+        choices=TIPO_ESTADO_CHOICES,
+        default=TIPO_PREPARACION,
+        verbose_name="Tipo de estado"
     )
     estado = models.CharField(max_length=20)
     fecha = models.DateTimeField(auto_now_add=True)
@@ -300,4 +409,4 @@ class PedidoEstadoLog(models.Model):
         ordering = ["-fecha"]
 
     def __str__(self):
-        return f"{self.pedido.codigo} → {self.estado} @ {self.fecha}"
+        return f"{self.pedido.codigo} → {self.get_tipo_estado_display()}: {self.estado} @ {self.fecha}"

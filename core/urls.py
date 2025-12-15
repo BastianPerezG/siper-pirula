@@ -9,6 +9,9 @@ from .views import (
     UsuarioEditarView,
     usuario_toggle_activo_view,
     BitacoraListView,
+    bitacora_export_csv,
+    bitacora_export_pdf,
+    bitacora_detalle_view,
 )
 
 app_name = "core"
@@ -23,7 +26,11 @@ urlpatterns = [
     path("usuarios/nuevo/", UsuarioCrearView.as_view(), name="usuario_crear"),
     path("usuarios/<int:pk>/editar/", UsuarioEditarView.as_view(), name="usuario_editar"),
     path("usuarios/<int:pk>/toggle-activo/", usuario_toggle_activo_view, name="usuario_toggle_activo"),
-    # Administración
+    
+    # Bitácora
     path("administracion/bitacora/", BitacoraListView.as_view(), name="admin_bitacoras"),
+    path("administracion/bitacora/<int:pk>/", bitacora_detalle_view, name="bitacora_detalle"),
+    path("administracion/bitacora/export/csv/", bitacora_export_csv, name="bitacora_export_csv"),
+    path("administracion/bitacora/export/pdf/", bitacora_export_pdf, name="bitacora_export_pdf"),
 
 ]

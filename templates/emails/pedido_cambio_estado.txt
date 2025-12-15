@@ -1,13 +1,32 @@
-Actualización de tu pedido {{ pedido.codigo }}
-
-Hola {{ pedido.nombre|default:"cliente" }},
+Hola {{ pedido.nombre|default:"estimado cliente" }},
 
 {% if es_listo %}
-Tu pedido {{ pedido.codigo }} ya está LISTO para retirar en El Gran Pirula.
-Preséntate en la botillería indicando tu código de pedido.
+¡Tu pedido está LISTO para retirar! 🎉
+
+============================================
+CÓDIGO DE PEDIDO: {{ pedido.codigo }}
+============================================
+
+Ya puedes pasar a retirar a nuestra botillería.
+
+Para retirar tu pedido:
+1. Acércate a El Gran Pirula
+2. Indica tu código: {{ pedido.codigo }}
+3. Retira tus productos
+
+⏰ Recuerda: Tu pedido estará disponible para retiro durante las próximas 48 horas.
+
 {% else %}
-El estado de tu pedido {{ pedido.codigo }} ha cambiado a: {{ estado_display }}.
+El estado de tu pedido ha sido actualizado.
+
+============================================
+CÓDIGO DE PEDIDO: {{ pedido.codigo }}
+NUEVO ESTADO: {{ estado_display }}
+============================================
+
+Te notificaremos cuando haya más novedades.
+
 {% endif %}
 
-Gracias por tu compra,
-El Gran Pirula
+Gracias por tu compra.
+Equipo El Gran Pirula

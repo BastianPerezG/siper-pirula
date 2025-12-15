@@ -1,64 +1,92 @@
-{% extends "../../core/base.html" %}
+{% extends "core/base.html" %}
 
-{% block title %}Eliminar compra #{{ object.id }} - SIPER Pirula{% endblock %}
+{% block title %}Eliminar Compra #{{ object.id }} - El Gran Pirula{% endblock %}
 
 {% block content %}
-<div class="max-w-xl mx-auto">
-    <h1 class="text-2xl font-bold mb-4">Eliminar compra</h1>
+<div class="max-w-xl mx-auto space-y-6">
+    <!-- Header -->
+    <div>
+        <h1 class="text-2xl font-bold text-pirula-dark">
+            ⚠️ Eliminar Compra
+        </h1>
+        <p class="text-sm text-slate-500 mt-1">
+            Esta acción no se puede deshacer
+        </p>
+    </div>
 
-    <div class="bg-white rounded-lg shadow-sm border border-red-200 p-5">
-        <div class="flex items-start gap-3">
-            <div class="mt-1 text-red-500">
-                <!-- icono simple -->
-                ⚠️
-            </div>
-            <div>
-                <p class="text-sm text-slate-700 mb-2">
-                    ¿Estás seguro de que quieres eliminar la compra
-                    <span class="font-semibold">
-                        #{{ object.id }} - {{ object.proveedor }}
-                    </span>?
-                </p>
-
-                <dl class="text-sm text-slate-600 space-y-1">
-                    <div>
-                        <dt class="font-semibold inline">Documento:</dt>
-                        <dd class="inline">
-                            {{ object.doc_tipo }} {{ object.doc_num|default:"(sin número)" }}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt class="font-semibold inline">Fecha:</dt>
-                        <dd class="inline">
-                            {{ object.fecha }}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt class="font-semibold block">Comentario:</dt>
-                        <dd class="mt-0.5">
-                            {{ object.comentario|default:"(sin comentario)" }}
-                        </dd>
-                    </div>
-                </dl>
-
-                <p class="mt-3 text-xs text-red-600">
-                    Esta acción eliminará también todos los ítems de la compra y los movimientos de
-                    inventario asociados. No se puede deshacer.
-                </p>
+    <!-- Card de confirmación -->
+    <section class="bg-white rounded-xl shadow-md border-2 border-red-200 overflow-hidden">
+        <!-- Header rojo -->
+        <div class="bg-red-50 px-6 py-4 border-b border-red-200">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">🗑️</span>
+                <div>
+                    <h2 class="font-bold text-red-700 text-lg">
+                        ¿Eliminar Compra #{{ object.id }}?
+                    </h2>
+                    <p class="text-sm text-red-600">
+                        {{ object.proveedor.nombre }}
+                    </p>
+                </div>
             </div>
         </div>
 
-        <form method="post" class="mt-5 flex gap-3">
-            {% csrf_token %}
-            <button type="submit"
-                    class="px-4 py-2 rounded bg-red-600 text-white text-sm font-semibold hover:bg-red-700">
-                Sí, eliminar definitivamente
-            </button>
-            <a href="{% url 'inventario:compra_detalle' object.pk %}"
-               class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
-                No, volver al detalle
-            </a>
-        </form>
-    </div>
+        <!-- Detalles -->
+        <div class="p-6">
+            <dl class="space-y-3 text-sm">
+                <div class="flex justify-between">
+                    <dt class="font-semibold text-pirula-dark">📅 Fecha:</dt>
+                    <dd class="text-slate-600">{{ object.fecha|date:"d/m/Y H:i" }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="font-semibold text-pirula-dark">📄 Documento:</dt>
+                    <dd class="text-slate-600">
+                        {{ object.get_doc_tipo_display }} {{ object.doc_num|default:"(sin número)" }}
+                    </dd>
+                </div>
+                {% if object.comentario %}
+                <div>
+                    <dt class="font-semibold text-pirula-dark mb-1">💬 Comentario:</dt>
+                    <dd class="text-slate-600 bg-pirula-cream/50 p-2 rounded-lg">{{ object.comentario }}</dd>
+                </div>
+                {% endif %}
+                <div class="flex justify-between pt-2 border-t border-pirula-beige/30">
+                    <dt class="font-bold text-pirula-dark">📦 Ítems:</dt>
+                    <dd class="font-bold text-pirula-accent">{{ object.items.count }} productos</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="font-bold text-pirula-dark">💰 Total:</dt>
+                    <dd class="font-bold text-pirula-accent text-lg">${{ object.total|floatformat:0 }}</dd>
+                </div>
+            </dl>
+
+            <!-- Advertencia -->
+            <div class="mt-4 p-4 rounded-lg bg-red-50 border border-red-200">
+                <p class="text-sm text-red-700">
+                    <strong>⚠️ Advertencia:</strong> Esta acción eliminará permanentemente:
+                </p>
+                <ul class="mt-2 text-sm text-red-600 list-disc list-inside">
+                    <li>La compra y todos sus ítems</li>
+                    <li>Los movimientos de inventario asociados</li>
+                    <li>El archivo adjunto (si existe)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Botones -->
+        <div class="px-6 pb-6">
+            <form method="post" class="flex flex-col sm:flex-row gap-3">
+                {% csrf_token %}
+                <button type="submit"
+                    class="flex-1 px-6 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-sm transition-colors">
+                    🗑️ Sí, eliminar definitivamente
+                </button>
+                <a href="{% url 'inventario:compra_detalle' object.pk %}"
+                    class="flex-1 text-center px-6 py-3 rounded-lg border border-pirula-beige text-pirula-dark font-medium text-sm hover:bg-pirula-cream transition-colors">
+                    ← No, volver al detalle
+                </a>
+            </form>
+        </div>
+    </section>
 </div>
 {% endblock %}

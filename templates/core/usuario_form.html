@@ -1,108 +1,172 @@
 {% extends "core/base.html" %}
 
 {% block title %}
-    {% if object %}Editar usuario{% else %}Nuevo usuario{% endif %}
+{% if object %}Editar Usuario{% else %}Nuevo Usuario{% endif %} - El Gran Pirula
 {% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow">
-    
-    <h1 class="text-2xl font-bold mb-4">
-        {% if object %}Editar usuario{% else %}Crear nuevo usuario{% endif %}
-    </h1>
-
-    <form method="post" class="space-y-6">
-        {% csrf_token %}
-
-        {# --- Errores generales del formulario (contraseña insegura, etc.) --- #}
-        {% if form.non_field_errors %}
-        <div class="bg-red-100 text-red-800 text-sm px-4 py-2 rounded mb-2">
-            {% for error in form.non_field_errors %}
-                <p>{{ error }}</p>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        <!-- Campos User -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label class="font-semibold">Nombre completo</label>
-                {{ form.nombre }}
-                {% if form.nombre.errors %}
-                <p class="text-red-600 text-sm">{{ form.nombre.errors|striptags }}</p>
-                {% endif %}
-            </div>
-
-            <div>
-                <label class="font-semibold">Nombre de usuario</label>
-                {{ form.username }}
-                {% if form.username.errors %}
-                <p class="text-red-600 text-sm">{{ form.username.errors|striptags }}</p>
-                {% endif %}
-            </div>
-
-            <div>
-                <label class="font-semibold">Correo</label>
-                {{ form.email }}
-                {% if form.email.errors %}
-                <p class="text-red-600 text-sm">{{ form.email.errors|striptags }}</p>
-                {% endif %}
-            </div>
-
-            <div>
-                <label class="font-semibold">Teléfono</label>
-                {{ form.telefono }}
-            </div>
-        </div>
-
-        <!-- Contraseña solo si es creación -->
-        {% if not object %}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label class="font-semibold">Contraseña</label>
-                {{ form.password1 }}
-                {% if form.password1.errors %}
-                <p class="text-red-600 text-sm">{{ form.password1.errors|striptags }}</p>
-                {% endif %}
-            </div>
-
-            <div>
-                <label class="font-semibold">Repetir contraseña</label>
-                {{ form.password2 }}
-                {% if form.password2.errors %}
-                <p class="text-red-600 text-sm">{{ form.password2.errors|striptags }}</p>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- Rol y estado -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label class="font-semibold">Rol</label>
-                {{ form.rol }}
-            </div>
-
+<div class="space-y-6 max-w-xl mx-auto">
+    <!-- Header -->
+    <div>
+        <h1 class="text-2xl font-bold text-pirula-dark">
+            {% if object %}✏️ Editar Usuario{% else %}👤 Nuevo Usuario{% endif %}
+        </h1>
+        <p class="text-sm text-slate-500 mt-1">
             {% if object %}
-            <div>
-                <label class="font-semibold">Activo</label>
-                {{ form.activo }}
+            Modifica los datos de <strong>{{ object.user.get_full_name|default:object.user.username }}</strong>
+            {% else %}
+            Registra una nueva cuenta de trabajador
+            {% endif %}
+        </p>
+    </div>
+
+    <!-- Formulario -->
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-6">
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
+                {% for error in form.non_field_errors %}
+                <p>{{ error }}</p>
+                {% endfor %}
             </div>
             {% endif %}
-        </div>
 
-        <div class="flex justify-end gap-3">
-            <a href="{% url 'core:usuarios_lista' %}"
-               class="px-4 py-2 bg-slate-200 rounded hover:bg-slate-300">
-                Volver
-            </a>
-            <button type="submit"
-                    class="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-500">
-                {% if object %}Guardar cambios{% else %}Crear usuario{% endif %}
-            </button>
-        </div>
+            <!-- Datos personales -->
+            <div class="space-y-4">
+                <h3 class="text-sm font-bold text-pirula-dark border-b border-pirula-beige pb-2">
+                    📋 Datos Personales
+                </h3>
 
-    </form>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="id_nombre" class="block text-sm font-semibold text-pirula-dark mb-2">
+                            👤 Nombre Completo *
+                        </label>
+                        <input type="text" name="nombre" id="id_nombre" value="{{ form.nombre.value|default:'' }}"
+                            class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+                            placeholder="Ej: Juan Pérez" required>
+                        {% if form.nombre.errors %}
+                        <p class="text-red-600 text-xs mt-1">{{ form.nombre.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
 
+                    <div>
+                        <label for="id_username" class="block text-sm font-semibold text-pirula-dark mb-2">
+                            🔑 Usuario *
+                        </label>
+                        <input type="text" name="username" id="id_username" value="{{ form.username.value|default:'' }}"
+                            class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+                            placeholder="Ej: jperez" required>
+                        {% if form.username.errors %}
+                        <p class="text-red-600 text-xs mt-1">{{ form.username.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="id_email" class="block text-sm font-semibold text-pirula-dark mb-2">
+                            📧 Correo Electrónico
+                        </label>
+                        <input type="email" name="email" id="id_email" value="{{ form.email.value|default:'' }}"
+                            class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+                            placeholder="correo@ejemplo.cl">
+                        {% if form.email.errors %}
+                        <p class="text-red-600 text-xs mt-1">{{ form.email.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="id_telefono" class="block text-sm font-semibold text-pirula-dark mb-2">
+                            📞 Teléfono
+                        </label>
+                        <input type="tel" name="telefono" id="id_telefono" value="{{ form.telefono.value|default:'' }}"
+                            class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+                            placeholder="+56 9 1234 5678">
+                    </div>
+                </div>
+            </div>
+
+            {% if not object %}
+            <!-- Contraseña (solo creación) -->
+            <div class="space-y-4">
+                <h3 class="text-sm font-bold text-pirula-dark border-b border-pirula-beige pb-2">
+                    🔐 Contraseña
+                </h3>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="id_password1" class="block text-sm font-semibold text-pirula-dark mb-2">
+                            Contraseña *
+                        </label>
+                        <input type="password" name="password1" id="id_password1"
+                            class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+                            placeholder="••••••••" required>
+                        {% if form.password1.errors %}
+                        <p class="text-red-600 text-xs mt-1">{{ form.password1.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="id_password2" class="block text-sm font-semibold text-pirula-dark mb-2">
+                            Repetir Contraseña *
+                        </label>
+                        <input type="password" name="password2" id="id_password2"
+                            class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent"
+                            placeholder="••••••••" required>
+                        {% if form.password2.errors %}
+                        <p class="text-red-600 text-xs mt-1">{{ form.password2.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Rol y estado -->
+            <div class="space-y-4">
+                <h3 class="text-sm font-bold text-pirula-dark border-b border-pirula-beige pb-2">
+                    ⚙️ Configuración
+                </h3>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="id_rol" class="block text-sm font-semibold text-pirula-dark mb-2">
+                            🏷️ Rol *
+                        </label>
+                        <select name="rol" id="id_rol"
+                            class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
+                            {% for option in form.rol %}
+                            {{ option }}
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    {% if object %}
+                    <div class="flex items-center">
+                        <label
+                            class="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-pirula-cream/50 border border-pirula-beige w-full">
+                            <input type="checkbox" name="activo" id="id_activo"
+                                class="w-5 h-5 rounded border-pirula-beige text-pirula-accent focus:ring-pirula-accent"
+                                {% if form.activo.value %}checked{% endif %}>
+                            <span class="text-sm font-medium text-pirula-dark">✅ Usuario activo</span>
+                        </label>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Botones -->
+            <div class="flex flex-col sm:flex-row gap-3 pt-4">
+                <button type="submit"
+                    class="flex-1 px-6 py-2.5 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white font-bold text-sm transition-colors">
+                    {% if object %}💾 Guardar Cambios{% else %}👤 Crear Usuario{% endif %}
+                </button>
+                <a href="{% url 'core:usuarios_lista' %}"
+                    class="flex-1 text-center px-6 py-2.5 rounded-lg border border-pirula-beige text-pirula-dark font-medium text-sm hover:bg-pirula-cream transition-colors">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </section>
 </div>
 {% endblock %}

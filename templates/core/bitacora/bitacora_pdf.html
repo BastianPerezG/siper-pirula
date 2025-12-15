@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Reporte de Bitácora</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 10px;
+            color: #333;
+            line-height: 1.4;
+        }
+
+        .header {
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            color: #1e40af;
+            margin: 0 0 5px 0;
+        }
+
+        .meta {
+            color: #666;
+            font-size: 9px;
+        }
+
+        .meta-row {
+            margin: 3px 0;
+        }
+
+        .filters {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+
+        .filters h3 {
+            margin: 0 0 5px 0;
+            font-size: 11px;
+            color: #0369a1;
+        }
+
+        .filters ul {
+            margin: 0;
+            padding-left: 15px;
+        }
+
+        .filters li {
+            font-size: 9px;
+            color: #0c4a6e;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th {
+            background: #1e40af;
+            color: white;
+            font-size: 8px;
+            padding: 8px 5px;
+            text-align: left;
+            text-transform: uppercase;
+        }
+
+        td {
+            border-bottom: 1px solid #e2e8f0;
+            padding: 6px 5px;
+            font-size: 9px;
+            vertical-align: top;
+        }
+
+        tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        .area-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 8px;
+            font-weight: bold;
+        }
+
+        .area-PedidoOnline {
+            background: #f3e8ff;
+            color: #7e22ce;
+        }
+
+        .area-Usuario {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .area-Log {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .area-Venta {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .area-Inventario {
+            background: #cffafe;
+            color: #155e75;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 8px;
+            color: #94a3b8;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 10px;
+        }
+
+        .total-box {
+            background: #eff6ff;
+            border: 1px solid #93c5fd;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-bottom: 15px;
+            font-size: 11px;
+        }
+
+        .total-box strong {
+            color: #1e40af;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>📋 Reporte de Bitácora del Sistema</h1>
+        <div class="meta">
+            <div class="meta-row"><strong>Fecha de generación:</strong> {{ fecha_generacion|date:"d/m/Y H:i:s" }}</div>
+            <div class="meta-row"><strong>Generado por:</strong> {{ usuario_exportacion.username }} ({{ usuario_exportacion.email }})</div>
+        </div>
+    </div>
+
+    {% if filtros_aplicados %}
+    <div class="filters">
+        <h3>Filtros aplicados:</h3>
+        <ul>
+            {% for filtro in filtros_aplicados %}
+            <li>{{ filtro }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="total-box">
+        <strong>Total de registros:</strong> {{ total_registros }}
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 12%;">Fecha/Hora</th>
+                <th style="width: 10%;">Usuario</th>
+                <th style="width: 10%;">Área</th>
+                <th style="width: 15%;">Tipo</th>
+                <th style="width: 53%;">Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.fecha_hora|date:"d/m/Y" }}<br>{{ log.fecha_hora|time:"H:i:s" }}</td>
+                <td>{{ log.usuario.username|default:"Sistema" }}</td>
+                <td>
+                    <span class="area-badge area-{{ log.nombre_modelo }}">{{ log.nombre_modelo }}</span>
+                </td>
+                <td>{{ log.tipo_accion }}</td>
+                <td>{{ log.accion|truncatewords:25 }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 20px;">No se encontraron registros</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        SIPER-Pirula · Reporte generado automáticamente · {{ fecha_generacion|date:"d/m/Y H:i:s" }}
+    </div>
+</body>
+
+</html>

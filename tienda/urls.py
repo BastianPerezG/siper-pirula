@@ -30,6 +30,9 @@ urlpatterns = [
     path("registro/", views.registro_cliente_view, name="registro"),
     path("login/", views.login_cliente_view, name="login"),
     path("logout/", views.logout_cliente_view, name="logout"),
+    path("perfil/", views.perfil_view, name="perfil"),
+    path("perfil/editar/", views.perfil_editar_view, name="perfil_editar"),
+    path("perfil/pedido/<int:pedido_id>/", views.pedido_detalle_view, name="pedido_detalle"),
 
     # Webpay
     path("webpay/retorno/", views.webpay_retorno_view, name="webpay_retorno"),

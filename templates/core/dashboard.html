@@ -1,214 +1,245 @@
 {% extends "./base.html" %}
+{% load static %}
 
-{% block title %}Dashboard - SIPER Pirula{% endblock %}
+{% block title %}Dashboard - El Gran Pirula{% endblock %}
 
 {% block content %}
-<div class="space-y-8">
+<div class="space-y-6">
 
-    <!-- Encabezado con info de sesión -->
-    <header class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-            <h1 class="text-3xl font-bold text-slate-800">SIPER Pirula</h1>
-            <p class="text-slate-600 mt-1">
-                Sistema de inventario y ventas de la botillería.
-            </p>
+    <!-- Header de Bienvenida -->
+    <div class="bg-gradient-to-r from-pirula-dark to-pirula-medium rounded-2xl p-6 text-white shadow-lg">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold">
+                    ¡Bienvenido, {{ request.user.get_full_name|default:request.user.username }}!
+                </h1>
+                <p class="text-pirula-beige mt-1">
+                    Panel de control de El Gran Pirula
+                </p>
+            </div>
+            <div class="flex items-center gap-3">
+                <img src="{% static 'img/logo_gran_pirula_marron.jpg' %}" alt="Logo"
+                    class="h-16 w-16 rounded-full border-2 border-pirula-beige shadow-lg">
+            </div>
         </div>
+    </div>
 
-        
-    </header>
-
-    {# --- Sección 1: Inventario --- #}
-    <section class="space-y-3">
-        <h2 class="text-lg font-semibold text-slate-700">Inventario</h2>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-
-            <!-- Productos: todos -->
-            <a href="{% url 'inventario:producto_lista' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">📦 Productos</h3>
-                <p class="text-sm text-slate-600 mt-2">Ver y administrar el catálogo de productos.</p>
-            </a>
-
-            <!-- Stock crítico: todos -->
-            <a href="{% url 'inventario:producto_stock_critico' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">⚠️ Stock crítico</h3>
-                <p class="text-sm text-slate-600 mt-2">Productos con stock bajo según stock mínimo.</p>
-            </a>
-
-            <!-- Flujos de inventario: solo ADMIN -->
-            {% if request.user.perfilusuario.rol == 'ADMIN' %}
-            <a href="{% url 'inventario:flujos_inventario' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">🔁 Flujos de inventario</h3>
-                <p class="text-sm text-slate-600 mt-2">
-                    Entradas, salidas, mermas y otros movimientos de stock.
-                </p>
-            </a>
-            {% endif %}
-
-            <!-- Categorías, proveedores, compras, mermas, promos: solo ADMIN -->
-            {% if request.user.perfilusuario.rol == 'ADMIN' %}
-            <a href="{% url 'inventario:categoria_lista' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">🏷️ Categorías</h3>
-                <p class="text-sm text-slate-600 mt-2">Organizar productos por tipo / familia.</p>
-            </a>
-
-            <a href="{% url 'inventario:proveedor_lista' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">🤝 Proveedores</h3>
-                <p class="text-sm text-slate-600 mt-2">Gestión de proveedores habituales.</p>
-            </a>
-
-            <a href="{% url 'inventario:compra_lista' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">🧾 Compras</h3>
-                <p class="text-sm text-slate-600 mt-2">Historial de compras e ingresos de stock.</p>
-            </a>
-
-            <a href="{% url 'inventario:merma_lista' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">🗑️ Mermas</h3>
-                <p class="text-sm text-slate-600 mt-2">Registrar pérdidas de productos.</p>
-            </a>
-
-            <a href="{% url 'inventario:promo_lista' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">🏷️ Promociones</h3>
-                <p class="text-sm text-slate-600 mt-2">Configurar promos y packs de productos.</p>
-            </a>
-            {% endif %}
-
-            <!-- Escanear: todos -->
-            <a href="{% url 'inventario:scan_ean' %}" class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">📷 Escanear producto</h3>
-                <p class="text-sm text-slate-600 mt-2">Buscar productos por código de barras.</p>
-            </a>
-        </div>
-    </section>
-
-    {# --- Sección 2: Operaciones y ventas --- #}
-    <section class="space-y-3">
-        <h2 class="text-lg font-semibold text-slate-700">Operaciones y ventas</h2>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-
-            {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
-            <!-- Punto de venta (POS) -->
-            <a href="{% url 'ventas:venta_crear' %}" class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">🧾 Punto de venta (POS)</h3>
-                <p class="text-sm text-slate-600 mt-2">
-                    Registrar ventas con lector de código de barras y aplicar descuentos autorizados.
-                </p>
-            </a>
-
-            <!-- Historial de ventas -->
-            <a href="{% url 'ventas:venta_lista' %}" class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">💵 Historial de ventas</h3>
-                <p class="text-sm text-slate-600 mt-2">
-                    Ver detalle de ventas, anular y revisar comprobantes.
-                </p>
-            </a>
-
-            <!-- Caja y arqueos -->
-            <a href="{% url 'ventas:caja_historial' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">💰 Caja y arqueos</h3>
-                <p class="text-sm text-slate-600 mt-2">
-                    Abrir caja, registrar arqueos parciales y revisar cierres de turno.
-                </p>
-            </a>
-            {% endif %}
-
-            <!-- Pedidos -->
-            <a href="{% url 'pedidos:pedido_lista' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">🛒 Pedidos</h3>
-                <p class="text-sm text-slate-600 mt-2">Pedidos en curso y completados.</p>
-            </a>
-
-            <a href="{% url 'pedidos:pedidos_monitor' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">📡 Monitor de pedidos</h3>
-                <p class="text-sm text-slate-600 mt-2">Vista en tiempo real de pedidos del cliente.</p>
-            </a>
-
-            <!-- Tienda online -->
-            <a href="{% url 'tienda:home' %}" 
-               target="_blank"
-               class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition border-2 border-emerald-200">
-                <h3 class="font-semibold text-lg">🌐 Tienda online</h3>
-                <p class="text-sm text-slate-600 mt-2">Ver la tienda pública donde los clientes realizan pedidos.</p>
-                <p class="text-xs text-emerald-600 mt-2 font-medium">Abre en nueva pestaña ↗</p>
-            </a>
-        </div>
-    </section>
-
-
-    {# --- Sección 3: Reportes (ADMIN y CAJERO) --- #}
     {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
-    <section class="space-y-3">
-        <h2 class="text-lg font-semibold text-slate-700">Reportes</h2>
+    <!-- Métricas Principales -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <a href="{% url 'reportes:ventas' %}" class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">📊 Ventas</h3>
-                <p class="text-sm text-slate-600 mt-2">Resumen general de ventas por período.</p>
-            </a>
-
-            <a href="{% url 'reportes:dia-hora' %}" class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">🕒 Día × Hora</h3>
-                <p class="text-sm text-slate-600 mt-2">Comportamiento de la demanda por franja horaria.</p>
-            </a>
-
-            <a href="{% url 'reportes:no-retira' %}" class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">🚫 Tasa de no retiro</h3>
-                <p class="text-sm text-slate-600 mt-2">Pedidos que no fueron retirados por el cliente.</p>
-            </a>
-
-            <a href="{% url 'reportes:mermas-proveedor' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">🗑️ Mermas por proveedor</h3>
-                <p class="text-sm text-slate-600 mt-2">Pérdidas asociadas a cada proveedor.</p>
-            </a>
-
-            <a href="{% url 'reportes:reporte_quiebres' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
-                <h3 class="font-semibold text-lg">⚡ Stock / quiebres</h3>
-                <p class="text-sm text-slate-600 mt-2">Análisis de quiebres de stock en el tiempo.</p>
-            </a>
+        <!-- Ventas Hoy -->
+        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-emerald-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-slate-500 font-medium">Ventas Hoy</p>
+                    <p class="text-2xl font-bold text-pirula-dark">${{ ventas_hoy_total|floatformat:0|default:"0" }}</p>
+                    <p class="text-xs text-slate-400 mt-1">{{ ventas_hoy_count|default:0 }} transacciones</p>
+                </div>
+                <div class="text-4xl">💰</div>
+            </div>
         </div>
-    </section>
+
+        <!-- Ventas Semana -->
+        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-blue-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-slate-500 font-medium">Ventas Semana</p>
+                    <p class="text-2xl font-bold text-pirula-dark">${{ ventas_semana_total|floatformat:0|default:"0" }}
+                    </p>
+                    <p class="text-xs text-slate-400 mt-1">Esta semana</p>
+                </div>
+                <div class="text-4xl">📊</div>
+            </div>
+        </div>
+
+        <!-- Pedidos Pendientes -->
+        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-amber-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-slate-500 font-medium">Pedidos Activos</p>
+                    <p class="text-2xl font-bold text-pirula-dark">{{ pedidos_pendientes|default:0 }}</p>
+                    <p class="text-xs text-slate-400 mt-1">Por procesar</p>
+                </div>
+                <div class="text-4xl">🛒</div>
+            </div>
+        </div>
+
+        <!-- Stock Crítico -->
+        <div
+            class="bg-white rounded-xl p-5 shadow-md border-l-4 {% if stock_critico_count %}border-red-500{% else %}border-green-500{% endif %}">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-slate-500 font-medium">Stock Crítico</p>
+                    <p
+                        class="text-2xl font-bold {% if stock_critico_count %}text-red-600{% else %}text-green-600{% endif %}">
+                        {{ stock_critico_count|default:0 }}</p>
+                    <p class="text-xs text-slate-400 mt-1">Productos bajos</p>
+                </div>
+                <div class="text-4xl">{% if stock_critico_count %}⚠️{% else %}✅{% endif %}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estado de Pedidos -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Resumen de Pedidos -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="bg-pirula-medium text-white px-5 py-3 flex items-center justify-between">
+                <h2 class="font-semibold">📦 Estado de Pedidos</h2>
+                <a href="{% url 'pedidos:pedidos_monitor' %}"
+                    class="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition">
+                    Ver monitor →
+                </a>
+            </div>
+            <div class="p-5">
+                <div class="grid grid-cols-3 gap-4 text-center">
+                    <div class="p-3 bg-blue-50 rounded-lg">
+                        <p class="text-2xl font-bold text-blue-600">{{ pedidos_recibidos|default:0 }}</p>
+                        <p class="text-xs text-blue-700 mt-1">Recibidos</p>
+                    </div>
+                    <div class="p-3 bg-amber-50 rounded-lg">
+                        <p class="text-2xl font-bold text-amber-600">{{ pedidos_preparando|default:0 }}</p>
+                        <p class="text-xs text-amber-700 mt-1">Preparando</p>
+                    </div>
+                    <div class="p-3 bg-green-50 rounded-lg">
+                        <p class="text-2xl font-bold text-green-600">{{ pedidos_listos|default:0 }}</p>
+                        <p class="text-xs text-green-700 mt-1">Listos</p>
+                    </div>
+                </div>
+
+                {% if pedidos_pendientes > 0 %}
+                <div class="mt-4 text-center">
+                    <a href="{% url 'pedidos:pedidos_monitor' %}"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-pirula-accent hover:bg-pirula-light text-white text-sm font-medium rounded-lg transition-colors">
+                        📡 Abrir Monitor de Cocina
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Alertas de Stock -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="bg-pirula-medium text-white px-5 py-3 flex items-center justify-between">
+                <h2 class="font-semibold">⚠️ Alertas de Inventario</h2>
+                <a href="{% url 'inventario:producto_stock_critico' %}"
+                    class="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition">
+                    Ver todos →
+                </a>
+            </div>
+            <div class="p-5">
+                {% if productos_stock_critico %}
+                <ul class="space-y-2">
+                    {% for producto in productos_stock_critico %}
+                    <li class="flex items-center justify-between p-2 bg-red-50 rounded-lg">
+                        <span class="text-sm text-slate-700 truncate">{{ producto.nombre }}</span>
+                        <span class="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">
+                            Stock: {{ producto.stock }}
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% if sin_stock_count > 0 %}
+                <p class="mt-3 text-xs text-red-600 text-center">
+                    🚨 {{ sin_stock_count }} productos sin stock
+                </p>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-8">
+                    <div class="text-4xl mb-2">✅</div>
+                    <p class="text-slate-500">Todo el inventario está en orden</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
     {% endif %}
 
-    {# --- Sección 4: Administración (solo ADMIN) --- #}
-    {% if request.user.perfilusuario.rol == 'ADMIN' %}
-    <section class="space-y-3">
-        <h2 class="text-lg font-semibold text-slate-700">Administración</h2>
+    <!-- Accesos Rápidos -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="bg-pirula-dark text-white px-5 py-3">
+            <h2 class="font-semibold">⚡ Accesos Rápidos</h2>
+        </div>
+        <div class="p-5">
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
+                <a href="{% url 'ventas:venta_crear' %}"
+                    class="flex flex-col items-center p-4 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors group">
+                    <span class="text-3xl group-hover:scale-110 transition-transform">💳</span>
+                    <span class="text-sm font-medium text-pirula-dark mt-2">Punto de Venta</span>
+                </a>
+                {% endif %}
+
+                <a href="{% url 'pedidos:pedidos_monitor' %}"
+                    class="flex flex-col items-center p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors group">
+                    <span class="text-3xl group-hover:scale-110 transition-transform">📡</span>
+                    <span class="text-sm font-medium text-pirula-dark mt-2">Monitor</span>
+                </a>
+
+                <a href="{% url 'inventario:producto_lista' %}"
+                    class="flex flex-col items-center p-4 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors group">
+                    <span class="text-3xl group-hover:scale-110 transition-transform">📦</span>
+                    <span class="text-sm font-medium text-pirula-dark mt-2">Productos</span>
+                </a>
+
+                <a href="{% url 'inventario:scan_ean' %}"
+                    class="flex flex-col items-center p-4 bg-amber-50 hover:bg-amber-100 rounded-xl transition-colors group">
+                    <span class="text-3xl group-hover:scale-110 transition-transform">📷</span>
+                    <span class="text-sm font-medium text-pirula-dark mt-2">Escanear</span>
+                </a>
+
+                {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
+                <a href="{% url 'reportes:ventas' %}"
+                    class="flex flex-col items-center p-4 bg-pink-50 hover:bg-pink-100 rounded-xl transition-colors group">
+                    <span class="text-3xl group-hover:scale-110 transition-transform">📊</span>
+                    <span class="text-sm font-medium text-pirula-dark mt-2">Reportes</span>
+                </a>
+                {% endif %}
+
+                <a href="{% url 'tienda:home' %}" target="_blank"
+                    class="flex flex-col items-center p-4 bg-teal-50 hover:bg-teal-100 rounded-xl transition-colors group">
+                    <span class="text-3xl group-hover:scale-110 transition-transform">🛒</span>
+                    <span class="text-sm font-medium text-pirula-dark mt-2">Tienda ↗</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if request.user.perfilusuario.rol == 'ADMIN' %}
+    <!-- Panel Admin -->
+    <div class="bg-gradient-to-r from-pirula-accent to-pirula-medium rounded-xl p-6 text-white shadow-lg">
+        <h2 class="text-lg font-semibold mb-4">🔐 Panel de Administración</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <a href="{% url 'core:usuarios_lista' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition border border-amber-300">
-                <h3 class="font-semibold text-lg">👥 Usuarios del sistema</h3>
-                <p class="text-sm text-slate-600 mt-2">
-                    Crear, editar y desactivar cuentas de trabajadores, asignar roles y mantener el control de acceso.
-                </p>
+                class="bg-white/20 hover:bg-white/30 rounded-lg p-3 text-center transition-colors">
+                <span class="text-2xl">👥</span>
+                <p class="text-xs mt-1">Usuarios</p>
             </a>
             <a href="{% url 'ventas:descuento_reglas' %}"
-                class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition border border-sky-200">
-                <h3 class="font-semibold text-lg">🎯 Política de descuentos</h3>
-                <p class="text-sm text-slate-600 mt-2">
-                    Configura topes de descuento por rol, administra códigos de autorización y revisa la auditoría
-                    de descuentos aplicados en caja.
-                </p>
-                <p class="text-xs text-sky-700 mt-3">
-                    Incluye acceso a reglas, códigos y registros de auditoría.
-                </p>
+                class="bg-white/20 hover:bg-white/30 rounded-lg p-3 text-center transition-colors">
+                <span class="text-2xl">🎯</span>
+                <p class="text-xs mt-1">Descuentos</p>
+            </a>
+            <a href="{% url 'core:admin_bitacoras' %}"
+                class="bg-white/20 hover:bg-white/30 rounded-lg p-3 text-center transition-colors">
+                <span class="text-2xl">📋</span>
+                <p class="text-xs mt-1">Bitácora</p>
+            </a>
+            <a href="{% url 'inventario:compra_lista' %}"
+                class="bg-white/20 hover:bg-white/30 rounded-lg p-3 text-center transition-colors">
+                <span class="text-2xl">🧾</span>
+                <p class="text-xs mt-1">Compras</p>
+            </a>
+            <a href="{% url 'inventario:proveedor_lista' %}"
+                class="bg-white/20 hover:bg-white/30 rounded-lg p-3 text-center transition-colors">
+                <span class="text-2xl">🤝</span>
+                <p class="text-xs mt-1">Proveedores</p>
             </a>
         </div>
-    </section>
+    </div>
     {% endif %}
 
 </div>

@@ -1,0 +1,169 @@
+{% extends "tienda/base_public.html" %}
+{% load humanize %}
+
+{% block title %}Detalle Pedido #{{ pedido.codigo }} - SIPER Pirula{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <!-- Breadcrumb / Back Link -->
+    <div class="mb-6">
+        <a href="{% url 'tienda:perfil' %}"
+            class="text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-pirula-dark dark:hover:text-pirula-amber inline-flex items-center gap-1 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd"
+                    d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
+                    clip-rule="evenodd" />
+            </svg>
+            Volver a Mis Pedidos
+        </a>
+    </div>
+
+    <!-- Header containing Status and ID -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+            <h1 class="text-3xl font-header font-bold text-pirula-dark dark:text-white uppercase tracking-wide">
+                Pedido #{{ pedido.codigo }}
+            </h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">
+                Realizado el {{ pedido.fecha|date:"d de F, Y" }} a las {{ pedido.fecha|date:"H:i" }}
+            </p>
+        </div>
+        <div class="flex flex-col gap-2">
+            <!-- Estado de Pago -->
+            <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold shadow-sm
+                {% if pedido.estado_pago == 'PAGADO' %} bg-green-100 text-green-800 border border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700
+                {% elif pedido.estado_pago == 'PENDIENTE' %} bg-yellow-100 text-yellow-800 border border-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-300 dark:border-yellow-700
+                {% else %} bg-red-100 text-red-800 border border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700
+                {% endif %}">
+                💳 {{ pedido.get_estado_pago_display }}
+            </span>
+            <!-- Estado de Preparación -->
+            <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold shadow-sm
+                {% if pedido.estado_preparacion == 'RETIRADO' %} bg-green-100 text-green-800 border border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700
+                {% elif pedido.estado_preparacion == 'LISTO' %} bg-purple-100 text-purple-800 border border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700
+                {% elif pedido.estado_preparacion == 'PREPARANDO' %} bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700
+                {% elif pedido.estado_preparacion == 'RECIBIDO' %} bg-yellow-100 text-yellow-800 border border-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-300 dark:border-yellow-700
+                {% else %} bg-slate-100 text-slate-800 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600
+                {% endif %}">
+                📦 {{ pedido.get_estado_preparacion_display }}
+            </span>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Order Items -->
+        <div class="lg:col-span-2 space-y-6">
+            <div
+                class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden premium-card">
+                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide">
+                        Productos
+                    </h2>
+                </div>
+                <div class="divide-y divide-slate-100 dark:divide-slate-700">
+                    {% for item in pedido.items.all %}
+                    <div class="p-6 flex items-center gap-4">
+                        <div
+                            class="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white">
+                            {% if item.producto.imagen %}
+                            <img src="{{ item.producto.imagen.url }}" alt="{{ item.producto.nombre }}"
+                                class="h-full w-full object-cover">
+                            {% else %}
+                            <div
+                                class="h-full w-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-slate-900 dark:text-white">{{ item.producto.nombre }}</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">{{ item.cantidad }} x ${{ Sitem.precio|floatformat:0|intcomma }}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-bold text-slate-900 dark:text-white">${{ item.subtotal|floatformat:0|intcomma }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <!-- Totals -->
+                <div
+                    class="bg-slate-50 dark:bg-slate-900/50 p-6 border-t border-slate-100 dark:border-slate-700 space-y-2">
+                    <div class="flex justify-between text-sm text-slate-600 dark:text-slate-400">
+                        <span>Forma de Pago</span>
+                        <span class="font-medium text-slate-900 dark:text-white">{{ pedido.get_forma_pago_display }}</span>
+                    </div>
+                    {% if pedido.costo_envio > 0 %}
+                    <div class="flex justify-between text-sm text-slate-600 dark:text-slate-400">
+                        <span>Envío</span>
+                        <span class="font-medium text-slate-900 dark:text-white">${{ pedido.costo_envio|floatformat:0|intcomma }}</span>
+                    </div>
+                    {% endif %}
+                    <div
+                        class="flex justify-between text-xl font-bold text-pirula-dark dark:text-pirula-amber pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <span>Total</span>
+                        <span>${{ pedido.total|floatformat:0|intcomma }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Column -->
+        <div class="lg:col-span-1 space-y-6">
+            <!-- Delivery Info -->
+            <div
+                class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden premium-card">
+                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide">
+                        Datos de Entrega
+                    </h2>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <span
+                            class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Cliente</span>
+                        <div class="text-slate-900 dark:text-white font-medium">{{ pedido.nombre }}</div>
+                    </div>
+                    <div>
+                        <span
+                            class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Contacto</span>
+                        <div class="text-slate-900 dark:text-white font-medium">{{ pedido.correo }}</div>
+                        <div class="text-slate-900 dark:text-white font-medium">{{ pedido.telefono }}</div>
+                    </div>
+                    {% if pedido.direccion_entrega %}
+                    <div>
+                        <span
+                            class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Dirección</span>
+                        <div class="text-slate-900 dark:text-white font-medium">{{ pedido.direccion_entrega }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Help Card -->
+            <div class="bg-pirula-amber rounded-2xl p-6 shadow-lg text-pirula-dark relative overflow-hidden">
+                <div class="relative z-10">
+                    <h3 class="font-bold text-lg mb-2">¿Necesitas ayuda?</h3>
+                    <p class="text-sm font-medium mb-4 opacity-90">Si tienes algún problema con tu pedido, contáctanos
+                        indicando tu N° de pedido.</p>
+                    <a href="https://wa.me/56912345678" target="_blank"
+                        class="inline-block bg-white text-pirula-dark px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-slate-100 transition-colors">
+                        Contactar Soporte
+                    </a>
+                </div>
+                <!-- Decorative pattern -->
+                <div class="absolute -bottom-4 -right-4 text-white opacity-20 transform rotate-12">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

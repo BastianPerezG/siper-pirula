@@ -3,6 +3,7 @@ import logging
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
+from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.db.models import Q
@@ -240,12 +241,7 @@ def limpiar_carrito_en_session(request):
 
 
 def tienda_home(request):
-    # Redirigir usuarios internos al dashboard
-    if request.user.is_authenticated:
-        perfil = getattr(request.user, "perfilusuario", None)
-        if perfil and perfil.activo:
-            from django.shortcuts import redirect
-            return redirect("core:dashboard")
+    # Ya no redirigimos usuarios internos al dashboard para permitirles ver la tienda
     
     negocio = get_negocio_actual()
 
@@ -838,8 +834,13 @@ def checkout_exito_view(request, pedido_id):
 
 
 # ------------------------------------------------------------------
-# Registro / login clientes
+# Registro / Login / Perfil
 # ------------------------------------------------------------------
+
+from django.contrib.auth.decorators import login_required
+from pedidos.forms import RegistroClienteForm, EditarPerfilForm
+from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
 
 
 def registro_cliente_view(request):
@@ -895,6 +896,87 @@ def logout_cliente_view(request):
     logout(request)
     messages.info(request, "Sesión cerrada.")
     return redirect("tienda:home")
+
+
+@login_required(login_url="tienda:login")
+def perfil_view(request):
+    """
+    Dashboard del usuario: muestra sus datos y lista de pedidos.
+    """
+    negocio = get_negocio_actual()
+    # Buscar el cliente asociado al usuario actual
+    cliente = Cliente.objects.filter(user=request.user, negocio=negocio).first()
+
+    # Historial de pedidos
+    pedidos = []
+    if cliente:
+        pedidos = Pedido.objects.filter(cliente=cliente).order_by("-fecha")[:20] 
+
+    return render(request, "tienda/perfil.html", {
+        "cliente": cliente,
+        "pedidos": pedidos
+    })
+
+
+@login_required(login_url="tienda:login")
+def perfil_editar_view(request):
+    negocio = get_negocio_actual()
+    cliente = get_object_or_404(Cliente, user=request.user, negocio=negocio)
+
+    if request.method == "POST":
+        # Formulario de datos personales
+        form = EditarPerfilForm(request.POST, instance=cliente)
+        
+        # Formulario de cambio de contraseña
+        # Nota: PasswordChangeForm requiere el usuario, no el cliente
+        password_form = PasswordChangeForm(request.user, request.POST)
+
+        # Determinar qué se está enviando por el nombre del botón submit o campo hidden
+        if "update_profile" in request.POST:
+            if form.is_valid():
+                # Actualizar email en User también
+                new_email = form.cleaned_data["email"]
+                if request.user.email != new_email:
+                    request.user.email = new_email
+                    request.user.save()
+                
+                form.save()
+                messages.success(request, "Tus datos han sido actualizados.")
+                return redirect("tienda:perfil")
+        
+        elif "change_password" in request.POST:
+             if password_form.is_valid():
+                user = password_form.save()
+                update_session_auth_hash(request, user)  # Importante para no desloguear
+                messages.success(request, "Tu contraseña ha sido actualizada exitosamente.")
+                return redirect("tienda:perfil")
+             else:
+                 messages.error(request, "Error al cambiar contraseña. Revisa los campos.")
+
+    else:
+        form = EditarPerfilForm(instance=cliente, initial={"email": request.user.email})
+        password_form = PasswordChangeForm(request.user)
+
+    return render(request, "tienda/perfil_editar.html", {
+        "form": form,
+        "password_form": password_form
+    })
+
+
+@login_required(login_url="tienda:login")
+def pedido_detalle_view(request, pedido_id):
+    negocio = get_negocio_actual()
+    # Asegúrate de importar Cliente si no está importado, o obtenerlo via user
+    cliente = get_object_or_404(Cliente, user=request.user, negocio=negocio)
+    
+    # Obtener el pedido solo si pertenece al cliente
+    pedido = get_object_or_404(Pedido, pk=pedido_id, cliente=cliente)
+    
+    return render(request, "tienda/pedido_detalle.html", {
+        "pedido": pedido,
+        "negocio": negocio
+    })
+
 
 
 # ------------------------------------------------------------------
@@ -1120,8 +1202,11 @@ def webpay_retorno_view(request):
 
     if status == "AUTHORIZED":
         pedido.webpay_status = "AUTHORIZED"
-        pedido.estado = Pedido.EST_PAGADO
-        pedido.save(update_fields=["webpay_status", "estado"])
+        # Usar el nuevo método que separa los estados
+        pedido.estado_pago = Pedido.PAGO_PAGADO
+        pedido.estado_preparacion = Pedido.PREP_RECIBIDO  # Listo para preparar
+        pedido.estado = Pedido.EST_PAGADO  # Compatibilidad
+        pedido.save(update_fields=["webpay_status", "estado_pago", "estado_preparacion", "estado"])
 
         # Intentar enviar correo, pero no fallar si hay problemas de configuración SMTP
         try:
@@ -1138,9 +1223,8 @@ def webpay_retorno_view(request):
 
     else:
         pedido.webpay_status = status or "FAILED"
-        pedido.estado = Pedido.EST_CANCELADO
-        pedido.liberar_reservas_inventario()
-        pedido.save(update_fields=["webpay_status", "estado"])
+        # Marcar como cancelado usando el método actualizado
+        pedido.marcar_cancelado_revertir_reserva()
 
         messages.error(
             request,

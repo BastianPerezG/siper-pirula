@@ -9,7 +9,9 @@
         <div class="bg-gradient-to-br from-red-50 to-amber-50 px-6 py-12 text-center">
             <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-100 mb-4">
                 <svg class="w-12 h-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                    </path>
                 </svg>
             </div>
             <h1 class="text-3xl font-bold text-slate-900 mb-2">
@@ -28,16 +30,16 @@
                 </p>
 
                 {% if user.is_authenticated %}
-                    {% if user.perfilusuario %}
-                        <div class="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200">
-                            <p class="text-sm font-semibold text-slate-700 mb-2">
-                                Tu rol actual:
-                            </p>
-                            <p class="text-base text-slate-900">
-                                {{ user.perfilusuario.get_rol_display }}
-                            </p>
-                        </div>
-                    {% endif %}
+                {% if user.perfilusuario %}
+                <div class="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200">
+                    <p class="text-sm font-semibold text-slate-700 mb-2">
+                        Tu rol actual:
+                    </p>
+                    <p class="text-base text-slate-900">
+                        {{ user.perfilusuario.get_rol_display }}
+                    </p>
+                </div>
+                {% endif %}
                 {% endif %}
 
                 <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
@@ -51,11 +53,11 @@
             <!-- Botones de acción -->
             <div class="flex flex-col sm:flex-row gap-3 mt-8">
                 <a href="{% url 'core:dashboard' %}"
-                   class="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800 transition-colors">
+                    class="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800 transition-colors">
                     Volver al Dashboard
                 </a>
                 <a href="javascript:history.back()"
-                   class="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition-colors">
+                    class="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition-colors">
                     ← Volver atrás
                 </a>
             </div>
@@ -63,4 +65,3 @@
     </div>
 </div>
 {% endblock %}
-

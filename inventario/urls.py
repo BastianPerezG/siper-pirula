@@ -29,6 +29,7 @@ urlpatterns = [
     path("proveedores/<int:pk>/editar/", views.ProveedorUpdateView.as_view(), name="proveedor_actualizar"),
     path("proveedores/<int:pk>/ocultar/", views.ProveedorToggleActivoView.as_view(), name="proveedor_ocultar"),
     path("proveedores/<int:pk>/plantilla/", views.ProveedorPlantillaView.as_view(), name="proveedor_plantilla"),
+    path("proveedores/<int:pk>/plantilla/pdf/", views.proveedor_plantilla_pdf_view, name="proveedor_plantilla_pdf"),
     # Plantillas proveedor-producto
     path("plantilla/<int:proveedor_id>/plantilla", views.PlantillaProveedorProductoListView.as_view(), name="plantilla_lista"),
     path("plantilla/<int:pk>/detalle", views.ProveedorDetailView.as_view(), name="proveedor_detalle"),
@@ -37,8 +38,14 @@ urlpatterns = [
     path("categorias/nueva/", views.CategoriaCrearView.as_view(), name="categoria_crear"),
     path("categorias/<int:pk>/editar/", views.CategoriaActualizarView.as_view(), name="categoria_editar"),
     path("categorias/<int:pk>/toggle/", views.CategoriaToggleActivaView.as_view(), name="categoria_toggle_activa"),
+    # Marcas
+    path("marcas/", views.MarcaListaView.as_view(), name="marca_lista"),
+    path("marcas/nueva/", views.MarcaCrearView.as_view(), name="marca_crear"),
+    path("marcas/<int:pk>/editar/", views.MarcaActualizarView.as_view(), name="marca_editar"),
+    path("marcas/<int:pk>/toggle/", views.MarcaToggleActivaView.as_view(), name="marca_toggle_activa"),
     # Promociones
     path("promos/", views.promo_lista_view, name="promo_lista"),
+    path("promos/<int:pk>/", views.promo_detalle_view, name="promo_detalle"),
     path("promos/nueva/", views.promo_crear_view, name="promo_crear"),
     path("promos/<int:pk>/editar/", views.promo_editar_view, name="promo_editar"),
     path("promos/<int:pk>/toggle/", views.promo_toggle_activa_view, name="promo_toggle"),
@@ -47,4 +54,6 @@ urlpatterns = [
     path("mermas/nueva/", views.merma_crear, name="merma_crear"),
     path("mermas/<int:pk>/editar/", views.merma_editar, name="merma_editar"),
     path("mermas/<int:pk>/eliminar/", views.merma_eliminar, name="merma_eliminar"),
+    # API
+    path("api/sugerencias/", views.sugerencias_productos, name="sugerencias_productos"),
 ]

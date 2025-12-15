@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
 from django.utils.safestring import mark_safe
 from django.contrib import messages
+from django.http import JsonResponse
 from django.db.models import Q
 from core.models import Negocio
 from core.utils import registrar_bitacora_estructurada
@@ -21,6 +22,7 @@ from .models import (
     Compra,Proveedor,
     PlantillaProveedorProducto, 
     Categoria,
+    Marca,
     Promo,
     PromoItem,
 )
@@ -81,6 +83,7 @@ class ProductoListaView(RolRequeridoMixin, ListView):
         categoria_id = self.request.GET.get("categoria")
         proveedor_id = self.request.GET.get("proveedor")
         estado = self.request.GET.get("estado", "activos")
+        stock_critico = self.request.GET.get("stock_critico")
         q = (self.request.GET.get("q") or "").strip()
 
         # Estado: activos / inactivos / todos
@@ -103,7 +106,17 @@ class ProductoListaView(RolRequeridoMixin, ListView):
                 | Q(sku__icontains=q)
             )
 
+        # Guardar stock_critico flag para filtrar después en get_context_data
+        self._stock_critico_filter = stock_critico == "1"
+
         return qs.order_by("nombre")
+
+    def get_queryset_filtered(self):
+        """Aplica el filtro de stock crítico en Python (stock_actual es property)"""
+        qs = super().get_queryset()
+        if getattr(self, '_stock_critico_filter', False):
+            return [p for p in qs if p.stock_actual < p.stock_min]
+        return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -117,6 +130,18 @@ class ProductoListaView(RolRequeridoMixin, ListView):
             negocio=negocio, activo=True
         ).order_by("nombre")
 
+        # Contador de productos con stock crítico (calculado en Python)
+        all_productos = Producto.objects.filter(negocio=negocio, activo=True)
+        ctx["productos_criticos_count"] = len([p for p in all_productos if p.stock_actual < p.stock_min])
+
+        # Si está activo el filtro de stock crítico, aplicar en Python
+        stock_critico = self.request.GET.get("stock_critico", "")
+        if stock_critico == "1":
+            # Reemplazar la lista de productos con los filtrados
+            productos_filtrados = [p for p in self.object_list if p.stock_actual < p.stock_min]
+            ctx["productos"] = productos_filtrados
+            ctx["is_paginated"] = False  # Desactivar paginación para este filtro
+
         categoria_get = self.request.GET.get("categoria")
         proveedor_get = self.request.GET.get("proveedor")
 
@@ -124,6 +149,7 @@ class ProductoListaView(RolRequeridoMixin, ListView):
             "categoria": int(categoria_get) if categoria_get else None,
             "proveedor": int(proveedor_get) if proveedor_get else None,
             "estado": self.request.GET.get("estado", "activos"),
+            "stock_critico": stock_critico,
             "q": (self.request.GET.get("q") or "").strip(),
         }
         return ctx
@@ -146,7 +172,7 @@ class ProductoCrearView(RolRequeridoMixin, CreateView):
     model = Producto
     form_class = ProductoCrearForm
     template_name = "inventario/productos/producto_crear.html"
-    success_url = reverse_lazy("inventario:scan_ean")
+    success_url = reverse_lazy("inventario:producto_lista")
 
     def get_initial(self):
         initial = super().get_initial()
@@ -177,6 +203,7 @@ class ProductoCrearView(RolRequeridoMixin, CreateView):
             entidad_id=producto.pk,
             detalles=detalles_registro
         )
+        messages.success(self.request, f"Producto '{producto.nombre}' creado correctamente.")
         return super().form_valid(form)
     
 
@@ -469,15 +496,39 @@ class CompraDetalleView(RolRequeridoMixin, DetailView):
         negocio = self.request.user.perfilusuario.negocio
         return Compra.objects.filter(negocio=negocio)
 
-
 @login_required
 def compra_crear_view(request):
     negocio = request.user.perfilusuario.negocio
 
-    # Mapa de costos y EAN -> id producto
-    productos = Producto.objects.filter(negocio=negocio, activo=True)
-    costos_map = {str(p.id): p.costo for p in productos}
-    ean_map = {str(p.ean): str(p.id) for p in productos}
+    # Mapa de costos y productos
+    productos = Producto.objects.filter(negocio=negocio, activo=True).select_related('proveedor')
+    costos_map = {str(p.id): float(p.costo or 0) for p in productos}
+    ean_map = {str(p.ean): str(p.id) for p in productos if p.ean}
+    
+    # Mapa de productos por proveedor (para filtro dinámico)
+    productos_por_proveedor = {}
+    for p in productos:
+        prov_id = str(p.proveedor_id) if p.proveedor_id else "0"
+        if prov_id not in productos_por_proveedor:
+            productos_por_proveedor[prov_id] = []
+        productos_por_proveedor[prov_id].append({
+            "id": p.id,
+            "nombre": p.nombre,
+            "sku": p.sku or "",
+            "ean": p.ean or "",
+        })
+    
+    # Mapa de búsqueda extendida (nombre, SKU, EAN -> id)
+    busqueda_map = {}
+    for p in productos:
+        # Agregar EAN
+        if p.ean:
+            busqueda_map[p.ean.lower()] = str(p.id)
+        # Agregar SKU
+        if p.sku:
+            busqueda_map[p.sku.lower()] = str(p.id)
+        # Agregar nombre (primeras palabras)
+        busqueda_map[p.nombre.lower()] = str(p.id)
 
     if request.method == "POST":
         form = CompraForm(request.POST, request.FILES, negocio=negocio)
@@ -507,6 +558,8 @@ def compra_crear_view(request):
         "formset": formset,
         "costos_json": json.dumps(costos_map),
         "ean_map_json": json.dumps(ean_map),
+        "productos_por_proveedor_json": json.dumps(productos_por_proveedor),
+        "busqueda_map_json": json.dumps(busqueda_map),
     }
     return render(request, "inventario/compras/compra_crear.html", context)
 
@@ -800,7 +853,7 @@ class ProveedorPlantillaView(LoginRequiredMixin, TemplateView):
 
         proveedor = get_object_or_404(
             Proveedor,
-            pk=self.kwargs["proveedor_id"],  # o "pk" según tu URL
+            pk=self.kwargs["pk"],
             negocio=negocio,
         )
 
@@ -828,6 +881,96 @@ class ProveedorPlantillaView(LoginRequiredMixin, TemplateView):
             ultima_compra=ultima_compra,
         )
         return context
+
+
+@login_required
+@rol_requerido("CAJERO", "ADMIN")
+def proveedor_plantilla_pdf_view(request, pk):
+    """
+    Genera un PDF de orden de pedido para el proveedor usando xhtml2pdf.
+    Recibe las cantidades por POST.
+    Si se pasa preview=1, muestra el HTML en el navegador.
+    """
+    from io import BytesIO
+    from django.http import HttpResponse
+    from django.template.loader import get_template
+    from xhtml2pdf import pisa
+    from datetime import datetime
+    import os
+    from django.conf import settings
+
+    negocio = request.user.perfilusuario.negocio
+    proveedor = get_object_or_404(Proveedor, pk=pk, negocio=negocio)
+
+    # Obtener productos del proveedor
+    productos = Producto.objects.filter(
+        negocio=negocio, proveedor=proveedor, activo=True
+    ).order_by("nombre")
+
+    # Filtrar solo productos con cantidad > 0
+    items_pedido = []
+    total = 0
+
+    for p in productos:
+        cantidad_str = request.POST.get(f"cantidad_{p.id}", "0")
+        try:
+            cantidad = int(cantidad_str)
+        except ValueError:
+            cantidad = 0
+
+        if cantidad > 0:
+            subtotal = (p.costo or 0) * cantidad
+            items_pedido.append({
+                "producto": p,
+                "cantidad": cantidad,
+                "costo": p.costo or 0,
+                "subtotal": subtotal,
+            })
+            total += subtotal
+
+    # Si no hay items, redirigir con mensaje
+    if not items_pedido:
+        messages.warning(request, "Debes seleccionar al menos un producto con cantidad mayor a 0.")
+        return redirect("inventario:proveedor_plantilla", pk=pk)
+
+    # Ruta del logo
+    logo_path = os.path.join(settings.STATIC_ROOT or settings.BASE_DIR / 'static', 'img', 'logo_gran_pirula_marron.jpg')
+    if not os.path.exists(logo_path):
+        logo_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'logo_gran_pirula_marron.jpg')
+
+    # Contexto para el PDF
+    context = {
+        "proveedor": proveedor,
+        "negocio": negocio,
+        "items": items_pedido,
+        "total": total,
+        "fecha": datetime.now(),
+        "usuario": request.user,
+        "logo_path": logo_path,
+        "is_preview": request.POST.get("preview") == "1",
+    }
+
+    # Si es preview, mostrar HTML en navegador
+    if request.POST.get("preview") == "1":
+        template = get_template("inventario/proveedores/plantilla_preview.html")
+        return HttpResponse(template.render(context, request))
+
+    # Renderizar template PDF
+    template = get_template("inventario/proveedores/plantilla_pdf.html")
+    html = template.render(context)
+
+    # Crear PDF
+    result = BytesIO()
+    pdf = pisa.CreatePDF(BytesIO(html.encode("UTF-8")), dest=result)
+
+    if pdf.err:
+        return HttpResponse("Error al generar PDF", status=500)
+
+    # Respuesta con PDF
+    response = HttpResponse(result.getvalue(), content_type="application/pdf")
+    filename = f"pedido_{proveedor.nombre[:20]}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 # ================== CATEGORÍAS (CRUD INTERNO) ======================
 
@@ -887,6 +1030,56 @@ class CategoriaToggleActivaView(RolRequeridoMixin, View):
         categoria.save()
         return redirect("inventario:categoria_lista")
 
+
+# ================== MARCAS (CRUD INTERNO) ======================
+
+class MarcaListaView(RolRequeridoMixin, ListView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
+    model = Marca
+    template_name = "inventario/marcas/marca_lista.html"
+    context_object_name = "marcas"
+    paginate_by = 25
+
+    def get_queryset(self):
+        negocio = self.request.user.perfilusuario.negocio
+        return Marca.objects.filter(negocio=negocio).order_by("nombre")
+
+
+class MarcaCrearView(RolRequeridoMixin, CreateView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
+    model = Marca
+    fields = ["nombre", "imagen", "activo"]
+    template_name = "inventario/marcas/marca_form.html"
+    success_url = reverse_lazy("inventario:marca_lista")
+
+    def form_valid(self, form):
+        form.instance.negocio = self.request.user.perfilusuario.negocio
+        return super().form_valid(form)
+
+
+class MarcaActualizarView(RolRequeridoMixin, UpdateView):
+    roles_requeridos = ["CAJERO", "ADMIN"]
+    model = Marca
+    fields = ["nombre", "imagen", "activo"]
+    template_name = "inventario/marcas/marca_form.html"
+    success_url = reverse_lazy("inventario:marca_lista")
+
+    def get_queryset(self):
+        negocio = self.request.user.perfilusuario.negocio
+        return Marca.objects.filter(negocio=negocio)
+
+
+class MarcaToggleActivaView(RolRequeridoMixin, View):
+    roles_requeridos = ["CAJERO", "ADMIN"]
+
+    def post(self, request, pk):
+        negocio = request.user.perfilusuario.negocio
+        marca = get_object_or_404(Marca, pk=pk, negocio=negocio)
+        marca.activo = not marca.activo
+        marca.save()
+        return redirect("inventario:marca_lista")
+
+
 # ================== PROMOCIONES / COMBOS ======================
 
 @login_required
@@ -901,6 +1094,20 @@ def promo_lista_view(request):
         "promos": promos,
     }
     return render(request, "inventario/promociones/promo_lista.html", context)
+
+
+@login_required
+def promo_detalle_view(request, pk):
+    """
+    Vista de detalle de una promoción.
+    """
+    negocio = request.user.perfilusuario.negocio
+    promo = get_object_or_404(Promo, pk=pk, negocio=negocio)
+
+    context = {
+        "promo": promo,
+    }
+    return render(request, "inventario/promociones/promo_detalle.html", context)
 
 
 @login_required
@@ -1125,3 +1332,51 @@ def merma_eliminar(request, pk):
         "inventario/merma/merma_confirmar_eliminar.html",
         {"merma": merma},
     )
+
+
+# --- Sugerencias de productos (autocomplete) ---
+@login_required
+def sugerencias_productos(request):
+    """Endpoint API para autocompletado de productos en compras."""
+    negocio = request.user.perfilusuario.negocio
+    q = request.GET.get("q", "").strip()
+    proveedor_id = request.GET.get("proveedor", "")
+
+    resultados = []
+    if len(q) >= 2:
+        palabras = q.split()
+        
+        # Crear query de búsqueda
+        query = Q()
+        for palabra in palabras:
+            query |= (
+                Q(nombre__icontains=palabra) |
+                Q(sku__icontains=palabra) |
+                Q(ean__icontains=palabra) |
+                Q(formato__icontains=palabra)
+            )
+        
+        # También buscar la frase completa
+        query |= Q(nombre__icontains=q)
+        
+        productos = Producto.objects.filter(
+            negocio=negocio,
+            activo=True,
+        ).filter(query)
+        
+        # Filtrar por proveedor si se especifica
+        if proveedor_id:
+            productos = productos.filter(proveedor_id=proveedor_id)
+        
+        productos = productos.distinct().order_by("nombre")[:10]
+
+        for p in productos:
+            resultados.append({
+                "id": p.id,
+                "nombre": p.nombre,
+                "sku": p.sku or "",
+                "ean": p.ean or "",
+                "costo": float(p.costo or 0),
+            })
+
+    return JsonResponse({"resultados": resultados})

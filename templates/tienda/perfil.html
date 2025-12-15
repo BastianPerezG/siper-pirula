@@ -1,0 +1,181 @@
+{% extends "tienda/base_public.html" %}
+
+{% block title %}Mi Perfil - SIPER Pirula{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <div>
+            <h1
+                class="text-3xl sm:text-4xl font-header font-bold text-pirula-dark dark:text-white uppercase tracking-wide">
+                Mi Cuenta
+            </h1>
+            <p class="mt-2 text-slate-600 dark:text-slate-400">
+                Bienvenido de vuelta, <span class="text-pirula-dark dark:text-pirula-amber font-bold">
+                    {{ request.user.first_name|default:request.user.username }}</span>.
+            </p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{% url 'tienda:logout' %}"
+                class="px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold transition-all">
+                Cerrar Sesión
+            </a>
+            <a href="{% url 'tienda:perfil_editar' %}"
+                class="px-5 py-2.5 rounded-xl bg-pirula-dark dark:bg-pirula-amber text-white dark:text-pirula-dark hover:bg-slate-800 dark:hover:bg-amber-400 font-bold shadow-lg transition-all flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                        d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                </svg>
+                Editar Mis Datos
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Left Column: User Info -->
+        <div class="lg:col-span-1 space-y-6">
+            <div
+                class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden premium-card">
+                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide">
+                        Mis Datos
+                    </h2>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <span class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Nombre</span>
+                        <div class="text-slate-900 dark:text-white font-medium">
+                            {{ cliente.nombre|default:"No registrado" }}</div>
+                    </div>
+                    <div>
+                        <span class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">RUT</span>
+                        <div class="text-slate-900 dark:text-white font-medium">
+                            {{ cliente.rut|default:"No registrado" }}</div>
+                    </div>
+                    <div>
+                        <span class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Email</span>
+                        <div class="text-slate-900 dark:text-white font-medium">{{ request.user.email }}</div>
+                    </div>
+                    <div>
+                        <span
+                            class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Teléfono</span>
+                        <div class="text-slate-900 dark:text-white font-medium">
+                            {{ cliente.telefono|default:"No registrado" }}</div>
+                    </div>
+                    <div>
+                        <span
+                            class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Dirección</span>
+                        <div class="text-slate-900 dark:text-white font-medium">
+                            {{ cliente.direccion|default:"No registrada" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats or Promo could go here -->
+            <div class="bg-pirula-amber/10 border border-pirula-amber/30 rounded-2xl p-6">
+                <h3 class="font-bold text-pirula-dark dark:text-pirula-amber mb-2">¿Sed de más?</h3>
+                <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">Revisa nuestras últimas promociones y no te
+                    quedes sin stock.</p>
+                <a href="{% url 'tienda:productos' %}"
+                    class="text-sm font-bold text-pirula-dark dark:text-pirula-amber hover:underline">Ir a la tienda
+                    &rarr;</a>
+            </div>
+        </div>
+
+        <!-- Right Column: Order History -->
+        <div class="lg:col-span-2">
+            <div
+                class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden premium-card">
+                <div
+                    class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30 flex justify-between items-center">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide">
+                        Historial de Pedidos
+                    </h2>
+                    <span
+                        class="text-xs font-medium text-slate-500 bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded-full">
+                        {{ pedidos|length }} últimos</span>
+                </div>
+
+                {% if pedidos %}
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+                        <thead
+                            class="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase font-bold text-slate-500 dark:text-slate-400">
+                            <tr>
+                                <th class="px-6 py-4">N° Pedido</th>
+                                <th class="px-6 py-4">Fecha</th>
+                                <th class="px-6 py-4">Estado</th>
+                                <th class="px-6 py-4 text-right">Total</th>
+                                <th class="px-6 py-4 text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                            {% for p in pedidos %}
+                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                                <td class="px-6 py-4 font-bold text-slate-900 dark:text-white">
+                                    #{{ p.codigo }}
+                                </td>
+                                <td class="px-6 py-4">
+                                    {{ p.fecha|date:"d M Y" }}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex flex-col gap-1">
+                                        <!-- Estado de Pago -->
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                            {% if p.estado_pago == 'PAGADO' %} bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300
+                                            {% elif p.estado_pago == 'PENDIENTE' %} bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300
+                                            {% else %} bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300
+                                            {% endif %}">
+                                            💳 {{ p.get_estado_pago_display }}
+                                        </span>
+                                        <!-- Estado de Preparación -->
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                            {% if p.estado_preparacion == 'RETIRADO' %} bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300
+                                            {% elif p.estado_preparacion == 'LISTO' %} bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300
+                                            {% elif p.estado_preparacion == 'PREPARANDO' %} bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300
+                                            {% elif p.estado_preparacion == 'RECIBIDO' %} bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300
+                                            {% else %} bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300
+                                            {% endif %}">
+                                            📦 {{ p.get_estado_preparacion_display }}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-right font-bold text-slate-900 dark:text-slate-100">
+                                    $ {{ p.total|floatformat:0 }}
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <a href="{% url 'tienda:pedido_detalle' p.pk %}"
+                                        class="text-xs text-pirula-dark dark:text-pirula-amber hover:underline font-bold">Ver
+                                        Detalles</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-12 text-center">
+                    <div
+                        class="bg-slate-50 dark:bg-slate-700 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-400" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-medium text-slate-900 dark:text-white">Aún no tienes pedidos</h3>
+                    <p class="mt-1 text-slate-500 dark:text-slate-400">¡Es hora de llenar esa despensa!</p>
+                    <div class="mt-6">
+                        <a href="{% url 'tienda:productos' %}"
+                            class="text-pirula-dark dark:text-pirula-amber font-bold hover:underline">Ir a comprar
+                            &rarr;</a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

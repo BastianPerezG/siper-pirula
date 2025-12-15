@@ -125,6 +125,7 @@ def pedido_cambiar_estado_view(request, pk, nuevo_estado):
         accion_descripcion = f"Cambio del estado del pedido#{pedido.pk}:{estado_anterior}->{nuevo_estado}"
         #Preparamos los detalles criticos del Json
         detalles_del_registro = {
+            'pedido_codigo': pedido.codigo,
             'estado_anterior': estado_anterior,
             'nuevo_estado': nuevo_estado,
         }
@@ -140,18 +141,33 @@ def pedido_cambiar_estado_view(request, pk, nuevo_estado):
             
             detalles_del_registro['accion_inventario'] = mensaje_reversa
         
-        # Llamada a la función de registro
-        registrar_bitacora_estructurada(
-            usuario=request.user,
-            accion=accion_descripcion,
-            entidad_id=pedido.pk,
-            detalles=detalles_del_registro
-        )
+        # Llamada a la función de registro con TODOS los argumentos requeridos
+        try:
+            registrar_bitacora_estructurada(
+                negocio=negocio,
+                usuario=request.user,
+                tipo_accion='CAMBIO_ESTADO',
+                nombre_modelo='PedidoOnline',
+                accion=accion_descripcion,
+                entidad_id=pedido.pk,
+                detalles=detalles_del_registro
+            )
+        except Exception as e:
+            # Si falla el registro de bitácora, solo lo registramos pero no detenemos el flujo
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error al registrar bitácora para pedido {pedido.codigo}: {str(e)}")
+        
         # Notificación por correo
-        enviar_correo_cambio_estado(pedido)
+        try:
+            enviar_correo_cambio_estado(pedido)
+        except Exception as e:
+            # Si falla el correo, continuamos
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Error al enviar correo para pedido {pedido.codigo}: {str(e)}")
 
         return redirect("pedidos:pedido_detalle", pk=pedido.pk)
-
 
     return render(
         request,
@@ -162,6 +178,10 @@ def pedido_cambiar_estado_view(request, pk, nuevo_estado):
 
 @login_required
 def pedidos_monitor_view(request):
+    from django.contrib import messages
+    import logging
+    logger = logging.getLogger(__name__)
+    
     negocio = get_negocio_actual()
 
     # --- ACCIONES POST: cambiar estado desde la tarjeta ---
@@ -170,28 +190,108 @@ def pedidos_monitor_view(request):
         accion = request.POST.get("accion")
 
         pedido = get_object_or_404(Pedido, pk=pedido_id, negocio=negocio)
+        estado_anterior = pedido.estado_preparacion
+        pago_anterior = pedido.estado_pago
 
-        if accion == "next":
-            # “Siguiente” estado lógico
-            transiciones = {
-                Pedido.EST_RECIBIDO: Pedido.EST_PREPARANDO,
-                Pedido.EST_PREPARANDO: Pedido.EST_LISTO,
-                Pedido.EST_LISTO: Pedido.EST_RETIRADO,
-            }
-            nuevo_estado = transiciones.get(pedido.estado)
-            if nuevo_estado:
-                pedido.cambiar_estado(nuevo_estado, usuario=request.user)
-        elif accion == "cancelar":
-            pedido.cambiar_estado(Pedido.EST_CANCELADO, usuario=request.user)
-        elif accion == "no_retira":
-            pedido.cambiar_estado(Pedido.EST_NO_RETIRA, usuario=request.user)
+        try:
+            if accion == "next":
+                # "Siguiente" estado lógico basado en estado_preparacion
+                transiciones = {
+                    Pedido.PREP_RECIBIDO: Pedido.PREP_PREPARANDO,
+                    Pedido.PREP_PREPARANDO: Pedido.PREP_LISTO,
+                    Pedido.PREP_LISTO: Pedido.PREP_RETIRADO,
+                }
+                nuevo_estado = transiciones.get(pedido.estado_preparacion)
+                if nuevo_estado:
+                    pedido.cambiar_estado_preparacion(nuevo_estado, usuario=request.user)
+                    messages.success(request, f"Pedido {pedido.codigo} actualizado a {pedido.get_estado_preparacion_display()}")
+                    
+                    # Registrar en bitácora
+                    try:
+                        registrar_bitacora_estructurada(
+                            negocio=negocio,
+                            usuario=request.user,
+                            tipo_accion='CAMBIO_ESTADO_PREPARACION',
+                            nombre_modelo='PedidoOnline',
+                            accion=f"Estado de preparación del pedido #{pedido.codigo} cambiado: {estado_anterior} → {nuevo_estado}",
+                            entidad_id=pedido.pk,
+                            detalles={
+                                'pedido_codigo': pedido.codigo,
+                                'estado_preparacion_anterior': estado_anterior,
+                                'estado_preparacion_nuevo': nuevo_estado,
+                                'estado_pago': pedido.estado_pago,
+                                'origen': 'monitor_cocina'
+                            }
+                        )
+                    except Exception as e:
+                        logger.error(f"Error al registrar bitácora: {str(e)}")
+                else:
+                    messages.warning(request, f"No se puede avanzar el pedido {pedido.codigo}")
+                    
+            elif accion == "cancelar":
+                pedido.marcar_cancelado_revertir_reserva(usuario=request.user)
+                messages.warning(request, f"Pedido {pedido.codigo} cancelado")
+                
+                # Registrar en bitácora
+                try:
+                    registrar_bitacora_estructurada(
+                        negocio=negocio,
+                        usuario=request.user,
+                        tipo_accion='CANCELACION_PEDIDO',
+                        nombre_modelo='PedidoOnline',
+                        accion=f"Pedido #{pedido.codigo} CANCELADO con reversión de stock",
+                        entidad_id=pedido.pk,
+                        detalles={
+                            'pedido_codigo': pedido.codigo,
+                            'estado_preparacion_anterior': estado_anterior,
+                            'estado_pago_anterior': pago_anterior,
+                            'accion_inventario': 'Stock liberado por cancelación',
+                            'origen': 'monitor_cocina'
+                        }
+                    )
+                except Exception as e:
+                    logger.error(f"Error al registrar bitácora: {str(e)}")
+                
+            elif accion == "no_retira":
+                # Marcar como no retira (liberar stock)
+                pedido.estado_preparacion = Pedido.PREP_NO_RETIRA
+                pedido.liberar_reservas_inventario()
+                pedido.save(update_fields=["estado_preparacion"])
+                messages.warning(request, f"Pedido {pedido.codigo} marcado como No Retira")
+                
+                # Registrar en bitácora
+                try:
+                    registrar_bitacora_estructurada(
+                        negocio=negocio,
+                        usuario=request.user,
+                        tipo_accion='NO_RETIRA_PEDIDO',
+                        nombre_modelo='PedidoOnline',
+                        accion=f"Pedido #{pedido.codigo} marcado como NO RETIRA con reversión de stock",
+                        entidad_id=pedido.pk,
+                        detalles={
+                            'pedido_codigo': pedido.codigo,
+                            'estado_preparacion_anterior': estado_anterior,
+                            'estado_pago': pedido.estado_pago,
+                            'accion_inventario': 'Stock liberado porque cliente no retiró',
+                            'origen': 'monitor_cocina'
+                        }
+                    )
+                except Exception as e:
+                    logger.error(f"Error al registrar bitácora: {str(e)}")
+        
+        except Exception as e:
+            # Si falla el envío de correo u otra cosa, registramos el error pero continuamos
+            logger.error(f"Error al procesar acción {accion} en pedido {pedido.codigo}: {str(e)}")
+            # Incluso si falla el correo, mostramos que la acción se intentó
+            messages.info(request, f"Acción ejecutada (nota: el correo de notificación podría no haberse enviado)")
 
-        return redirect("pedidos:pedidos_monitor")  # o el nombre que tengas en urls
+        return redirect("pedidos:pedidos_monitor")
 
     # --- FILTROS GET ---
-    estado = request.GET.get("estado", "")
+    estado_prep = request.GET.get("estado", "")
     q = (request.GET.get("q") or "").strip()
     dias = (request.GET.get("dias") or "").strip()
+    mostrar_finalizados = request.GET.get("finalizados", "") == "si"
 
     pedidos = (
         Pedido.objects.filter(negocio=negocio)
@@ -199,9 +299,18 @@ def pedidos_monitor_view(request):
         .prefetch_related("items__producto")
     )
 
-    # Filtro por estado
-    if estado and estado != "TODOS":
-        pedidos = pedidos.filter(estado=estado)
+    # Filtro por estado de preparación
+    if estado_prep and estado_prep != "TODOS":
+        pedidos = pedidos.filter(estado_preparacion=estado_prep)
+    elif not mostrar_finalizados:
+        # Por defecto, excluir pedidos finalizados (retirados, cancelados, no retira)
+        pedidos = pedidos.exclude(
+            estado_preparacion__in=[
+                Pedido.PREP_RETIRADO,
+                Pedido.PREP_CANCELADO,
+                Pedido.PREP_NO_RETIRA
+            ]
+        )
 
     # Filtro por texto (código, nombre, rut, correo)
     if q:
@@ -220,17 +329,27 @@ def pedidos_monitor_view(request):
             desde = timezone.now() - timedelta(days=n)
             pedidos = pedidos.filter(fecha__gte=desde)
         except ValueError:
-            pass  # si viene basura en dias, lo ignoramos
+            pass
 
+    # IMPORTANTE: Calcular estadísticas ANTES del slice
+    stats = {
+        'recibidos': pedidos.filter(estado_preparacion=Pedido.PREP_RECIBIDO).count(),
+        'preparando': pedidos.filter(estado_preparacion=Pedido.PREP_PREPARANDO).count(),
+        'listos': pedidos.filter(estado_preparacion=Pedido.PREP_LISTO).count(),
+    }
+
+    # Ahora sí, limitar y ordenar
     pedidos = pedidos.order_by("-fecha")[:60]
 
     context = {
         "negocio": negocio,
         "pedidos": pedidos,
-        "estado": estado,
+        "estado": estado_prep,
         "q": q,
         "dias": dias,
-        "ESTADO_CHOICES": Pedido.ESTADO_CHOICES,
+        "mostrar_finalizados": mostrar_finalizados,
+        "stats": stats,
+        "ESTADO_PREPARACION_CHOICES": Pedido.ESTADO_PREPARACION_CHOICES,
     }
     return render(request, "pedidos/pedido_cocina.html", context)
 
@@ -256,6 +375,9 @@ def pedido_convertir_en_venta_view(request, pk):
         return redirect("pedidos:pedido_detalle", pk=pedido.pk)
 
     if request.method == "POST":
+        import logging
+        logger = logging.getLogger(__name__)
+        
         with transaction.atomic():
             venta = Venta.objects.create(
                 negocio=negocio,
@@ -276,9 +398,17 @@ def pedido_convertir_en_venta_view(request, pk):
                 )
                 
             # Marcamos el pedido como RETIRADO (y opcionalmente podrías notificar)
+            # Agregamos manejo de errores para SMTP
             try:
                 pedido.cambiar_estado(pedido.EST_RETIRADO, usuario=request.user)
             except AttributeError:
+                # Fallback si no existe el método
+                pedido.estado = "RETIRADO"
+                pedido.save(update_fields=["estado"])
+            except Exception as e:
+                # Si falla el envío de correo, solo registramos el error
+                logger.warning(f"Error al cambiar estado o enviar correo para pedido {pedido.codigo}: {str(e)}")
+                # Actualizar el estado manualmente
                 pedido.estado = "RETIRADO"
                 pedido.save(update_fields=["estado"])
 

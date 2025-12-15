@@ -1,97 +1,180 @@
-{% extends "../../core/base.html" %}
+{% extends "core/base.html" %}
 
-{% block title %}{{ producto.nombre }} - SIPER Pirula{% endblock %}
+{% block title %}{{ producto.nombre }} - El Gran Pirula{% endblock %}
 
 {% block content %}
-<div class="flex flex-col lg:flex-row gap-8">
-
-    <!-- Imagen -->
-    <div class="w-full lg:w-1/3">
-        <div class="bg-white rounded-lg shadow-sm p-4 flex items-center justify-center">
-            {% if producto.imagen %}
-            <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" class="max-h-80 object-contain rounded">
-            {% else %}
-            <div class="text-slate-400 text-sm text-center">
-                Sin imagen disponible
+<div class="space-y-6 max-w-5xl mx-auto">
+    <!-- Header -->
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+            <div class="flex items-center gap-3 mb-2">
+                <h1 class="text-2xl font-bold text-pirula-dark">{{ producto.nombre }}</h1>
+                {% if producto.activo %}
+                <span
+                    class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                    ✓ Activo
+                </span>
+                {% else %}
+                <span
+                    class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">
+                    ✗ Inactivo
+                </span>
+                {% endif %}
             </div>
-            {% endif %}
+            <p class="text-sm text-slate-500">
+                SKU: <span class="font-mono font-medium text-pirula-medium">{{ producto.sku }}</span>
+                {% if producto.ean %}• EAN: <span class="font-mono">{{ producto.ean }}</span>{% endif %}
+            </p>
         </div>
-    </div>
-
-    <!-- Datos -->
-    <div class="flex-1">
-        <h1 class="text-2xl font-bold mb-2">{{ producto.nombre }}</h1>
-
-        <dl class="bg-white rounded-lg shadow-sm p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-            <div>
-                <dt class="font-semibold text-slate-500">SKU</dt>
-                <dd>{{ producto.sku }}</dd>
-            </div>
-            <div>
-                <dt class="font-semibold text-slate-500">EAN</dt>
-                <dd>{{ producto.ean }}</dd>
-            </div>
-            <div>
-                <dt class="font-semibold text-slate-500">Proveedor</dt>
-                <dd>{{ producto.proveedor }}</dd>
-            </div>
-            <div>
-                <dt class="font-semibold text-slate-500">Categoría</dt>
-                <dd>{{ producto.categoria }}</dd>
-            </div>
-            <div>
-                <dt class="font-semibold text-slate-500">Unidad de venta</dt>
-                <dd>{{ producto.unidad_de_venta|default:"–" }}</dd>
-            </div>
-            <div>
-                <dt class="font-semibold text-slate-500">Formato</dt>
-                <dd>{{ producto.formato|default:"–" }}</dd>
-            </div>
-            <div>
-                <dt class="font-semibold text-slate-500">Precio</dt>
-                <dd>$ {{ producto.precio }}</dd>
-            </div>
-            <div>
-                <dt class="font-semibold text-slate-500">Costo</dt>
-                <dd>$ {{ producto.costo }}</dd>
-            </div>
-            <div>
-                <dt class="font-semibold text-slate-500">Stock mínimo</dt>
-                <dd>{{ producto.stock_min }}</dd>
-            </div>
-            <div>
-                <dt class="font-semibold text-slate-500">Stock actual</dt>
-                <dd>{{ producto.stock_actual }}</dd>
-            </div>
-            <div>
-                <dt class="font-semibold text-slate-500">Ubicación</dt>
-                <dd>{{ producto.ubicacion|default:"–" }}</dd>
-            </div>
-            <div>
-                <dt class="font-semibold text-slate-500">¿Contiene alcohol?</dt>
-                <dd>{{ producto.contiene_alcohol|yesno:"Sí,No" }}</dd>
-            </div>
-        </dl>
-
-        <div class="mt-4 flex flex-wrap gap-3 text-sm">
-            <a href="{% url 'inventario:movimiento_crear' producto.pk %}"
-                class="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700">
-                Registrar movimiento
-            </a>
-            <a href="{% url 'inventario:movimiento_lista' producto.pk %}"
-                class="px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">
-                Ver historial
-            </a>
-            <a href="{% url 'inventario:producto_editar' producto.pk %}"
-                class="px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">
-                Editar
-            </a>
+        <div class="flex flex-wrap gap-2">
             <a href="{% url 'inventario:producto_lista' %}"
-                class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
-                Volver
+                class="px-4 py-2 rounded-lg border border-pirula-beige text-pirula-dark text-sm font-medium hover:bg-pirula-cream transition-colors">
+                ← Volver
             </a>
         </div>
     </div>
 
+    <div class="grid gap-6 lg:grid-cols-3">
+        <!-- Imagen del Producto -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-4">
+                {% if producto.imagen %}
+                <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}"
+                    class="w-full h-64 object-contain rounded-lg">
+                {% else %}
+                <div
+                    class="w-full h-64 rounded-lg bg-pirula-beige/30 flex flex-col items-center justify-center text-slate-400">
+                    <span class="text-6xl mb-2">🍾</span>
+                    <p class="text-sm">Sin imagen</p>
+                </div>
+                {% endif %}
+
+                <!-- Precio destacado -->
+                <div class="mt-4 text-center p-4 bg-pirula-cream rounded-lg">
+                    <p class="text-sm text-pirula-medium">Precio de venta</p>
+                    <p class="text-3xl font-bold text-pirula-dark">${{ producto.precio|floatformat:0 }}</p>
+                    {% if producto.costo %}
+                    <p class="text-xs text-slate-400 mt-1">Costo: ${{ producto.costo|floatformat:0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Stock -->
+                <div
+                    class="mt-4 p-4 rounded-lg {% if producto.stock_actual < producto.stock_min %}bg-red-50 border border-red-200{% elif producto.stock_actual == 0 %}bg-red-100{% else %}bg-emerald-50 border border-emerald-200{% endif %}">
+                    <div class="flex items-center justify-between">
+                        <p
+                            class="text-sm font-medium {% if producto.stock_actual < producto.stock_min %}text-red-700{% else %}text-emerald-700{% endif %}">
+                            Stock actual
+                        </p>
+                        <span
+                            class="text-2xl font-bold {% if producto.stock_actual < producto.stock_min %}text-red-700{% else %}text-emerald-700{% endif %}">
+                            {{ producto.stock_actual }}
+                        </span>
+                    </div>
+                    <p
+                        class="text-xs {% if producto.stock_actual < producto.stock_min %}text-red-600{% else %}text-emerald-600{% endif %} mt-1">
+                        Stock mínimo: {{ producto.stock_min }}
+                        {% if producto.stock_actual < producto.stock_min %} <span class="font-bold">⚠️ Crítico</span>
+                            {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información del Producto -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Datos Generales -->
+            <div class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-6">
+                <h2 class="text-lg font-bold text-pirula-dark mb-4 flex items-center gap-2">
+                    <span>📦</span> Información General
+                </h2>
+                <dl class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <dt class="font-semibold text-pirula-medium">Categoría</dt>
+                        <dd class="mt-1 text-pirula-dark">{{ producto.categoria.nombre|default:"Sin categoría" }}</dd>
+                    </div>
+                    <div>
+                        <dt class="font-semibold text-pirula-medium">Proveedor</dt>
+                        <dd class="mt-1 text-pirula-dark">{{ producto.proveedor.nombre|default:"Sin proveedor" }}</dd>
+                    </div>
+                    <div>
+                        <dt class="font-semibold text-pirula-medium">Unidad de venta</dt>
+                        <dd class="mt-1 text-pirula-dark">{{ producto.unidad_de_venta|default:"–" }}</dd>
+                    </div>
+                    <div>
+                        <dt class="font-semibold text-pirula-medium">Formato</dt>
+                        <dd class="mt-1 text-pirula-dark">{{ producto.formato|default:"–" }}</dd>
+                    </div>
+                    <div>
+                        <dt class="font-semibold text-pirula-medium">Ubicación</dt>
+                        <dd class="mt-1 text-pirula-dark">{{ producto.ubicacion|default:"No especificada" }}</dd>
+                    </div>
+                    <div>
+                        <dt class="font-semibold text-pirula-medium">¿Contiene alcohol?</dt>
+                        <dd class="mt-1">
+                            {% if producto.contiene_alcohol %}
+                            <span
+                                class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                🍺 Sí
+                            </span>
+                            {% else %}
+                            <span class="text-slate-400">No</span>
+                            {% endif %}
+                        </dd>
+                    </div>
+                </dl>
+            </div>
+
+            <!-- Acciones -->
+            <div class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-6">
+                <h2 class="text-lg font-bold text-pirula-dark mb-4 flex items-center gap-2">
+                    <span>⚡</span> Acciones Rápidas
+                </h2>
+                <div class="grid gap-3 sm:grid-cols-2">
+                    <a href="{% url 'inventario:movimiento_crear' producto.pk %}"
+                        class="flex items-center gap-3 p-4 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white font-semibold transition-colors">
+                        <span class="text-2xl">📊</span>
+                        <div>
+                            <p class="font-bold">Registrar Movimiento</p>
+                            <p class="text-xs text-white/80">Entrada, salida o ajuste</p>
+                        </div>
+                    </a>
+                    <a href="{% url 'inventario:movimiento_lista' producto.pk %}"
+                        class="flex items-center gap-3 p-4 rounded-lg bg-pirula-cream border border-pirula-beige hover:bg-pirula-beige/30 text-pirula-dark font-semibold transition-colors">
+                        <span class="text-2xl">📋</span>
+                        <div>
+                            <p class="font-bold">Ver Historial</p>
+                            <p class="text-xs text-slate-500">Movimientos de stock</p>
+                        </div>
+                    </a>
+                    <a href="{% url 'inventario:producto_editar' producto.pk %}"
+                        class="flex items-center gap-3 p-4 rounded-lg bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 font-semibold transition-colors">
+                        <span class="text-2xl">✏️</span>
+                        <div>
+                            <p class="font-bold">Editar Producto</p>
+                            <p class="text-xs text-blue-600">Modificar información</p>
+                        </div>
+                    </a>
+                    {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
+                    <form method="post" action="{% url 'inventario:producto_toggle_activo' producto.pk %}"
+                        class="contents">
+                        {% csrf_token %}
+                        <button type="submit"
+                            class="flex items-center gap-3 p-4 rounded-lg {% if producto.activo %}bg-red-50 border border-red-200 hover:bg-red-100 text-red-700{% else %}bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700{% endif %} font-semibold transition-colors text-left w-full">
+                            <span class="text-2xl">{% if producto.activo %}🚫{% else %}✅{% endif %}</span>
+                            <div>
+                                <p class="font-bold">{% if producto.activo %}Desactivar{% else %}Activar{% endif %}</p>
+                                <p
+                                    class="text-xs {% if producto.activo %}text-red-600{% else %}text-emerald-600{% endif %}">
+                                    {% if producto.activo %}Ocultar de ventas{% else %}Habilitar para ventas{% endif %}
+                                </p>
+                            </div>
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

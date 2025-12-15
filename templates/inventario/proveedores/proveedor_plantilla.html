@@ -1,186 +1,378 @@
-{% extends "../../core/base.html" %}
+{% extends "core/base.html" %}
+{% load humanize %}
 
-{% block title %}Plantilla de pedido - {{ proveedor.nombre }}{% endblock %}
+{% block title %}Plantilla de Pedido - {{ proveedor.nombre }}{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto space-y-6">
-
-    <!-- Encabezado -->
-    <div class="flex justify-between items-center">
+<div class="space-y-6 max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-slate-900">
-                Plantilla de pedido · {{ proveedor.nombre }}
+            <h1 class="text-2xl font-bold text-pirula-dark">
+                📋 Plantilla de Pedido
             </h1>
-            <p class="text-sm text-slate-600 mt-1">
-                Selecciona las cantidades que deseas reponer. El total estimado se calculará automáticamente.
+            <p class="text-lg font-semibold text-pirula-accent mt-1">{{ proveedor.nombre }}</p>
+            <p class="text-sm text-slate-500 mt-1">
+                Selecciona las cantidades que deseas pedir. El total se calcula automáticamente.
             </p>
-            <p class="text-xs text-slate-500 mt-1">
-                Contacto: {{ proveedor.contacto|default:"N/D" }} ·
-                Tel: {{ proveedor.telefono|default:"N/D" }} ·
-                Email: {{ proveedor.correo|default:"N/D" }}
-            </p>
-            <p class="text-xs text-slate-500 mt-1">
-                {% if ultima_compra %}
-                Última compra registrada:
-                <span class="font-semibold">
-                    {{ ultima_compra.fecha|date:"d/m/Y H:i" }}
-                </span>
-                –
+            <div class="flex flex-wrap gap-4 text-xs text-slate-500 mt-2">
+                <span>👤 {{ proveedor.contacto|default:"Sin contacto" }}</span>
+                <span>📞 {{ proveedor.telefono|default:"—" }}</span>
+                <span>📧 {{ proveedor.correo|default:"—" }}</span>
+            </div>
+            {% if ultima_compra %}
+            <p class="text-xs text-slate-400 mt-2">
+                Última compra: <span class="font-semibold">{{ ultima_compra.fecha|date:"d/m/Y H:i" }}</span>
                 <a href="{% url 'inventario:compra_lista' %}?proveedor={{ proveedor.id }}"
-                    class="text-emerald-700 hover:underline">
-                    ver historial de compras
-                </a>
-                {% else %}
-                Aún no hay compras registradas con este proveedor.
-                Puedes registrar una desde
-                <a href="{% url 'inventario:compra_crear' %}?proveedor={{ proveedor.id }}"
-                    class="text-emerald-700 hover:underline">
-                    el módulo de Compras
-                </a>.
-                {% endif %}
+                    class="text-pirula-accent hover:underline ml-2">ver historial →</a>
             </p>
+            {% else %}
+            <p class="text-xs text-slate-400 mt-2">
+                Aún no hay compras registradas.
+                <a href="{% url 'inventario:compra_crear' %}?proveedor={{ proveedor.id }}"
+                    class="text-pirula-accent hover:underline">Registrar compra →</a>
+            </p>
+            {% endif %}
         </div>
-
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
+            <a href="{% url 'inventario:proveedor_detalle' proveedor.pk %}"
+                class="px-4 py-2 rounded-lg bg-pirula-dark hover:bg-pirula-medium text-white text-sm font-bold transition-colors">
+                👁️ Ver Ficha
+            </a>
             <a href="{% url 'inventario:proveedor_lista' %}"
-                class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
-                ← Volver a proveedores
+                class="px-4 py-2 rounded-lg border border-pirula-beige text-pirula-dark text-sm font-medium hover:bg-pirula-cream transition-colors">
+                ← Volver
             </a>
         </div>
     </div>
 
-    <!-- Tabla de productos -->
-    <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        <div class="px-4 py-3 border-b border-slate-200 flex justify-between items-center">
-            <h2 class="text-sm font-semibold text-slate-700">
-                Productos suministrados por {{ proveedor.nombre }}
-            </h2>
-            <span class="text-xs text-slate-500">
-                Productos críticos aparecen en <span class="font-semibold text-red-600">rojo</span>.
+    {% if productos %}
+    <!-- Formulario PDF (se envía por JS) -->
+    <form method="post" action="{% url 'inventario:proveedor_plantilla_pdf' proveedor.pk %}" id="form-pdf"
+        class="hidden">
+        {% csrf_token %}
+        <div id="pdf-hidden-fields"></div>
+    </form>
+
+    <!-- Formulario Compra (se envía por JS) -->
+    <form method="post" action="{% url 'inventario:compra_crear' %}" id="form-compra" class="hidden">
+        {% csrf_token %}
+        <input type="hidden" name="from_plantilla" value="1">
+        <input type="hidden" name="proveedor" value="{{ proveedor.pk }}">
+        <div id="compra-hidden-fields"></div>
+    </form>
+
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 overflow-hidden">
+        <div class="px-6 py-4 border-b border-pirula-beige bg-pirula-cream/50 flex items-center justify-between">
+            <div>
+                <h2 class="font-bold text-pirula-dark">📦 Productos del Proveedor</h2>
+                <p class="text-xs text-slate-500 mt-0.5">
+                    <span class="text-red-600 font-semibold">Rojo</span> indica stock crítico
+                </p>
+            </div>
+            <span class="px-3 py-1 rounded-full bg-pirula-cream text-pirula-dark text-sm font-bold">
+                {{ productos|length }} productos
             </span>
         </div>
 
-        {% if productos %}
-        <div class="overflow-x-auto">
+        <!-- Tabla desktop -->
+        <div class="hidden lg:block overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-slate-50 text-slate-700 text-xs uppercase tracking-wide">
+                <thead class="bg-pirula-cream border-b border-pirula-beige">
                     <tr>
-                        <th class="px-4 py-2 text-left">Producto</th>
-                        <th class="px-4 py-2 text-left">EAN</th>
-                        <th class="px-4 py-2 text-right">Stock mín.</th>
-                        <th class="px-4 py-2 text-right">Stock actual</th>
-                        <th class="px-4 py-2 text-right">Costo unit.</th>
-                        <th class="px-4 py-2 text-right">Cant. a pedir</th>
-                        <th class="px-4 py-2 text-right">Subtotal</th>
-                        <th class="px-4 py-2 text-center">Acciones</th>
+                        <th class="px-4 py-3 text-left font-bold text-pirula-dark">Producto</th>
+                        <th class="px-4 py-3 text-left font-bold text-pirula-dark">EAN</th>
+                        <th class="px-4 py-3 text-right font-bold text-pirula-dark">Stock Mín</th>
+                        <th class="px-4 py-3 text-right font-bold text-pirula-dark">Stock Actual</th>
+                        <th class="px-4 py-3 text-right font-bold text-pirula-dark">Costo</th>
+                        <th class="px-4 py-3 text-right font-bold text-pirula-dark w-28">Cantidad</th>
+                        <th class="px-4 py-3 text-right font-bold text-pirula-dark">Subtotal</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100" id="tabla-plantilla">
+                <tbody class="divide-y divide-pirula-beige/30" id="tabla-plantilla">
                     {% for p in productos %}
-                    <tr class="hover:bg-slate-50 transition" data-costo="{{ p.costo|default:0 }}" data-id="{{ p.id }}">
-                        <td class="px-4 py-2">
-                            <div class="font-medium text-slate-900">{{ p.nombre }}</div>
-                            <div class="text-xs text-slate-500">
-                                Cat: {{ p.categoria|default:"Sin categoría" }}{% if p.ubicacion %}
-                                · Ubicación: {{ p.ubicacion }}
-                                {% endif %}
-                            </div>
+                    <tr class="hover:bg-pirula-cream/30 transition-colors producto-row"
+                        data-costo="{{ p.costo|default:0 }}" data-id="{{ p.id }}" data-nombre="{{ p.nombre }}">
+                        <td class="px-4 py-3">
+                            <p class="font-bold text-pirula-dark">{{ p.nombre }}</p>
+                            <p class="text-xs text-slate-500">
+                                {{ p.categoria|default:"Sin categoría" }}
+                                {% if p.ubicacion %} • {{ p.ubicacion }}{% endif %}
+                            </p>
                         </td>
-                        <td class="px-4 py-2 text-xs text-slate-600">
-                            {{ p.ean|default:"–" }}
+                        <td class="px-4 py-3 text-slate-600 font-mono text-xs">{{ p.ean|default:"—" }}</td>
+                        <td class="px-4 py-3 text-right text-slate-500">{{ p.stock_min|default:0 }}</td>
+                        <td
+                            class="px-4 py-3 text-right font-bold {% if p.es_critico %}text-red-600{% else %}text-pirula-dark{% endif %}">
+                            {{ p.stock_actual|default:0 }}
                         </td>
-                        <td class="px-4 py-2 text-right text-xs text-slate-600">
-                            {{ p.stock_min|default:"0" }}
+                        <td class="px-4 py-3 text-right font-semibold text-green-600">
+                            ${{ p.costo|floatformat:0|intcomma }}
                         </td>
-                        <td class="px-4 py-2 text-right font-semibold
-                       {% if p.es_critico %}text-red-600{% else %}text-slate-800{% endif %}">
-                            {{ p.stock_actual|default:"0" }}
+                        <td class="px-4 py-3 text-right">
+                            <input type="number" min="0" step="1" value="{{ p.cantidad_sugerida }}"
+                                data-producto-id="{{ p.id }}"
+                                class="cantidad-input w-20 border border-pirula-beige rounded-lg px-3 py-2 text-right text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
                         </td>
-                        <td class="px-4 py-2 text-right text-emerald-700 font-semibold">
-                            $ {{ p.costo|floatformat:0 }}
-                        </td>
-                        <td class="px-4 py-2 text-right">
-                            <input type="number" min="0" step="1" value="{{ p.cantidad_sugerida }}" class="w-20 border border-slate-300 rounded px-2 py-1 text-right text-sm
-                            focus:outline-none focus:ring focus:ring-amber-300" name="cantidad_{{ p.id }}">
-                        </td>
-                        <td class="px-4 py-2 text-right">
-                            <span class="subtotal font-semibold text-slate-800">$ 0</span>
-                        </td>
-                        <td class="px-4 py-2 text-center">
-                            <a href="{% url 'inventario:producto_detalle' p.pk %}"
-                                class="text-xs text-slate-700 hover:underline">
-                                Ver detalle
-                            </a>
+                        <td class="px-4 py-3 text-right">
+                            <span class="subtotal font-bold text-pirula-dark">$0</span>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
-                <tfoot class="bg-slate-50 border-t border-slate-200">
+                <tfoot class="bg-pirula-cream border-t-2 border-pirula-beige">
                     <tr>
-                        <td colspan="6" class="px-4 py-3 text-right text-sm font-semibold text-slate-700">
-                            Total estimado del pedido:
+                        <td colspan="6" class="px-4 py-4 text-right font-bold text-pirula-dark">
+                            💰 TOTAL ESTIMADO:
                         </td>
-                        <td class="px-4 py-3 text-right font-bold text-lg text-emerald-700" id="total-general">
-                            $ 0
+                        <td class="px-4 py-4 text-right">
+                            <span id="total-general" class="text-xl font-bold text-pirula-accent">$0</span>
                         </td>
-                        <td></td>
                     </tr>
                 </tfoot>
             </table>
         </div>
-        {% else %}
-        <p class="p-4 text-sm text-slate-600">
-            Este proveedor aún no tiene productos asociados.
-        </p>
-        {% endif %}
+
+        <!-- Vista mobile (cards) -->
+        <div class="lg:hidden divide-y divide-pirula-beige/30" id="cards-plantilla">
+            {% for p in productos %}
+            <div class="p-4 producto-row" data-costo="{{ p.costo|default:0 }}" data-id="{{ p.id }}"
+                data-nombre="{{ p.nombre }}">
+                <div class="flex items-start justify-between mb-2">
+                    <div>
+                        <p class="font-bold text-pirula-dark">{{ p.nombre }}</p>
+                        <p class="text-xs text-slate-500">{{ p.categoria|default:"Sin cat." }}</p>
+                    </div>
+                    <span class="font-bold {% if p.es_critico %}text-red-600{% else %}text-pirula-dark{% endif %}">
+                        Stock: {{ p.stock_actual|default:0 }}
+                    </span>
+                </div>
+                <div class="flex items-center justify-between mt-3">
+                    <span class="text-sm text-green-600 font-semibold">${{ p.costo|floatformat:0|intcomma }}</span>
+                    <div class="flex items-center gap-2">
+                        <input type="number" min="0" step="1" value="{{ p.cantidad_sugerida }}"
+                            data-producto-id="{{ p.id }}"
+                            class="cantidad-input w-16 border border-pirula-beige rounded-lg px-2 py-1.5 text-right text-sm">
+                        <span class="subtotal-mobile font-bold text-pirula-dark text-sm w-20 text-right">$0</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            <!-- Total mobile -->
+            <div class="p-4 bg-pirula-cream">
+                <div class="flex items-center justify-between">
+                    <span class="font-bold text-pirula-dark">💰 TOTAL:</span>
+                    <span id="total-general-mobile" class="text-xl font-bold text-pirula-accent">$0</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Botones de acción -->
+    <div class="flex flex-col sm:flex-row gap-3 pt-4">
+        <button type="button" id="btn-vista-previa"
+            class="flex-1 px-6 py-3 rounded-lg bg-pirula-dark hover:bg-pirula-medium text-white font-bold text-sm transition-colors flex items-center justify-center gap-2">
+            👁️ Vista Previa
+        </button>
+        <button type="button" id="btn-generar-pdf"
+            class="flex-1 px-6 py-3 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white font-bold text-sm transition-colors flex items-center justify-center gap-2">
+            📄 Descargar PDF
+        </button>
+        <button type="button" id="btn-registrar-compra"
+            class="flex-1 px-6 py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2">
+            🛒 Registrar Compra
+        </button>
     </div>
 
-    <p class="text-xs text-slate-500">
-        * Esta plantilla es sólo de apoyo para estimar pedidos. El registro real de compras
-        se sigue realizando desde el módulo <span class="font-semibold">Compras</span>.
-    </p>
+    {% else %}
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-8 text-center">
+        <span class="text-5xl mb-4 block">📭</span>
+        <h3 class="text-lg font-bold text-pirula-dark mb-2">No hay productos de este proveedor</h3>
+        <p class="text-slate-500 mb-4">
+            Asigna productos a este proveedor desde el módulo de productos.
+        </p>
+        <a href="{% url 'inventario:producto_lista' %}"
+            class="inline-block px-6 py-2.5 rounded-lg bg-pirula-accent text-white font-semibold hover:bg-pirula-light transition-colors">
+            Ir a Productos
+        </a>
+    </section>
+    {% endif %}
 
+    <p class="text-xs text-slate-400">
+        * Esta plantilla es de apoyo para estimar pedidos. El registro real de compras se realiza desde el módulo
+        Compras.
+    </p>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    const STORAGE_KEY = 'plantilla_{{ proveedor.pk }}';
+
     function formatearCLP(valor) {
-        // simple formateo con separador de miles
         return valor.toLocaleString('es-CL', { minimumFractionDigits: 0 });
+    }
+
+    function guardarEnStorage() {
+        const datos = {};
+        document.querySelectorAll('.cantidad-input').forEach(input => {
+            const id = input.dataset.productoId;
+            const cantidad = parseInt(input.value) || 0;
+            if (cantidad > 0) {
+                datos[id] = cantidad;
+            }
+        });
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(datos));
+    }
+
+    function cargarDeStorage() {
+        const guardado = sessionStorage.getItem(STORAGE_KEY);
+        if (guardado) {
+            const datos = JSON.parse(guardado);
+            document.querySelectorAll('.cantidad-input').forEach(input => {
+                const id = input.dataset.productoId;
+                if (datos[id]) {
+                    input.value = datos[id];
+                }
+            });
+        }
     }
 
     function recalcular() {
         let totalGeneral = 0;
 
-        document.querySelectorAll('#tabla-plantilla tr[data-id]').forEach(function (fila) {
+        document.querySelectorAll('.producto-row').forEach(function (fila) {
             const costo = parseFloat(fila.dataset.costo || "0");
-            const input = fila.querySelector('input[type="number"]');
+            const input = fila.querySelector('.cantidad-input');
+            if (!input) return;
 
-            let cantidad = parseFloat(input.value || "0");
-
-            // Normalizar cantidad: nada raro, nada negativo
-            if (isNaN(cantidad) || cantidad < 0) {
+            let cantidad = parseInt(input.value) || 0;
+            if (cantidad < 0) {
                 cantidad = 0;
                 input.value = 0;
             }
 
             const subtotal = costo * cantidad;
+
+            // Desktop
             const celdaSubtotal = fila.querySelector('.subtotal');
-            celdaSubtotal.textContent = '$ ' + formatearCLP(subtotal);
+            if (celdaSubtotal) {
+                celdaSubtotal.textContent = '$' + formatearCLP(subtotal);
+            }
+
+            // Mobile
+            const spanSubtotal = fila.querySelector('.subtotal-mobile');
+            if (spanSubtotal) {
+                spanSubtotal.textContent = '$' + formatearCLP(subtotal);
+            }
 
             totalGeneral += subtotal;
         });
 
-        document.getElementById('total-general').textContent = '$ ' + formatearCLP(totalGeneral);
+        document.getElementById('total-general').textContent = '$' + formatearCLP(totalGeneral);
+        const totalMobile = document.getElementById('total-general-mobile');
+        if (totalMobile) {
+            totalMobile.textContent = '$' + formatearCLP(totalGeneral);
+        }
+
+        guardarEnStorage();
+    }
+
+    function obtenerProductosSeleccionados() {
+        const productos = [];
+        document.querySelectorAll('.producto-row').forEach(fila => {
+            const input = fila.querySelector('.cantidad-input');
+            if (!input) return;
+            const cantidad = parseInt(input.value) || 0;
+            if (cantidad > 0) {
+                productos.push({
+                    id: fila.dataset.id,
+                    cantidad: cantidad,
+                    costo: parseFloat(fila.dataset.costo) || 0,
+                    nombre: fila.dataset.nombre
+                });
+            }
+        });
+        return productos;
+    }
+
+    function generarPDF() {
+        const productos = obtenerProductosSeleccionados();
+        if (productos.length === 0) {
+            alert('Debes seleccionar al menos un producto con cantidad mayor a 0.');
+            return;
+        }
+
+        // Agregar campos ocultos al formulario PDF
+        const container = document.getElementById('pdf-hidden-fields');
+        container.innerHTML = '';
+        productos.forEach(p => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'cantidad_' + p.id;
+            input.value = p.cantidad;
+            container.appendChild(input);
+        });
+
+        // Enviar formulario
+        document.getElementById('form-pdf').submit();
+    }
+
+    function registrarCompra() {
+        const productos = obtenerProductosSeleccionados();
+        if (productos.length === 0) {
+            alert('Debes seleccionar al menos un producto con cantidad mayor a 0.');
+            return;
+        }
+
+        // Guardar en sessionStorage para que compra_crear lo lea
+        sessionStorage.setItem('plantilla_compra_data', JSON.stringify({
+            proveedor: {{ proveedor.pk }},
+    productos: productos
+        }));
+
+    // Redirigir a crear compra con parámetro
+    window.location.href = "{% url 'inventario:compra_crear' %}?from_plantilla=1&proveedor={{ proveedor.pk }}";
+    }
+
+    function vistaPrevia() {
+        const productos = obtenerProductosSeleccionados();
+        if (productos.length === 0) {
+            alert('Debes seleccionar al menos un producto con cantidad mayor a 0.');
+            return;
+        }
+
+        // Agregar campos ocultos al formulario PDF con flag de preview
+        const container = document.getElementById('pdf-hidden-fields');
+        container.innerHTML = '<input type="hidden" name="preview" value="1">';
+        productos.forEach(p => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'cantidad_' + p.id;
+            input.value = p.cantidad;
+            container.appendChild(input);
+        });
+
+        // Enviar formulario (abrirá preview en misma ventana)
+        document.getElementById('form-pdf').submit();
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('#tabla-plantilla input[type="number"]').forEach(function (input) {
+        // Cargar valores guardados
+        cargarDeStorage();
+
+        // Eventos en inputs
+        document.querySelectorAll('.cantidad-input').forEach(function (input) {
             input.addEventListener('input', recalcular);
         });
-        // cálculo inicial
+
+        // Cálculo inicial
         recalcular();
+
+        // Botones
+        document.getElementById('btn-vista-previa').addEventListener('click', vistaPrevia);
+        document.getElementById('btn-generar-pdf').addEventListener('click', generarPDF);
+        document.getElementById('btn-registrar-compra').addEventListener('click', registrarCompra);
     });
 </script>
 {% endblock %}

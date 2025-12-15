@@ -15,6 +15,29 @@ from django.utils import timezone
 
 # Modelo Inventario.
 
+class Marca(models.Model):
+    negocio = models.ForeignKey(Negocio, on_delete=models.PROTECT)
+    nombre = models.CharField(max_length=120)
+    imagen = models.ImageField(
+        upload_to="marcas/",
+        blank=True,
+        null=True,
+        help_text="Logo de la marca"
+    )
+    activo = models.BooleanField(default=True)
+    creada = models.DateTimeField(auto_now_add=True)
+    actualizada = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "marca"
+        ordering = ["nombre"]
+        verbose_name = "Marca"
+        verbose_name_plural = "Marcas"
+
+    def __str__(self):
+        return self.nombre
+
+
 class Categoria(models.Model):
     negocio = models.ForeignKey(Negocio, on_delete=models.PROTECT)
     nombre = models.CharField(max_length=80)
@@ -48,6 +71,14 @@ class Producto(models.Model):
     ean = models.CharField("Código de barras", max_length=40, unique=True)
     nombre = models.CharField(max_length=120)
     categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT)
+    marca = models.ForeignKey(
+        Marca,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="productos",
+        help_text="Marca del producto"
+    )
     precio = models.PositiveIntegerField(default=0, help_text="Precio de venta en pesos chilenos")
     costo = models.PositiveIntegerField(default=0, help_text="Costo en pesos chilenos")
     unidad_de_venta = models.CharField(max_length=120, blank=True, null=False)
@@ -276,6 +307,11 @@ class Compra(models.Model):
     def __str__(self):
         return f"{self.doc_tipo} {self.doc_num or ''} - {self.proveedor.nombre}".strip()
 
+    @property
+    def total(self):
+        """Calcula el total de la compra sumando todos los ítems."""
+        return sum(item.subtotal for item in self.items.all())
+
 
 class CompraItem(models.Model):
     compra = models.ForeignKey(
@@ -294,6 +330,11 @@ class CompraItem(models.Model):
 
     def __str__(self):
         return f"{self.cantidad} x {self.producto.nombre} en {self.compra}"
+
+    @property
+    def subtotal(self):
+        """Calcula el subtotal del ítem (cantidad * costo_unit)."""
+        return self.cantidad * self.costo_unit
 
     def save(self, *args, **kwargs):
         es_nuevo = self.pk is None

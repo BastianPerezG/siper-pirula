@@ -71,7 +71,7 @@ class MovimientoCrearForm(forms.ModelForm):
 class CompraForm(forms.ModelForm):
     class Meta:
         model = Compra
-        fields = ["proveedor", "doc_tipo", "doc_num", "comentario"]
+        fields = ["proveedor", "doc_tipo", "doc_num", "comentario", "archivo"]
 
     def __init__(self, *args, **kwargs):
         # Sacamos negocio de kwargs para que NO llegue a BaseModelForm

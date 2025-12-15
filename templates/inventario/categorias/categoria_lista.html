@@ -1,84 +1,93 @@
 {% extends "core/base.html" %}
 
-{% block title %}Categorías · SIPER Pirula{% endblock %}
+{% block title %}Categorías - El Gran Pirula{% endblock %}
 
 {% block content %}
-<div class="flex items-center justify-between mb-4">
-  <div>
-    <h1 class="text-2xl font-bold text-slate-900">Categorías</h1>
-    <p class="text-sm text-slate-600">
-      Organiza los productos del inventario por tipo o familia.
-    </p>
+<div class="space-y-6 max-w-5xl mx-auto">
+  <!-- Header -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-pirula-dark">
+        🏷️ Categorías
+      </h1>
+      <p class="text-sm text-slate-500 mt-1">
+        Organiza los productos del inventario por tipo o familia
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a href="{% url 'inventario:categoria_crear' %}"
+        class="px-4 py-2 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white text-sm font-bold shadow-md transition-colors">
+        ➕ Nueva Categoría
+      </a>
+      <a href="{% url 'core:dashboard' %}"
+        class="px-4 py-2 rounded-lg border border-pirula-beige text-pirula-dark text-sm font-medium hover:bg-pirula-cream transition-colors">
+        ← Volver al inicio
+      </a>
+    </div>
   </div>
 
-  <div class="flex gap-2">
-    <a href="{% url 'core:dashboard' %}"
-       class="inline-flex items-center rounded-lg border border-slate-300 text-sm px-4 py-2 hover:bg-slate-50">
-      Volver al panel
-    </a>
-    <a href="{% url 'inventario:categoria_crear' %}"
-       class="inline-flex items-center rounded-lg bg-slate-900 text-white text-sm font-semibold px-4 py-2 hover:bg-slate-800">
-      + Nueva categoría
-    </a>
-  </div>
-</div>
-
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-  <table class="min-w-full text-sm">
-    <thead class="bg-slate-50 text-left">
-      <tr class="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-        <th class="px-4 py-3 border-b">Nombre</th>
-        <th class="px-4 py-3 border-b">Orden</th>
-        <th class="px-4 py-3 border-b">Activo</th>
-        <th class="px-4 py-3 border-b text-right">Acciones</th>
-      </tr>
-    </thead>
-    <tbody>
+  <!-- Lista de categorías -->
+  {% if categorias %}
+  <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 overflow-hidden">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
       {% for cat in categorias %}
-      <tr class="odd:bg-white even:bg-slate-50 hover:bg-amber-50 transition">
-        <td class="px-4 py-3 border-b">
-          {{ cat.nombre }}
-        </td>
-        <td class="px-4 py-3 border-b text-slate-600">
-          {{ cat.orden }}
-        </td>
-        <td class="px-4 py-3 border-b">
-          {% if cat.activo %}
-            <span class="inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 px-3 py-0.5 text-xs font-semibold">
-              Activa
-            </span>
+      <div
+        class="flex items-center gap-4 p-4 rounded-lg border border-pirula-beige/30 hover:bg-pirula-cream/30 transition-colors {% if not cat.activo %}opacity-50{% endif %}">
+        <!-- Imagen -->
+        <div class="flex-shrink-0">
+          {% if cat.imagen %}
+          <img src="{{ cat.imagen.url }}" alt="{{ cat.nombre }}"
+            class="w-16 h-16 object-cover rounded-lg bg-white border border-pirula-beige/30">
           {% else %}
-            <span class="inline-flex items-center rounded-full bg-slate-200 text-slate-700 px-3 py-0.5 text-xs font-semibold">
-              Oculta
-            </span>
-          {% endif %}
-        </td>
-        <td class="px-4 py-3 border-b">
-          <div class="flex justify-end gap-3 text-sm">
-            <a href="{% url 'inventario:categoria_editar' cat.pk %}"
-               class="text-slate-700 hover:underline">
-              Editar
-            </a>
-
-            <form method="post"
-                  action="{% url 'inventario:categoria_toggle_activa' cat.pk %}">
-              {% csrf_token %}
-              <button type="submit"
-                      class="text-red-600 hover:underline">
-                {% if cat.activo %}Ocultar{% else %}Mostrar{% endif %}
-              </button>
-            </form>
+          <div class="w-16 h-16 rounded-lg bg-pirula-cream flex items-center justify-center text-2xl">
+            🏷️
           </div>
-        </td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="4" class="px-4 py-4 text-sm text-slate-500">
-          No hay categorías creadas aún.
-        </td>
-      </tr>
+          {% endif %}
+        </div>
+
+        <!-- Info -->
+        <div class="flex-1 min-w-0">
+          <h3 class="font-bold text-pirula-dark truncate">{{ cat.nombre }}</h3>
+          <div class="flex items-center gap-2 mt-1">
+            <span class="text-xs text-slate-400">Orden: {{ cat.orden }}</span>
+            {% if cat.activo %}
+            <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Activa</span>
+            {% else %}
+            <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">Oculta</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="flex gap-1">
+          <a href="{% url 'inventario:categoria_editar' cat.pk %}"
+            class="p-2 rounded-lg hover:bg-pirula-cream text-pirula-dark transition-colors" title="Editar">
+            ✏️
+          </a>
+          <form method="post" action="{% url 'inventario:categoria_toggle_activa' cat.pk %}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="p-2 rounded-lg hover:bg-pirula-cream transition-colors"
+              title="{% if cat.activo %}Ocultar{% else %}Mostrar{% endif %}">
+              {% if cat.activo %}🔴{% else %}🟢{% endif %}
+            </button>
+          </form>
+        </div>
+      </div>
       {% endfor %}
-    </tbody>
-  </table>
+    </div>
+  </section>
+  {% else %}
+  <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-8 text-center">
+    <span class="text-5xl mb-4 block">🏷️</span>
+    <h3 class="text-lg font-bold text-pirula-dark mb-2">No hay categorías registradas</h3>
+    <p class="text-slate-500 mb-4">
+      Crea tu primera categoría para organizar tus productos.
+    </p>
+    <a href="{% url 'inventario:categoria_crear' %}"
+      class="inline-block px-6 py-2.5 rounded-lg bg-pirula-accent text-white font-semibold hover:bg-pirula-light transition-colors">
+      ➕ Nueva Categoría
+    </a>
+  </section>
+  {% endif %}
 </div>
 {% endblock %}

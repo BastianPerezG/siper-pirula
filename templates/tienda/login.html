@@ -1,32 +1,68 @@
 {% extends "tienda/base_public.html" %}
 
-{% block title %}Iniciar sesión · SIPER Pirula{% endblock %}
+{% block title %}Iniciar Sesión - SIPER Pirula{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold text-slate-900 mb-4">Iniciar sesión</h1>
+<div class="flex items-center justify-center min-h-[60vh] py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full space-y-8">
 
-<form method="post" class="bg-white rounded-xl shadow-sm border border-slate-200 px-4 py-5 space-y-4 max-w-md">
-  {% csrf_token %}
-
-  {% for field in form %}
-    <div>
-      <label class="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-        {{ field.label }}
-      </label>
-      {{ field }}
-      {% if field.errors %}
-        <p class="mt-1 text-xs text-red-600">{{ field.errors.0 }}</p>
-      {% endif %}
+    <div class="text-center">
+      <h2 class="mt-6 text-3xl font-header font-bold text-pirula-dark dark:text-white uppercase tracking-wide">
+        Bienvenido
+      </h2>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        Ingresa a tu cuenta para gestionar tus pedidos
+      </p>
     </div>
-  {% endfor %}
 
-  {% if form.non_field_errors %}
-    <p class="text-xs text-red-600">{{ form.non_field_errors.0 }}</p>
-  {% endif %}
+    <div
+      class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-8 premium-card">
+      <form class="space-y-6" method="post">
+        {% csrf_token %}
 
-  <button type="submit"
-          class="w-full inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
-    Entrar
-  </button>
-</form>
+        {% if form.non_field_errors %}
+        <div class="bg-red-50 text-red-700 p-3 rounded-lg text-sm border border-red-200">
+          {{ form.non_field_errors.0 }}
+        </div>
+        {% endif %}
+
+        <div>
+          <label for="id_username" class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
+            Nombre de Usuario
+          </label>
+          <input type="text" name="username" autofocus autocapitalize="none" autocomplete="username" maxlength="150"
+            required id="id_username"
+            class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-pirula-amber dark:bg-slate-900 dark:border-slate-700 dark:text-white dark:placeholder-slate-500 transition-all"
+            placeholder="Tu usuario">
+        </div>
+
+        <div>
+          <label for="id_password" class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
+            Contraseña
+          </label>
+          <input type="password" name="password" autocomplete="current-password" required id="id_password"
+            class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-pirula-amber dark:bg-slate-900 dark:border-slate-700 dark:text-white dark:placeholder-slate-500 transition-all"
+            placeholder="••••••••">
+        </div>
+
+        <div>
+          <button type="submit"
+            class="w-full flex justify-center py-3 px-4 rounded-xl shadow-lg font-bold text-white bg-pirula-dark hover:bg-slate-800 dark:bg-pirula-amber dark:text-pirula-dark dark:hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pirula-amber transition-all uppercase tracking-widest transform hover:-translate-y-0.5">
+            Iniciar Sesión
+          </button>
+        </div>
+      </form>
+
+      <div class="mt-6 text-center">
+        <p class="text-sm text-slate-600 dark:text-slate-400">
+          ¿No tienes cuenta?
+          <a href="{% url 'tienda:registro' %}"
+            class="font-bold text-pirula-dark dark:text-pirula-amber hover:underline transition-colors">
+            Regístrate aquí
+          </a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

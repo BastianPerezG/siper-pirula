@@ -1,0 +1,170 @@
+{% extends "core/base.html" %}
+{% load static humanize %}
+
+{% block title %}Vista Previa - Orden de Pedido{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-4xl mx-auto">
+    <!-- Botones de acción -->
+    <div class="flex flex-col sm:flex-row gap-3 print:hidden">
+        <button type="button" onclick="window.print()"
+            class="flex-1 px-6 py-3 rounded-lg bg-pirula-dark hover:bg-pirula-medium text-white font-bold text-sm transition-colors flex items-center justify-center gap-2">
+            🖨️ Imprimir
+        </button>
+        <button type="button" id="btn-descargar-pdf"
+            class="flex-1 px-6 py-3 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white font-bold text-sm transition-colors flex items-center justify-center gap-2">
+            📄 Descargar PDF
+        </button>
+        <a href="{% url 'inventario:proveedor_plantilla' proveedor.pk %}"
+            class="flex-1 text-center px-6 py-3 rounded-lg border border-pirula-beige text-pirula-dark font-medium text-sm hover:bg-pirula-cream transition-colors">
+            ← Volver a la plantilla
+        </a>
+    </div>
+
+    <!-- Vista previa del documento -->
+    <div
+        class="bg-white rounded-xl shadow-lg border border-pirula-beige/30 p-8 print:p-0 print:shadow-none print:border-0">
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b-2 border-pirula-dark pb-4 mb-6">
+            <div class="flex items-center gap-4">
+                <img src="{% static 'img/logo_gran_pirula_marron.jpg' %}" alt="El Gran Pirula"
+                    class="h-16 w-auto rounded-lg">
+                <div>
+                    <h1 class="text-2xl font-bold text-pirula-dark">Orden de Pedido</h1>
+                    <p class="text-sm text-slate-500">{{ negocio.nombre|default:"El Gran Pirula" }}</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-slate-500">Fecha:</p>
+                <p class="font-bold text-pirula-dark">{{ fecha|date:"d/m/Y H:i" }}</p>
+            </div>
+        </div>
+
+        <!-- Info del proveedor -->
+        <div class="bg-pirula-cream/50 rounded-lg p-4 mb-6">
+            <h2 class="font-bold text-pirula-dark mb-2">🤝 Proveedor</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                    <p class="text-slate-500">Nombre:</p>
+                    <p class="font-semibold text-pirula-dark">{{ proveedor.nombre }}</p>
+                </div>
+                <div>
+                    <p class="text-slate-500">Contacto:</p>
+                    <p class="font-semibold text-pirula-dark">{{ proveedor.contacto|default:"—" }}</p>
+                </div>
+                <div>
+                    <p class="text-slate-500">Teléfono:</p>
+                    <p class="font-semibold text-pirula-dark">{{ proveedor.telefono|default:"—" }}</p>
+                </div>
+                <div>
+                    <p class="text-slate-500">Correo:</p>
+                    <p class="font-semibold text-pirula-dark">{{ proveedor.correo|default:"—" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de productos -->
+        <h3 class="font-bold text-pirula-dark mb-3">📦 Detalle de Productos</h3>
+        <table class="w-full text-sm mb-6">
+            <thead>
+                <tr class="bg-pirula-dark text-white">
+                    <th class="px-4 py-2 text-left">Producto</th>
+                    <th class="px-4 py-2 text-left">EAN / SKU</th>
+                    <th class="px-4 py-2 text-right">Cantidad</th>
+                    <th class="px-4 py-2 text-right">Costo Unit.</th>
+                    <th class="px-4 py-2 text-right">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-pirula-beige/30">
+                {% for item in items %}
+                <tr class="hover:bg-pirula-cream/30">
+                    <td class="px-4 py-2">
+                        <p class="font-semibold text-pirula-dark">{{ item.producto.nombre }}</p>
+                        {% if item.producto.ubicacion %}
+                        <p class="text-xs text-slate-500">Ubic: {{ item.producto.ubicacion }}</p>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-2 text-slate-600">
+                        {{ item.producto.ean|default:"—" }}
+                        {% if item.producto.sku %}
+                        <br><span class="text-xs text-slate-400">{{ item.producto.sku }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-2 text-right font-bold text-pirula-dark">{{ item.cantidad }}</td>
+                    <td class="px-4 py-2 text-right text-green-600">${{ item.costo|floatformat:0|intcomma }}</td>
+                    <td class="px-4 py-2 text-right font-bold text-pirula-dark">${{ item.subtotal|floatformat:0|intcomma
+                        }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="bg-pirula-dark text-white">
+                    <td colspan="4" class="px-4 py-3 text-right font-bold">TOTAL ESTIMADO:</td>
+                    <td class="px-4 py-3 text-right font-bold text-lg">${{ total|floatformat:0|intcomma }}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <!-- Nota -->
+        <p class="text-xs text-slate-400 mb-6">
+            * Este documento es una orden de pedido estimada. Los precios finales pueden variar
+            según condiciones del proveedor al momento de la compra.
+        </p>
+
+        <!-- Área de firma -->
+        <div class="grid grid-cols-2 gap-8 mt-12">
+            <div class="border-t border-slate-300 pt-2">
+                <p class="text-sm text-slate-500">Firma Autorizada</p>
+            </div>
+            <div class="border-t border-slate-300 pt-2">
+                <p class="text-sm text-slate-500">Recepción Proveedor</p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-8 pt-4 border-t border-pirula-beige text-xs text-slate-400 text-center">
+            Documento generado el {{ fecha|date:"d/m/Y" }} a las {{ fecha|date:"H:i" }} hrs por {{
+            usuario.get_full_name|default:usuario.username }}.
+            <br>Sistema SIPER - {{ negocio.nombre|default:"El Gran Pirula" }}
+        </div>
+    </div>
+</div>
+
+<!-- Formulario oculto para descargar PDF -->
+<form method="post" action="{% url 'inventario:proveedor_plantilla_pdf' proveedor.pk %}" id="form-pdf" class="hidden">
+    {% csrf_token %}
+    {% for item in items %}
+    <input type="hidden" name="cantidad_{{ item.producto.id }}" value="{{ item.cantidad }}">
+    {% endfor %}
+</form>
+
+<style>
+    @media print {
+
+        /* Ocultar navegación y controles al imprimir */
+        header,
+        nav,
+        .print\\:hidden,
+        footer {
+            display: none !important;
+        }
+
+        body {
+            background: white !important;
+        }
+
+        main {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('btn-descargar-pdf').addEventListener('click', function () {
+        document.getElementById('form-pdf').submit();
+    });
+</script>
+{% endblock %}

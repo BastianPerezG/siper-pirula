@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Orden de Pedido - {{ proveedor.nombre }}</title>
+    <style>
+        /* Estilos compatibles con xhtml2pdf */
+        @page {
+            size: letter;
+            margin: 1.5cm;
+        }
+
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 11px;
+            color: #333;
+        }
+
+        .header {
+            border-bottom: 3px solid #5d4037;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .header-table {
+            width: 100%;
+        }
+
+        .logo {
+            width: 100px;
+            height: auto;
+        }
+
+        .header h1 {
+            color: #5d4037;
+            font-size: 24px;
+            margin: 0 0 5px 0;
+        }
+
+        .header h2 {
+            color: #8d6e63;
+            font-size: 12px;
+            margin: 0;
+            font-weight: normal;
+        }
+
+        .date-info {
+            text-align: right;
+            font-size: 11px;
+        }
+
+        .meta-info {
+            background-color: #f5f0e6;
+            padding: 12px;
+            margin-bottom: 20px;
+        }
+
+        .meta-info table {
+            width: 100%;
+        }
+
+        .meta-info td {
+            padding: 4px 8px;
+        }
+
+        .meta-info .label {
+            font-weight: bold;
+            color: #5d4037;
+            width: 100px;
+        }
+
+        h3 {
+            color: #5d4037;
+            font-size: 13px;
+            margin: 20px 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #d4c4b0;
+        }
+
+        table.items {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        table.items th {
+            background-color: #5d4037;
+            color: white;
+            padding: 10px 8px;
+            text-align: left;
+            font-size: 10px;
+        }
+
+        table.items th.right {
+            text-align: right;
+        }
+
+        table.items td {
+            padding: 8px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 10px;
+        }
+
+        table.items td.right {
+            text-align: right;
+        }
+
+        table.items tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+
+        .product-name {
+            font-weight: bold;
+            color: #5d4037;
+        }
+
+        .product-detail {
+            color: #888;
+            font-size: 9px;
+        }
+
+        .total-row {
+            background-color: #5d4037 !important;
+            color: white;
+            font-weight: bold;
+        }
+
+        .total-row td {
+            padding: 12px 8px;
+            border: none;
+            font-size: 12px;
+        }
+
+        .note {
+            font-size: 9px;
+            color: #888;
+            margin-bottom: 30px;
+        }
+
+        .signature-area {
+            margin-top: 40px;
+        }
+
+        .signature-table {
+            width: 100%;
+        }
+
+        .signature-line {
+            border-top: 1px solid #333;
+            padding-top: 8px;
+            font-size: 10px;
+            color: #666;
+            width: 45%;
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding-top: 15px;
+            border-top: 1px solid #d4c4b0;
+            font-size: 9px;
+            color: #888;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header con logo -->
+    <div class="header">
+        <table class="header-table">
+            <tr>
+                <td style="width: 120px;">
+                    {% if logo_path %}
+                    <img src="file://{{ logo_path }}" class="logo" alt="Logo">
+                    {% endif %}
+                </td>
+                <td>
+                    <h1>📋 Orden de Pedido</h1>
+                    <h2>{{ negocio.nombre|default:"El Gran Pirula" }}</h2>
+                </td>
+                <td class="date-info">
+                    <strong>Fecha:</strong><br>
+                    {{ fecha|date:"d/m/Y" }}<br>
+                    {{ fecha|date:"H:i" }} hrs
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Info del proveedor -->
+    <div class="meta-info">
+        <table>
+            <tr>
+                <td class="label">Proveedor:</td>
+                <td colspan="3"><strong>{{ proveedor.nombre }}</strong></td>
+            </tr>
+            <tr>
+                <td class="label">Contacto:</td>
+                <td>{{ proveedor.contacto|default:"—" }}</td>
+                <td class="label">Teléfono:</td>
+                <td>{{ proveedor.telefono|default:"—" }}</td>
+            </tr>
+            <tr>
+                <td class="label">Correo:</td>
+                <td colspan="3">{{ proveedor.correo|default:"—" }}</td>
+            </tr>
+            <tr>
+                <td class="label">Generado por:</td>
+                <td colspan="3">{{ usuario.get_full_name|default:usuario.username }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Productos -->
+    <h3>📦 Detalle de Productos Solicitados</h3>
+
+    <table class="items">
+        <thead>
+            <tr>
+                <th style="width: 40%;">Producto</th>
+                <th style="width: 15%;">EAN / SKU</th>
+                <th class="right" style="width: 12%;">Cantidad</th>
+                <th class="right" style="width: 15%;">Costo Unit.</th>
+                <th class="right" style="width: 18%;">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>
+                    <span class="product-name">{{ item.producto.nombre }}</span>
+                    {% if item.producto.ubicacion %}
+                    <br><span class="product-detail">Ubic: {{ item.producto.ubicacion }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {{ item.producto.ean|default:"—" }}
+                    {% if item.producto.sku %}
+                    <br><span class="product-detail">{{ item.producto.sku }}</span>
+                    {% endif %}
+                </td>
+                <td class="right"><strong>{{ item.cantidad }}</strong></td>
+                <td class="right">${{ item.costo|floatformat:0 }}</td>
+                <td class="right"><strong>${{ item.subtotal|floatformat:0 }}</strong></td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row">
+                <td colspan="4" style="text-align: right;">TOTAL ESTIMADO:</td>
+                <td class="right">${{ total|floatformat:0 }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Nota -->
+    <p class="note">
+        * Este documento es una orden de pedido estimada. Los precios finales pueden variar
+        según condiciones del proveedor al momento de la compra.
+    </p>
+
+    <!-- Área de firmas -->
+    <div class="signature-area">
+        <table class="signature-table">
+            <tr>
+                <td class="signature-line">
+                    Firma Autorizada
+                </td>
+                <td style="width: 10%;"></td>
+                <td class="signature-line">
+                    Recepción Proveedor
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p>
+            Documento generado el {{ fecha|date:"d/m/Y" }} a las {{ fecha|date:"H:i" }} hrs.
+            <br>
+            Sistema SIPER - {{ negocio.nombre|default:"El Gran Pirula" }}
+        </p>
+    </div>
+</body>
+
+</html>

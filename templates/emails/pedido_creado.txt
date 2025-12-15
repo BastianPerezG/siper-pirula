@@ -1,11 +1,19 @@
-Hemos recibido tu pedido
+¡Hola {{ pedido.nombre|default:"estimado cliente" }}!
 
-Hola {{ pedido.nombre|default:"cliente" }},
+Hemos recibido tu pedido correctamente en El Gran Pirula.
 
-Tu pedido {{ pedido.codigo }} ha sido registrado correctamente en El Gran Pirula.
+============================================
+CÓDIGO DE PEDIDO: {{ pedido.codigo }}
+============================================
+
 Monto total: ${{ pedido.total }}
 
 Te enviaremos un correo cuando tu pedido esté LISTO para retirar en la botillería.
 
-Gracias por preferirnos,
-El Gran Pirula
+Para retirar tu pedido:
+- Acércate a El Gran Pirula
+- Indica tu código: {{ pedido.codigo }}
+- Retira tus productos
+
+¡Gracias por preferirnos!
+Equipo El Gran Pirula

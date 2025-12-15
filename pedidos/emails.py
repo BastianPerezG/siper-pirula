@@ -1,7 +1,7 @@
+import os
+import resend
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
-
 
 
 def _get_logo_url():
@@ -9,9 +9,16 @@ def _get_logo_url():
     return f"{base}{settings.STATIC_URL}img/logo_gran_pirula_marron.jpg"
 
 
-
-def _enviar_email_template(destinatario, subject, template_html, template_txt, context):
+def _enviar_email_resend(destinatario, subject, template_html, template_txt, context):
+    """Envía email usando Resend API."""
     if not destinatario:
+        return
+
+    # Configurar API key
+    resend.api_key = os.environ.get("RESEND_API_KEY", "")
+    
+    if not resend.api_key:
+        print(f"⚠️ RESEND_API_KEY no configurada. Email no enviado a {destinatario}")
         return
 
     context = {
@@ -23,19 +30,34 @@ def _enviar_email_template(destinatario, subject, template_html, template_txt, c
     cuerpo_html = render_to_string(template_html, context)
     cuerpo_txt = render_to_string(template_txt, context)
 
-    msg = EmailMultiAlternatives(
-        subject=subject,
-        body=cuerpo_txt,
-        from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@granpirula.local"),
-        to=[destinatario],
-    )
-    msg.attach_alternative(cuerpo_html, "text/html")
-    msg.send(fail_silently=False)
+    # En desarrollo, enviar siempre al correo del desarrollador (limitación de Resend gratuito)
+    dev_email = os.environ.get("DEV_EMAIL", "")
+    email_destino = dev_email if dev_email else destinatario
+    
+    if dev_email and dev_email != destinatario:
+        print(f"📧 [DEV MODE] Redirigiendo email de {destinatario} → {dev_email}")
+
+    try:
+        params = {
+            "from": "El Gran Pirula <onboarding@resend.dev>",  # Dominio de prueba de Resend
+            "to": [email_destino],
+            "subject": subject,
+            "html": cuerpo_html,
+            "text": cuerpo_txt,
+        }
+        
+        response = resend.Emails.send(params)
+        print(f"✅ Email enviado a {email_destino}: {response}")
+        return response
+        
+    except Exception as e:
+        print(f"❌ Error al enviar email a {destinatario}: {e}")
+        raise
 
 
 def enviar_correo_pedido_creado(pedido):
-    subject = f"SIPER Pirula - Pedido recibido ({pedido.codigo})"
-    _enviar_email_template(
+    subject = f"El Gran Pirula - Pedido recibido ({pedido.codigo})"
+    _enviar_email_resend(
         destinatario=pedido.correo,
         subject=subject,
         template_html="emails/pedido_creado.html",
@@ -59,12 +81,12 @@ def enviar_correo_cambio_estado(pedido):
         es_listo = (str(pedido.estado).upper() == "LISTO")
 
     subject = (
-        f"SIPER Pirula - Tu pedido {pedido.codigo} está LISTO para retirar"
+        f"El Gran Pirula - Tu pedido {pedido.codigo} está LISTO para retirar"
         if es_listo
-        else f"SIPER Pirula - Actualización de tu pedido ({pedido.codigo})"
+        else f"El Gran Pirula - Actualización de tu pedido ({pedido.codigo})"
     )
 
-    _enviar_email_template(
+    _enviar_email_resend(
         destinatario=pedido.correo,
         subject=subject,
         template_html="emails/pedido_cambio_estado.html",
