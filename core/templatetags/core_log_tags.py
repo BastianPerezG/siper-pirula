@@ -43,3 +43,11 @@ def render_log_entry(context, log_entry):
         # La plantilla que render_log_entry.html debe incluir
         'template_to_include': template_name_to_use, 
     }
+
+@register.filter
+def is_list(value):
+    return isinstance(value, list)
+
+@register.filter
+def is_dict(value):
+    return isinstance(value, dict)

@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html>
 
@@ -8,117 +9,205 @@
         @page {
             size: A4;
             margin: 2cm;
+
+
         }
 
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             font-size: 10px;
-            color: #333;
-            line-height: 1.4;
+            color: #1a1a1a;
+            line-height: 1.5;
         }
 
-        .header {
-            border-bottom: 2px solid #3b82f6;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
+        h1,
+        h2,
+        h3 {
+            font-family: 'Times New Roman', Times, serif;
+            color: #0f172a;
+            /* Navy dark for formal look */
         }
 
-        .header h1 {
-            font-size: 20px;
-            color: #1e40af;
-            margin: 0 0 5px 0;
-        }
-
-        .meta {
-            color: #666;
-            font-size: 9px;
-        }
-
-        .meta-row {
-            margin: 3px 0;
-        }
-
-        .filters {
-            background: #f0f9ff;
-            border: 1px solid #bae6fd;
-            border-radius: 4px;
-            padding: 10px;
-            margin-bottom: 20px;
-        }
-
-        .filters h3 {
-            margin: 0 0 5px 0;
-            font-size: 11px;
-            color: #0369a1;
-        }
-
-        .filters ul {
-            margin: 0;
-            padding-left: 15px;
-        }
-
-        .filters li {
-            font-size: 9px;
-            color: #0c4a6e;
-        }
-
-        table {
+        /* Header Layout using Table for PDF compatibility */
+        .header-table {
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 15px;
         }
 
-        th {
-            background: #1e40af;
-            color: white;
-            font-size: 8px;
-            padding: 8px 5px;
-            text-align: left;
-            text-transform: uppercase;
-        }
-
-        td {
-            border-bottom: 1px solid #e2e8f0;
-            padding: 6px 5px;
-            font-size: 9px;
+        .logo-cell {
+            width: 100px;
             vertical-align: top;
         }
 
-        tr:nth-child(even) {
-            background: #f8fafc;
+        .logo-img {
+            width: 80px;
+            height: auto;
         }
 
-        .area-badge {
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 8px;
+        .title-cell {
+            vertical-align: middle;
+            text-align: left;
+            padding-left: 20px;
+        }
+
+        .title-cell h1 {
+            margin: 0;
+            font-size: 22px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .title-cell .organization {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 5px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            text-transform: uppercase;
+        }
+
+        /* Unified Summary Panel */
+        .summary-panel {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            background-color: #f8fafc;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            border-spacing: 0;
+            border-collapse: separate;
+            /* Allows border-radius */
+        }
+
+        .summary-panel td {
+            padding: 12px;
+            vertical-align: top;
+        }
+
+        .summary-left {
+            width: 45%;
+            border-right: 1px solid #cbd5e1;
+        }
+
+        .summary-right {
+            width: 55%;
+        }
+
+        .summary-item {
+            margin-bottom: 6px;
+            font-size: 9px;
+            color: #334155;
+            line-height: 1.4;
+        }
+
+        .summary-label {
             font-weight: bold;
+            color: #0f172a;
+            margin-right: 5px;
         }
 
+        .summary-header-text {
+            font-family: 'Times New Roman', Times, serif;
+            font-weight: bold;
+            font-size: 10px;
+            color: #0f172a;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 4px;
+            display: block;
+        }
+
+        /* Filter Chips */
+        .filter-chip {
+            display: inline-block;
+            background-color: #ffffff;
+            border: 1px solid #94a3b8;
+            color: #1e293b;
+            padding: 3px 8px;
+            font-size: 8px;
+            margin-right: 4px;
+            margin-bottom: 4px;
+            border-radius: 12px;
+            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+        }
+
+        .no-filters {
+            font-style: italic;
+            color: #94a3b8;
+            font-size: 9px;
+        }
+
+        .total-box {
+            text-align: right;
+            font-size: 10px;
+            margin-bottom: 10px;
+            padding: 5px;
+            background-color: #f1f5f9;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #0f172a;
+        }
+
+        /* Data Table */
+        table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+        }
+
+        table.data-table th {
+            background-color: #0f172a;
+            color: white;
+            font-family: 'Times New Roman', Times, serif;
+            font-weight: bold;
+            font-size: 9px;
+            padding: 10px 6px;
+            text-align: left;
+            text-transform: uppercase;
+            border-bottom: 1px solid black;
+        }
+
+        table.data-table td {
+            border-bottom: 1px solid #e2e8f0;
+            padding: 8px 6px;
+            font-size: 9px;
+            vertical-align: top;
+            color: #333;
+        }
+
+        table.data-table tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+
+        /* Badges / Status */
+        .area-tag {
+            font-weight: bold;
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            padding: 2px 0;
+        }
+
+        /* Formal Colors for Areas */
         .area-PedidoOnline {
-            background: #f3e8ff;
-            color: #7e22ce;
+            color: #6b21a8;
         }
 
         .area-Usuario {
-            background: #dcfce7;
-            color: #166534;
+            color: #15803d;
         }
 
         .area-Log {
-            background: #f1f5f9;
             color: #475569;
         }
 
         .area-Venta {
-            background: #fef3c7;
-            color: #92400e;
+            color: #9a3412;
         }
 
         .area-Inventario {
-            background: #cffafe;
-            color: #155e75;
+            color: #0e7490;
         }
 
         .footer {
@@ -128,80 +217,92 @@
             text-align: center;
             font-size: 8px;
             color: #94a3b8;
-            border-top: 1px solid #e2e8f0;
+            border-top: 1px solid #cbd5e1;
             padding-top: 10px;
-        }
-
-        .total-box {
-            background: #eff6ff;
-            border: 1px solid #93c5fd;
-            border-radius: 4px;
-            padding: 8px 12px;
-            margin-bottom: 15px;
-            font-size: 11px;
-        }
-
-        .total-box strong {
-            color: #1e40af;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
         }
     </style>
 </head>
 
 <body>
-    <div class="header">
-        <h1>📋 Reporte de Bitácora del Sistema</h1>
-        <div class="meta">
-            <div class="meta-row"><strong>Fecha de generación:</strong> {{ fecha_generacion|date:"d/m/Y H:i:s" }}</div>
-            <div class="meta-row"><strong>Generado por:</strong> {{ usuario_exportacion.username }} ({{ usuario_exportacion.email }})</div>
-        </div>
-    </div>
+    <!-- Header: Table Layout -->
+    <table class="header-table">
+        <tr>
+            <td class="logo-cell">
+                <img src="{{ logo_absolute_path }}" class="logo-img" alt="Logo">
+            </td>
+            <td class="title-cell">
+                <h1>Reporte de Bitácora</h1>
+                <div class="organization">Gran Pirula - Sistema de Gestión Integrado</div>
+            </td>
+        </tr>
+    </table>
 
-    {% if filtros_aplicados %}
-    <div class="filters">
-        <h3>Filtros aplicados:</h3>
-        <ul>
-            {% for filtro in filtros_aplicados %}
-            <li>{{ filtro }}</li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
+    <!-- Summary Panel -->
+    <table class="summary-panel">
+        <tr>
+            <td class="summary-left">
+                <span class="summary-header-text">Información del Reporte</span>
+                <div class="summary-item">
+                    <span class="summary-label">Fecha Emisión:</span> {{ fecha_generacion|date:"d/m/Y H:i" }}
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Solicitante:</span> {{ usuario_exportacion.username|upper }}
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Total Registros:</span> <strong>{{ total_registros }}</strong>
+                </div>
+            </td>
+            <td class="summary-right">
+                <span class="summary-header-text">Filtros Aplicados</span>
+                {% if filtros_aplicados %}
+                {% for filtro in filtros_aplicados %}
+                <span class="filter-chip">{{ filtro }}</span>
+                {% endfor %}
+                {% else %}
+                <div class="no-filters">Sin filtros activos - Mostrando todos los registros recientes.</div>
+                {% endif %}
+            </td>
+        </tr>
+    </table>
 
-    <div class="total-box">
-        <strong>Total de registros:</strong> {{ total_registros }}
-    </div>
-
-    <table>
+    <!-- Main Data Table -->
+    <table class="data-table">
         <thead>
             <tr>
-                <th style="width: 12%;">Fecha/Hora</th>
-                <th style="width: 10%;">Usuario</th>
-                <th style="width: 10%;">Área</th>
-                <th style="width: 15%;">Tipo</th>
-                <th style="width: 53%;">Acción</th>
+                <th style="width: 15%;">Fecha / Hora</th>
+                <th style="width: 12%;">Usuario</th>
+                <th style="width: 12%;">Área</th>
+                <th style="width: 15%;">Acción</th>
+                <th style="width: 46%;">Detalle</th>
             </tr>
         </thead>
         <tbody>
             {% for log in logs %}
             <tr>
-                <td>{{ log.fecha_hora|date:"d/m/Y" }}<br>{{ log.fecha_hora|time:"H:i:s" }}</td>
-                <td>{{ log.usuario.username|default:"Sistema" }}</td>
                 <td>
-                    <span class="area-badge area-{{ log.nombre_modelo }}">{{ log.nombre_modelo }}</span>
+                    {{ log.fecha_hora|date:"d/m/Y" }}<br>
+                    <span style="color: #64748b;">{{ log.fecha_hora|time:"H:i:s" }}</span>
+                </td>
+                <td><strong>{{ log.usuario.username|default:"SISTEMA" }}</strong></td>
+                <td>
+                    <span class="area-tag area-{{ log.nombre_modelo }}">{{ log.nombre_modelo }}</span>
                 </td>
                 <td>{{ log.tipo_accion }}</td>
-                <td>{{ log.accion|truncatewords:25 }}</td>
+                <td>{{ log.accion|truncatewords:30 }}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5" style="text-align: center; padding: 20px;">No se encontraron registros</td>
+                <td colspan="5" style="text-align: center; padding: 30px; font-style: italic; color: #64748b;">
+                    No se encontraron registros para los criterios seleccionados.
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 
     <div class="footer">
-        SIPER-Pirula · Reporte generado automáticamente · {{ fecha_generacion|date:"d/m/Y H:i:s" }}
+        Documento Oficial · Gran Pirula · Uso Interno Exclusivo
     </div>
 </body>
 

@@ -9,6 +9,11 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 from django.utils.decorators import method_decorator
 from django.db.models import Q
+from django.contrib.staticfiles.storage import staticfiles_storage
+import os
+from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
 
 from .models import PerfilUsuario, Negocio, BitacoraAccion
 from .forms import UsuarioCrearForm, UsuarioEditarForm
@@ -20,6 +25,13 @@ from django.db.models import Q
 
 from core.utils import registrar_bitacora_estructurada
 from .mixins import RolRequeridoMixin, rol_requerido
+#correo
+from django.contrib.auth.views import PasswordResetView
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
+from django.conf import settings
+from .emails import enviar_correo_restablecer_password # Importamos nuestra función de envío
 
 # Views Core
 
@@ -135,8 +147,58 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 def login_interno_view(request):
     """
     Login para trabajadores (caja, mesón, administrador).
+    Incluye lógica de bloqueo por intentos fallidos.
     """
     if request.method == "POST":
+        # 1. Recuperar usuario para verificar bloqueo antes de validar credenciales
+        username = request.POST.get("username")
+        user_obj = None
+        perfil_obj = None
+        
+        try:
+            user_obj = User.objects.get(username=username)
+            perfil_obj = getattr(user_obj, "perfilusuario", None)
+        except User.DoesNotExist:
+            pass
+            
+        # Verificar si está bloqueado
+        if perfil_obj and perfil_obj.bloqueado_hasta:
+            if perfil_obj.bloqueado_hasta > timezone.now():
+                wait_minutes = int((perfil_obj.bloqueado_hasta - timezone.now()).total_seconds() / 60) + 1
+                messages.error(
+                    request, 
+                    f"Cuenta bloqueada temporalmente por intentos fallidos. Inténtalo de nuevo en {wait_minutes} minutos."
+                )
+                # Retornamos el form vacío o con el username preservado
+                form = AuthenticationForm(request) 
+                return render(request, "core/login_interno.html", {"form": form})
+            else:
+                # El tiempo pasó, reseteamos el bloqueo automáticamente
+                
+                # --- Registro Bitácora Desbloqueo Automático ---
+                try:
+                    registrar_bitacora_estructurada(
+                        negocio=perfil_obj.negocio,
+                        usuario=user_obj,  # El propio usuario desencadena el desbloqueo al intentar login
+                        nombre_modelo="Usuario",
+                        tipo_accion="USUARIO_DESBLOQUEADO",
+                        accion=f"Usuario {user_obj.username} desbloqueado automáticamente al expirar tiempo de bloqueo.",
+                        entidad_id=user_obj.pk,
+                        detalles={
+                            'usuario_desbloqueado_id': user_obj.pk,
+                            'motivo': 'Expiración de tiempo de bloqueo',
+                            'bloqueado_hasta_anterior': str(perfil_obj.bloqueado_hasta)
+                        }
+                    )
+                except Exception:
+                    pass
+                # -----------------------------------------------
+
+                perfil_obj.bloqueado_hasta = None
+                perfil_obj.intentos_fallidos = 0
+                perfil_obj.save()
+
+        # 2. Autenticación normal
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
@@ -149,6 +211,12 @@ def login_interno_view(request):
                     "Contacta a un administrador."
                 )
             else:
+                # --- Éxito: Resetear intentos fallidos ---
+                if perfil.intentos_fallidos > 0:
+                    perfil.intentos_fallidos = 0
+                    perfil.bloqueado_hasta = None
+                    perfil.save()
+
                 detalles_registro = {
                     'usuario_id': user.pk,
                     'rol_principal': perfil.rol, # Asumiendo que 'perfil.rol' existe
@@ -171,6 +239,44 @@ def login_interno_view(request):
                 messages.success(request, "Sesión iniciada correctamente.")
                 next_url = request.GET.get("next") or reverse_lazy("core:dashboard")
                 return redirect(next_url)
+        else:
+            # --- Fallo: Incrementar intentos ---
+            # Si el formulario no es válido, puede ser usuario incorrecto o contraseña incorrecta.
+            # Solo incrementamos si encontramos al usuario (obtenido al inicio).
+            if perfil_obj:
+                perfil_obj.intentos_fallidos += 1
+                MAX_INTENTOS = 3
+                
+                if perfil_obj.intentos_fallidos >= MAX_INTENTOS:
+                    perfil_obj.bloqueado_hasta = timezone.now() + timedelta(minutes=10) # 10 minutos de bloqueo
+                    perfil_obj.save(update_fields=['intentos_fallidos', 'bloqueado_hasta'])
+                    
+                    # --- Registro Bitácora Bloqueo ---
+                    try:
+                        registrar_bitacora_estructurada(
+                            negocio=perfil_obj.negocio,
+                            usuario=user_obj,
+                            nombre_modelo="Usuario",
+                            tipo_accion="USUARIO_BLOQUEADO",
+                            accion=f"Usuario {user_obj.username} bloqueado por múltiples intentos fallidos.",
+                            entidad_id=user_obj.pk,
+                            detalles={
+                                'usuario_bloqueado_id': user_obj.pk,
+                                'intentos_fallidos': perfil_obj.intentos_fallidos,
+                                'bloqueado_hasta': str(perfil_obj.bloqueado_hasta)
+                            }
+                        )
+                    except Exception:
+                        pass
+                    # ---------------------------------
+
+                    messages.error(request, "Cuenta bloqueada por múltiples intentos fallidos. Intente en 10 minutos.")
+                else:
+                    perfil_obj.save(update_fields=['intentos_fallidos'])
+                    restantes = MAX_INTENTOS - perfil_obj.intentos_fallidos
+                    # Warning adicional
+                    messages.warning(request, f"Contraseña incorrecta. Te quedan {restantes} intentos antes del bloqueo.")
+            
     else:
         form = AuthenticationForm(request)
 
@@ -431,6 +537,92 @@ def usuario_toggle_activo_view(request, pk):
     messages.info(request, f"Usuario {perfil.user.username} {estado_txt}.")
     return redirect("core:usuarios_lista")
 
+@rol_requerido("ADMIN")
+def usuario_desbloquear_view(request, pk):
+    """
+    Desbloquea un usuario reseteando sus intentos fallidos y fecha de bloqueo.
+    """
+    perfil = get_object_or_404(PerfilUsuario, pk=pk)
+    
+    perfil.intentos_fallidos = 0
+    perfil.bloqueado_hasta = None
+    perfil.save(update_fields=["intentos_fallidos", "bloqueado_hasta"])
+    
+    # Registro en bitácora
+    try:
+        registrar_bitacora_estructurada(
+            negocio=perfil.negocio,
+            usuario=request.user,
+            nombre_modelo="Usuario",
+            tipo_accion="USUARIO_DESBLOQUEADO", # Usamos un tipo específico
+            accion=f"Usuario '{perfil.user.username}' (ID: {perfil.user.pk}) desbloqueado manualmente por {request.user.username}.",
+            entidad_id=perfil.user.pk,
+            detalles={
+                'usuario_desbloqueado_id': perfil.user.pk,
+                'admin_responsable_id': request.user.pk,
+            }
+        )
+    except Exception:
+        pass
+
+    messages.success(request, f"Usuario {perfil.user.username} desbloqueado correctamente.")
+    return redirect("core:usuarios_lista")
+
+
+class CustomPasswordResetView(PasswordResetView):
+    template_name = "registration/password_reset_form.html"
+    success_url = reverse_lazy("password_reset_done")
+    # email_template_name y subject_template_name ya no son necesarios si sobreescribimos el envío, 
+    # pero los dejamos por compatibilidad si algo falla.
+
+    def form_valid(self, form):
+        email = form.cleaned_data.get('email')
+        
+        # 1. Buscar usuarios
+        users = list(User.objects.filter(email=email, is_active=True))
+        
+        if not users:
+            # Por seguridad, no decimos que el usuario no existe,
+            # pero podemos logear el intento fallido si queremos.
+            pass
+        
+        # 2. Enviar correo "a mano" usando nuestra función `enviar_correo_restablecer_password` (Resend)
+        # Esto reemplaza el form.save() de Django que usa el SMTP nativo.
+        for user in users:
+            # Generar token y uid
+            token = default_token_generator.make_token(user)
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            
+            # Construir URL absoluta
+            # Si tienes configurado un SITE_URL en settings, úsalo, sino construye uno básico
+            protocol = 'https' if self.request.is_secure() else 'http'
+            domain = self.request.get_host()
+            reset_url = f"{protocol}://{domain}{reverse_lazy('password_reset_confirm', kwargs={'uidb64': uid, 'token': token})}"
+            
+            # Enviar correo personalizado
+            try:
+                enviar_correo_restablecer_password(user, reset_url)
+                
+                # Registro en Bitácora
+                registrar_bitacora_estructurada(
+                    negocio=user.perfilusuario.negocio if hasattr(user, 'perfilusuario') else None,
+                    usuario=user,
+                    nombre_modelo="Usuario",
+                    tipo_accion="SOLICITUD_RESET_PASSWORD",
+                    accion=f"Email de recuperación enviado a {user.username} via Resend.",
+                    entidad_id=user.pk,
+                    detalles={
+                        'email_solicitante': email,
+                        'servicio_email': 'Resend API',
+                    }
+                )
+            except Exception as e:
+                print(f"Error enviando correo recovery a {email}: {e}")
+        
+        # Redirigir a "Done"
+        return redirect(self.success_url)
+
+
 class BitacoraListView(LoginRequiredMixin, ListView):
     model = BitacoraAccion
     template_name = 'core/bitacora/bitacoras.html'
@@ -448,6 +640,9 @@ class BitacoraListView(LoginRequiredMixin, ListView):
         ('EDICION_USUARIO', 'Edición de Usuario'),
         ('USUARIO_ACTIVADO', 'Usuario Activado'),
         ('USUARIO_DESACTIVADO', 'Usuario Desactivado'),
+        ('USUARIO_BLOQUEADO', 'Usuario Bloqueado'),
+        ('USUARIO_DESBLOQUEADO', 'Usuario Desbloqueado'),
+        ('SOLICITUD_RESET_PASSWORD', 'Solicitud Reset Password'),
         ('LOGIN', 'Inicio de Sesión'),
         ('LOGOUT', 'Cierre de Sesión'),
         ('CAMBIO_ESTADO', 'Cambio de Estado'),
@@ -602,7 +797,10 @@ def bitacora_export_pdf(request):
         filtros_aplicados.append(f"Hasta: {request.GET.get('fecha_hasta')}")
     if request.GET.get('q'):
         filtros_aplicados.append(f"Búsqueda: {request.GET.get('q')}")
-    
+ 
+    # Construir ruta absoluta manualmente para entornos de desarrollo donde staticfiles_storage.path puede fallar
+    logo_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'logo_gran_pirula_negro.jpg')
+
     # Contexto para el template
     context = {
         'logs': queryset,
@@ -610,14 +808,16 @@ def bitacora_export_pdf(request):
         'usuario_exportacion': request.user,
         'filtros_aplicados': filtros_aplicados,
         'total_registros': queryset.count(),
+        'logo_absolute_path': logo_path,
     }
     
     # Renderizar HTML
     html_string = render_to_string('core/bitacora/bitacora_pdf.html', context)
     
     # Generar PDF con xhtml2pdf
+    from core.utils import link_callback
     result = BytesIO()
-    pdf = pisa.pisaDocument(BytesIO(html_string.encode("UTF-8")), result)
+    pdf = pisa.pisaDocument(BytesIO(html_string.encode("UTF-8")), result, link_callback=link_callback)
     
     if pdf.err:
         return HttpResponse('Error al generar PDF', status=500)

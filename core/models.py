@@ -97,6 +97,17 @@ class PerfilUsuario(models.Model):
         help_text="Teléfono de contacto del trabajador.",
     )
 
+    # Campos para bloqueo por intentos fallidos
+    intentos_fallidos = models.PositiveIntegerField(
+        default=0,
+        help_text="Número de intentos de inicio de sesión fallidos consecutivos."
+    )
+    bloqueado_hasta = models.DateTimeField(
+        null=True, 
+        blank=True,
+        help_text="Fecha y hora hasta la cual el usuario está bloqueado por intentos fallidos."
+    )
+
     class Meta:
         db_table = "perfil_usuario"
 
@@ -114,6 +125,11 @@ class PerfilUsuario(models.Model):
     @property
     def es_meson(self):
         return self.rol == self.ROL_MESON
+
+    @property
+    def esta_bloqueado(self):
+        from django.utils import timezone
+        return self.bloqueado_hasta and self.bloqueado_hasta > timezone.now()
 
 User = get_user_model()
 

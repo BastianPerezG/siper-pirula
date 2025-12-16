@@ -23,6 +23,7 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("accounts/", include("django.contrib.auth.urls")), # Password reset default urls
     path("", include("core.urls")),          # home / dashboard
     path("inventario/", include("inventario.urls")),
     path("pedidos/", include("pedidos.urls")),

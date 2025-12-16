@@ -606,20 +606,33 @@ def venta_checkout_view(request, pk):
                         pago.observaciones = observaciones
                         pago.save(update_fields=["observaciones"])
 
-                    #registrar_bitacora_estructurada(
-                    #    usuario=request.user,
-                    #    accion=f"Cobro / checkout venta #{venta.pk}",
-                    #    entidad_id=venta.pk,
-                    #    detalles=(
-                    #        f"Total bruto: ${total_bruto} | "
-                    #        f"Descuento ticket: ${monto_desc} | "
-                    #        f"Total neto: ${total_neto} | "
-                    #        f"Medio de pago: {venta.get_medio_pago_display()} | "
-                    #        f"Monto pagado: ${monto_pagado} | "
-                    #        f"Vuelto: ${vuelto} | "
-                    #        f"Estado pago: {pago.get_estado_display()}"
-                    #    ),
-                    #)
+                    detalles_pago = {
+                        "total_bruto": str(total_bruto),
+                        "total_neto": str(total_neto),
+                        "medio_pago": venta.get_medio_pago_display(),
+                        "monto_pagado": str(monto_pagado),
+                        "vuelto": str(vuelto),
+                        "estado_pago": pago.get_estado_display()
+                    }
+
+                    # Agregar detalles de descuento si aplica
+                    if monto_desc > 0:
+                        detalles_pago.update({
+                            "descuento_aplicado": True,
+                            "descuento_monto": str(monto_desc),
+                            "descuento_motivo": motivo,
+                            "descuento_codigo_autorizacion": codigo if codigo else "No requerido"
+                        })
+
+                    registrar_bitacora_estructurada(
+                        negocio=negocio,
+                        usuario=request.user,
+                        nombre_modelo='Venta',
+                        tipo_accion='COBRO_VENTA',
+                        accion=f"Cobro / checkout venta #{venta.pk}",
+                        entidad_id=venta.pk,
+                        detalles=detalles_pago,
+                    )
 
                     # Redirigir según método de pago
                     if metodo_pago == PagoVenta.MET_EFECTIVO:

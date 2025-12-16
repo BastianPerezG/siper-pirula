@@ -88,6 +88,12 @@
             {% if form.password.errors %}
             <p class="text-red-600 text-xs mt-1">{{ form.password.errors|striptags }}</p>
             {% endif %}
+            <div class="text-right mt-1">
+              <a href="{% url 'core:password_reset_custom' %}"
+                class="text-xs text-pirula-medium hover:text-pirula-dark hover:underline">
+                ¿Olvidaste tu contraseña?
+              </a>
+            </div>
           </div>
 
           <button type="submit"

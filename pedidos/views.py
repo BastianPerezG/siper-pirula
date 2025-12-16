@@ -213,7 +213,7 @@ def pedidos_monitor_view(request):
                             usuario=request.user,
                             tipo_accion='CAMBIO_ESTADO_PREPARACION',
                             nombre_modelo='PedidoOnline',
-                            accion=f"Estado de preparación del pedido #{pedido.codigo} cambiado: {estado_anterior} → {nuevo_estado}",
+                            accion=f"Pedido #{pedido.codigo} cambio de estado: {estado_anterior} → {nuevo_estado}",
                             entidad_id=pedido.pk,
                             detalles={
                                 'pedido_codigo': pedido.codigo,
