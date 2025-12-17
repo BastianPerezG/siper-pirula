@@ -134,3 +134,4 @@ DEFAULT_FROM_EMAIL = os.environ.get("EMAIL_HOST_USER", "noreply@granpirula.cl")
 
 # URL del sitio (para emails)
 SITE_URL = os.environ.get("SITE_URL", "http://127.0.0.1:8000")
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")

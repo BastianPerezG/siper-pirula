@@ -15,7 +15,7 @@ def _enviar_email_resend(destinatario, subject, template_html, template_txt, con
         return
 
     # Configurar API key
-    resend.api_key = os.environ.get("RESEND_API_KEY", "")
+    resend.api_key = getattr(settings, "RESEND_API_KEY", "")
     
     if not resend.api_key:
         print(f"⚠️ RESEND_API_KEY no configurada. Email no enviado a {destinatario}")
@@ -57,7 +57,7 @@ def _enviar_email_resend(destinatario, subject, template_html, template_txt, con
         raise
 
 
-def enviar_correo_restablecer_password(usuario, reset_url):
+def enviar_correo_restablecer_password(usuario, reset_url, uid, token):
     """
     Envía el correo de restablecimiento de contraseña usando Resend.
     """
@@ -66,12 +66,19 @@ def enviar_correo_restablecer_password(usuario, reset_url):
     context = {
         "user": usuario,
         "reset_url": reset_url,
+        "uid": uid,
+        "uidb64": uid,  # Alias para compatibilidad con algunas plantillas
+        "token": token,
     }
+    
+    print(f"📧 [DEBUG EMAIL] Preparando correo para {usuario.email}")
+    print(f"🔗 URL: {reset_url}")
+    print(f"🆔 UID: {uid}")
     
     _enviar_email_resend(
         destinatario=usuario.email,
         subject=subject,
         template_html="registration/password_reset_email_html.html", # Plantilla HTML bonita
-        template_txt="registration/password_reset_email.html",       # Plantilla Texto Plano (la que ya existe)
+        template_txt="registration/password_reset_email.html",       # Plantilla Texto Plano
         context=context,
     )

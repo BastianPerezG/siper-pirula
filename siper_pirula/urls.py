@@ -14,7 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-
+from django.views.defaults import page_not_found
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -35,7 +35,7 @@ urlpatterns = [
 
 
 if settings.DEBUG:
-    from django.views.defaults import page_not_found
+    
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += [
         path('404/', page_not_found, {'exception': Exception("Test 404")}),

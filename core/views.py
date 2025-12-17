@@ -1,6 +1,6 @@
 # core/views.py
 from django.views.generic import TemplateView, ListView, CreateView, UpdateView
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth import login, logout
 from django.contrib.auth.forms import AuthenticationForm
@@ -10,28 +10,22 @@ from django.contrib.auth.models import User
 from django.utils.decorators import method_decorator
 from django.db.models import Q
 from django.contrib.staticfiles.storage import staticfiles_storage
+from django.utils.encoding import force_bytes, force_str
 import os
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
-
 from .models import PerfilUsuario, Negocio, BitacoraAccion
 from .forms import UsuarioCrearForm, UsuarioEditarForm
 from .mixins import RolRequeridoMixin, rol_requerido
 from django.contrib.auth.decorators import login_required, permission_required
-from django.shortcuts import render, get_object_or_404
-from django.utils.decorators import method_decorator
-from django.db.models import Q
-
 from core.utils import registrar_bitacora_estructurada
-from .mixins import RolRequeridoMixin, rol_requerido
-#correo
 from django.contrib.auth.views import PasswordResetView
 from django.contrib.auth.tokens import default_token_generator
-from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
-from django.conf import settings
 from .emails import enviar_correo_restablecer_password # Importamos nuestra función de envío
+import csv
+from django.http import HttpResponse
 
 # Views Core
 
@@ -479,7 +473,7 @@ class UsuarioEditarView(RolRequeridoMixin, UpdateView):
                     entidad_id=perfil_original.pk,
                     detalles=detalles_registro
                 )
-            except Exception as e:
+            except Exception as e:  
                 print(f"ERROR BITACORA (Edición de Usuario): {e}") 
         
         # 3. Finalizar la operación de actualización (Guarda los nuevos datos)
@@ -577,49 +571,68 @@ class CustomPasswordResetView(PasswordResetView):
 
     def form_valid(self, form):
         email = form.cleaned_data.get('email')
+        print(f"--- Iniciando recuperación para: {email} ---") # Debug
         
         # 1. Buscar usuarios
         users = list(User.objects.filter(email=email, is_active=True))
+        print(f"Usuarios encontrados: {len(users)}") # Debug
         
         if not users:
-            # Por seguridad, no decimos que el usuario no existe,
-            # pero podemos logear el intento fallido si queremos.
-            pass
-        
-        # 2. Enviar correo "a mano" usando nuestra función `enviar_correo_restablecer_password` (Resend)
-        # Esto reemplaza el form.save() de Django que usa el SMTP nativo.
+            return redirect(self.success_url)
+
         for user in users:
-            # Generar token y uid
+            # VERIFICACIÓN DE SEGURIDAD
+            if user.pk is None:
+                print(f"Error: El usuario {user.username} no tiene Primary Key.")
+                continue
+
+            # 2. Generar credenciales
             token = default_token_generator.make_token(user)
-            uid = urlsafe_base64_encode(force_bytes(user.pk))
-            
-            # Construir URL absoluta
-            # Si tienes configurado un SITE_URL en settings, úsalo, sino construye uno básico
+            uid = urlsafe_base64_encode(force_bytes(str(user.pk))) # Aseguramos string antes de bytes           
+            print(f"Generado - UID: {uid}, TOKEN: {token}") # Debug
+
+            # 3. Construir URL
             protocol = 'https' if self.request.is_secure() else 'http'
             domain = self.request.get_host()
-            reset_url = f"{protocol}://{domain}{reverse_lazy('password_reset_confirm', kwargs={'uidb64': uid, 'token': token})}"
             
-            # Enviar correo personalizado
             try:
-                enviar_correo_restablecer_password(user, reset_url)
+                # IMPORTANTE: Asegúrate que 'password_reset_confirm' sea el nombre en tus URLs
+                reset_path = reverse('password_reset_confirm', kwargs={'uidb64': uid, 'token': token})
+                reset_url = f"{protocol}://{domain}{reset_path}"
                 
-                # Registro en Bitácora
+                print(f"URL generada: {reset_url}") # Debug
+
+                # 4. Enviar correo
+                # Pasamos ambos nombres (uid y uidb64) por si acaso en la plantilla se usa uno u otro
+                enviar_correo_restablecer_password(user, reset_url, uid, token)
+                
+                # 5. Registro en bitácora
+                perfil = getattr(user, 'perfilusuario', None)
+                negocio = perfil.negocio if perfil else Negocio.objects.first()
+                
+                print(f"DEBUG: Registrando bitácora para {user.username}. UID: {uid}")
+                
                 registrar_bitacora_estructurada(
-                    negocio=user.perfilusuario.negocio if hasattr(user, 'perfilusuario') else None,
+                    negocio=negocio,
                     usuario=user,
-                    nombre_modelo="Usuario",
-                    tipo_accion="SOLICITUD_RESET_PASSWORD",
-                    accion=f"Email de recuperación enviado a {user.username} via Resend.",
+                    nombre_modelo='Usuario',
+                    tipo_accion='SOLICITUD_RESET_PASSWORD',
+                    accion=f"Solicitud de restablecimiento de contraseña para el usuario: {user.username}",
                     entidad_id=user.pk,
                     detalles={
-                        'email_solicitante': email,
-                        'servicio_email': 'Resend API',
+                        'email': email,
+                        'protocol': protocol,
+                        'domain': domain,
+                        'uid': uid,         # Debug en bitácora
+                        'token': token      # Debug en bitácora
                     }
                 )
+                
             except Exception as e:
-                print(f"Error enviando correo recovery a {email}: {e}")
-        
-        # Redirigir a "Done"
+                import traceback
+                print(f"Error crítico en el proceso: {str(e)}")
+                traceback.print_exc()
+                
         return redirect(self.success_url)
 
 
@@ -727,9 +740,7 @@ class BitacoraListView(LoginRequiredMixin, ListView):
 @login_required
 def bitacora_export_csv(request):
     """Exporta los resultados filtrados de la bitácora a CSV"""
-    import csv
-    from django.http import HttpResponse
-    from django.utils import timezone
+   
     
     # Reutilizar la lógica de filtrado del ListView
     view = BitacoraListView()
