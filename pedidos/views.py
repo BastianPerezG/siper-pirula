@@ -14,7 +14,8 @@ from .models import Pedido
 from .forms import PedidoForm, PedidoItemFormSet
 from ventas.models import Venta, VentaItem
 from tienda.views import get_negocio_actual
-
+from django.contrib import messages
+import logging
 from core.utils import registrar_bitacora_estructurada
 def _generar_codigo():
     """Código corto tipo 'AB34XZ'."""
@@ -178,8 +179,7 @@ def pedido_cambiar_estado_view(request, pk, nuevo_estado):
 
 @login_required
 def pedidos_monitor_view(request):
-    from django.contrib import messages
-    import logging
+    
     logger = logging.getLogger(__name__)
     
     negocio = get_negocio_actual()

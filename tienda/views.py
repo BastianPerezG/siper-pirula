@@ -753,12 +753,16 @@ def checkout_view(request):
                 # Cualquier otro error interno de la función de registro
                 print(f"ERROR BITACORA CHECKOUT (INTERNO): {e}") 
             # 🔥 FIN DEL REGISTRO DE BITÁCORA 🔥
-            # Reservar stock
-            pedido.crear_reservas_inventario()
-
+            
             # Flujo según forma de pago
             if forma_pago == "RETIRO":
-                pedido.marcar_pendiente_retiro()
+                try:
+                    pedido.marcar_pendiente_retiro()
+                except Exception as stock_error:
+                    # Si falla la reserva de stock, eliminar el pedido y mostrar error
+                    pedido.delete()
+                    messages.error(request, str(stock_error))
+                    return redirect("tienda:carrito_ver")
                 # Intentar enviar correo, pero no fallar si hay problemas de configuración SMTP
                 try:
                     enviar_correo_pedido_creado(pedido)
@@ -777,9 +781,21 @@ def checkout_view(request):
                 return redirect("tienda:checkout_exito", pedido_id=pedido.id)
 
             elif forma_pago == "WEBPAY":
+                # Crear reservas de inventario
+                try:
+                    pedido.crear_reservas_inventario()
+                except Exception as stock_error:
+                    # Si falla la reserva de stock, eliminar el pedido y mostrar error
+                    pedido.delete()
+                    messages.error(request, str(stock_error))
+                    return redirect("tienda:carrito_ver")
+                
                 try:
                     url_pago, token = iniciar_pago_webpay(pedido, request)
                 except ValueError as e:
+                    # Si falla webpay, liberar las reservas y eliminar pedido
+                    pedido.liberar_reservas_inventario()
+                    pedido.delete()
                     messages.error(request, str(e))
                     return redirect("tienda:carrito_ver")
 

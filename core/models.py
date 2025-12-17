@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.conf import settings
-
+from django.utils import timezone
 # Modelo Core 
 
 class Negocio(models.Model):
@@ -128,7 +128,6 @@ class PerfilUsuario(models.Model):
 
     @property
     def esta_bloqueado(self):
-        from django.utils import timezone
         return self.bloqueado_hasta and self.bloqueado_hasta > timezone.now()
 
 User = get_user_model()

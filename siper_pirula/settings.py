@@ -135,3 +135,16 @@ DEFAULT_FROM_EMAIL = os.environ.get("EMAIL_HOST_USER", "noreply@granpirula.cl")
 # URL del sitio (para emails)
 SITE_URL = os.environ.get("SITE_URL", "http://127.0.0.1:8000")
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+
+
+# Configuración de Backup Automático
+BACKUP_DIR = BASE_DIR / "backups"
+BACKUP_RETENTION_DAYS = 30  # Días a retener backups (opciones: 15, 30, 60, 90)
+
+# Configuración de AWS S3 para Backups (opcional)
+# Las credenciales se leen desde variables de ambiente por seguridad
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", "")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
+AWS_SESSION_TOKEN = os.environ.get("AWS_SESSION_TOKEN", "")  # Requerido para AWS Academy
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
+AWS_BACKUP_BUCKET = os.environ.get("AWS_BACKUP_BUCKET", "")  # Nombre del bucket S3
