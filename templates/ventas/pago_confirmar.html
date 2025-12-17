@@ -1,114 +1,120 @@
-{% extends "../core/base.html" %}
+{% extends "core/base.html" %}
 
 {% block title %}Confirmar Pago - SIPER Pirula{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">
-    Confirmar Pago Pendiente
-</h1>
-
-<div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-    <h2 class="text-lg font-semibold mb-4">Información del Pago</h2>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-        <div>
-            <p class="text-slate-500 font-semibold">Venta</p>
-            <p>
-                <a href="{% url 'ventas:venta_detalle' venta.pk %}" 
-                   class="text-emerald-700 hover:underline">
-                    #{{ venta.pk }}
-                </a>
-                <span class="text-slate-500 ml-2">
-                    {{ venta.doc_tipo }} {{ venta.doc_num|default:"—" }}
-                </span>
-            </p>
-        </div>
-        <div>
-            <p class="text-slate-500 font-semibold">Método de Pago</p>
-            <p>{{ pago.get_metodo_display }}</p>
-        </div>
-        <div>
-            <p class="text-slate-500 font-semibold">Monto</p>
-            <p class="text-lg font-bold text-emerald-700">${{ pago.monto|floatformat:0 }}</p>
-        </div>
-        <div>
-            <p class="text-slate-500 font-semibold">Estado</p>
-            <p>
-                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                    Pendiente
-                </span>
-            </p>
-        </div>
-        {% if pago.codigo_referencia %}
-        <div>
-            <p class="text-slate-500 font-semibold">Código de Referencia</p>
-            <p class="font-mono bg-slate-100 px-3 py-1.5 rounded inline-block">
-                {{ pago.codigo_referencia }}
-            </p>
-        </div>
-        {% endif %}
-        {% if pago.banco %}
-        <div>
-            <p class="text-slate-500 font-semibold">Banco</p>
-            <p>{{ pago.banco }}</p>
-        </div>
-        {% endif %}
-        {% if pago.cuenta_origen %}
-        <div>
-            <p class="text-slate-500 font-semibold">Cuenta Origen</p>
-            <p>{{ pago.cuenta_origen }}</p>
-        </div>
-        {% endif %}
-        {% if pago.titular_transferencia %}
-        <div>
-            <p class="text-slate-500 font-semibold">Titular</p>
-            <p>{{ pago.titular_transferencia }}</p>
-        </div>
-        {% endif %}
-        <div>
-            <p class="text-slate-500 font-semibold">Registrado por</p>
-            <p>{{ pago.usuario_registra.get_full_name|default:pago.usuario_registra.username }}</p>
-        </div>
-        <div>
-            <p class="text-slate-500 font-semibold">Fecha de Registro</p>
-            <p>{{ pago.fecha_hora|date:"d/m/Y H:i" }}</p>
-        </div>
-        {% if pago.observaciones %}
-        <div class="md:col-span-2">
-            <p class="text-slate-500 font-semibold">Observaciones</p>
-            <p class="bg-slate-50 p-3 rounded border border-slate-200">{{ pago.observaciones }}</p>
-        </div>
-        {% endif %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="text-center sm:text-left">
+        <h1 class="text-2xl font-bold text-pirula-dark">✅ Confirmar Pago Pendiente</h1>
+        <p class="text-sm text-slate-500 mt-1">
+            Revisa la información del pago antes de confirmar.
+        </p>
     </div>
-</div>
 
-<div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-    <p class="text-amber-800 text-sm font-semibold mb-2">⚠️ Confirmación de Pago</p>
-    <p class="text-amber-700 text-sm">
-        Al confirmar este pago, se marcará como completado y quedará registrado en el sistema.
-        Esta acción no se puede deshacer.
-    </p>
-</div>
+    <!-- Información del pago -->
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-5 sm:p-6">
+        <h2 class="text-lg font-bold text-pirula-dark mb-4">💳 Información del Pago</h2>
 
-<form method="post" class="mb-6">
-    {% csrf_token %}
-    <div class="flex gap-3">
-        <button type="submit"
-                class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors">
-            ✓ Confirmar Pago
-        </button>
-        <a href="{% url 'ventas:venta_detalle' venta.pk %}"
-           class="inline-flex items-center px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm hover:bg-slate-50 transition-colors">
-            Cancelar
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">📄 Venta</p>
+                <p>
+                    <a href="{% url 'ventas:venta_detalle' venta.pk %}"
+                        class="text-pirula-accent hover:text-pirula-dark font-medium">
+                        #{{ venta.pk }}
+                    </a>
+                    <span class="text-slate-500 ml-2">
+                        {{ venta.doc_tipo }} {{ venta.doc_num|default:"—" }}
+                    </span>
+                </p>
+            </div>
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">💳 Método de Pago</p>
+                <p class="text-slate-700">{{ pago.get_metodo_display }}</p>
+            </div>
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">💰 Monto</p>
+                <p class="text-xl font-bold text-emerald-600">${{ pago.monto|floatformat:0 }}</p>
+            </div>
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">⚡ Estado</p>
+                <span
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                    ⏳ Pendiente
+                </span>
+            </div>
+            {% if pago.codigo_referencia %}
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">🔗 Código de Referencia</p>
+                <p class="font-mono bg-white px-3 py-1.5 rounded border border-pirula-beige inline-block">
+                    {{ pago.codigo_referencia }}
+                </p>
+            </div>
+            {% endif %}
+            {% if pago.banco %}
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">🏦 Banco</p>
+                <p class="text-slate-700">{{ pago.banco }}</p>
+            </div>
+            {% endif %}
+            {% if pago.cuenta_origen %}
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">📋 Cuenta Origen</p>
+                <p class="text-slate-700">{{ pago.cuenta_origen }}</p>
+            </div>
+            {% endif %}
+            {% if pago.titular_transferencia %}
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">👤 Titular</p>
+                <p class="text-slate-700">{{ pago.titular_transferencia }}</p>
+            </div>
+            {% endif %}
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">👤 Registrado por</p>
+                <p class="text-slate-700">{{ pago.usuario_registra.get_full_name|default:pago.usuario_registra.username  }}</p>
+            </div>
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">📅 Fecha de Registro</p>
+                <p class="text-slate-700">{{ pago.fecha_hora|date:"d/m/Y H:i" }}</p>
+            </div>
+            {% if pago.observaciones %}
+            <div class="bg-pirula-cream/50 rounded-lg p-3 sm:col-span-2">
+                <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">📝 Observaciones</p>
+                <p class="bg-white p-3 rounded border border-pirula-beige text-slate-700">{{ pago.observaciones }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- Warning -->
+    <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <p class="text-amber-800 font-semibold mb-1">⚠️ Confirmación de Pago</p>
+        <p class="text-amber-700 text-sm">
+            Al confirmar este pago, se marcará como completado y quedará registrado en el sistema.
+            Esta acción no se puede deshacer.
+        </p>
+    </div>
+
+    <!-- Acciones -->
+    <form method="post">
+        {% csrf_token %}
+        <div class="flex flex-col sm:flex-row gap-3">
+            <button type="submit"
+                class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition-colors shadow-md">
+                ✅ Confirmar Pago
+            </button>
+            <a href="{% url 'ventas:venta_detalle' venta.pk %}"
+                class="inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-pirula-beige text-pirula-dark text-sm hover:bg-pirula-cream transition-colors">
+                Cancelar
+            </a>
+        </div>
+    </form>
+
+    <div class="pt-4 border-t border-pirula-beige/30">
+        <a href="{% url 'ventas:pago_pendiente_lista' %}" class="text-sm text-pirula-accent hover:text-pirula-dark">
+            ← Volver a lista de pagos pendientes
         </a>
     </div>
-</form>
-
-<div class="mt-6">
-    <a href="{% url 'ventas:pago_pendiente_lista' %}"
-       class="text-sm text-slate-600 hover:text-slate-800">
-        ← Volver a lista de pagos pendientes
-    </a>
 </div>
 {% endblock %}
-

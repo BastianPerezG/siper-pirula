@@ -10,6 +10,7 @@ from django.db.models import Q
 from core.models import Negocio
 from inventario.models import Producto, Categoria, Promo
 from pedidos.models import Pedido, PedidoItem, Cliente
+from ventas.models import Venta, VentaItem
 from pedidos.emails import enviar_correo_pedido_creado
 from django.contrib.auth.models import User  # para crear el usuario
 from pedidos.forms import RegistroClienteForm
@@ -1217,6 +1218,8 @@ def webpay_retorno_view(request):
     status = resp.get("status")
 
     if status == "AUTHORIZED":
+        from django.db import transaction as db_transaction
+        
         pedido.webpay_status = "AUTHORIZED"
         # Usar el nuevo método que separa los estados
         pedido.estado_pago = Pedido.PAGO_PAGADO
@@ -1224,15 +1227,74 @@ def webpay_retorno_view(request):
         pedido.estado = Pedido.EST_PAGADO  # Compatibilidad
         pedido.save(update_fields=["webpay_status", "estado_pago", "estado_preparacion", "estado"])
 
+        # =====================================================
+        # CREAR VENTA AUTOMÁTICA DESDE EL PEDIDO PAGADO
+        # =====================================================
+        try:
+            with db_transaction.atomic():
+                # Determinar medio de pago basado en respuesta de Webpay
+                # Webpay puede ser débito o crédito, usamos CREDITO como default
+                payment_type = resp.get("payment_type_code", "")
+                if payment_type in ["VD", "VP"]:  # Venta Débito, Venta Prepago
+                    medio_pago = Venta.MED_DEBITO
+                else:  # VN, VC, SI, S2, NC, etc. son crédito
+                    medio_pago = Venta.MED_CREDITO
+                
+                # Crear la Venta vinculada al pedido
+                venta = Venta.objects.create(
+                    negocio=pedido.negocio,
+                    pedido=pedido,
+                    doc_tipo=Venta.DOC_BOLETA,
+                    medio_pago=medio_pago,
+                    comentario=f"Venta automática - Pedido online {pedido.codigo} pagado con Webpay",
+                    estado=Venta.EST_CERRADA,  # Ya está pagada
+                    monto_total=pedido.total_monto or pedido.total,
+                )
+                
+                # Crear los VentaItems desde los PedidoItems
+                for p_item in pedido.items.all():
+                    VentaItem.objects.create(
+                        venta=venta,
+                        producto=p_item.producto,
+                        cantidad=p_item.cantidad,
+                        precio_unit=p_item.precio,
+                        pedido_item=p_item,  # Vincula para reutilizar reservas de inventario
+                    )
+                
+                # Registrar en bitácora
+                try:
+                    registrar_bitacora_estructurada(
+                        negocio=pedido.negocio,
+                        usuario=None,  # Usuario anónimo (cliente online)
+                        tipo_accion="VENTA_WEBPAY",
+                        nombre_modelo="Venta",
+                        accion=f"Venta #{venta.pk} creada automáticamente desde pedido {pedido.codigo} (Webpay)",
+                        entidad_id=venta.pk,
+                        detalles={
+                            "pedido_codigo": pedido.codigo,
+                            "pedido_id": pedido.pk,
+                            "venta_id": venta.pk,
+                            "medio_pago": medio_pago,
+                            "monto": str(venta.monto_total),
+                            "webpay_status": status,
+                            "payment_type_code": payment_type,
+                        },
+                    )
+                except Exception as e:
+                    logger.warning(f"Error al registrar bitácora para venta {venta.pk}: {e}")
+                
+                logger.info(f"Venta #{venta.pk} creada automáticamente desde pedido {pedido.codigo}")
+                
+        except Exception as e:
+            # Si falla la creación de la venta, registramos el error pero no detenemos el flujo
+            # El pedido ya está marcado como pagado
+            logger.error(f"Error al crear venta automática desde pedido {pedido.codigo}: {e}")
+
         # Intentar enviar correo, pero no fallar si hay problemas de configuración SMTP
         try:
             enviar_correo_pedido_creado(pedido)
         except Exception as e:
-            # Log del error pero no interrumpir el flujo
-            import logging
-            logger = logging.getLogger(__name__)
             logger.warning(f"Error al enviar correo de confirmación del pedido {pedido.codigo}: {e}")
-            # El pedido ya está pagado, así que continuamos normalmente
 
         messages.success(request, "Pago realizado con éxito.")
         return redirect("tienda:checkout_exito", pedido_id=pedido.id)

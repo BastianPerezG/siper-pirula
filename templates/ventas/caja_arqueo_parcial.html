@@ -1,84 +1,90 @@
-{% extends "../core/base.html" %}
+{% extends "core/base.html" %}
 
 {% block title %}Arqueo parcial de caja - SIPER Pirula{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-6">
-  <header>
-    <h1 class="text-2xl font-bold text-slate-900">Arqueo parcial de caja</h1>
-    <p class="mt-2 text-sm text-slate-600">
+  <!-- Header -->
+  <div class="text-center sm:text-left">
+    <h1 class="text-2xl font-bold text-pirula-dark">🔢 Arqueo Parcial de Caja</h1>
+    <p class="text-sm text-slate-500 mt-1">
       Registra un conteo intermedio de efectivo para controlar diferencias durante el turno.
     </p>
-  </header>
+  </div>
 
-  <section class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm">
-    <p class="font-medium text-slate-800">
-      Caja abierta por: {{ caja.usuario_apertura.get_full_name|default:caja.usuario_apertura.username }}
-    </p>
-    <p class="text-slate-700">
-      Fecha apertura: {{ caja.fecha_apertura|date:"d/m/Y H:i" }}
-    </p>
-    <p class="mt-2">
-      <span class="font-semibold text-slate-900">Monto esperado en efectivo:</span>
-      <span id="monto-esperado" class="font-mono">
-        ${{ monto_esperado|floatformat:0 }}
-      </span>
-    </p>
+  <!-- Info de la caja actual -->
+  <section class="bg-pirula-cream/50 border border-pirula-beige rounded-xl p-4 sm:p-5">
+    <h2 class="text-sm font-bold text-pirula-dark uppercase tracking-wide mb-3">📋 Información de la caja</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+      <div class="bg-white rounded-lg p-3 border border-pirula-beige/50">
+        <p class="text-xs text-slate-500 mb-1">Abierta por</p>
+        <p class="font-medium text-pirula-dark">{{ caja.usuario_apertura.get_full_name|default:caja.usuario_apertura.username }}</p>
+      </div>
+      <div class="bg-white rounded-lg p-3 border border-pirula-beige/50">
+        <p class="text-xs text-slate-500 mb-1">Fecha de apertura</p>
+        <p class="font-medium text-pirula-dark">{{ caja.fecha_apertura|date:"d/m/Y H:i" }}</p>
+      </div>
+    </div>
+    <div class="mt-3 bg-white rounded-lg p-4 border border-pirula-beige/50">
+      <p class="text-xs text-slate-500 mb-1">💰 Monto esperado en efectivo</p>
+      <p id="monto-esperado" class="font-mono font-bold text-emerald-600 text-xl">${{ monto_esperado|floatformat:0 }}
+      </p>
+    </div>
   </section>
 
-  <form method="post" class="bg-white shadow-sm rounded-xl p-5 space-y-5">
+  <!-- Formulario de arqueo -->
+  <form method="post" class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-5 sm:p-6 space-y-5">
     {% csrf_token %}
 
     <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1">
-        Monto contado (efectivo actual)
+      <label for="id_monto_contado" class="block text-xs font-bold text-pirula-dark mb-2 uppercase tracking-wide">
+        💵 Monto contado (efectivo actual)
       </label>
       {{ form.monto_contado }}
       {% if form.monto_contado.errors %}
-        <p class="mt-1 text-sm text-red-600">
-          {{ form.monto_contado.errors|striptags }}
-        </p>
+      <p class="mt-2 text-sm text-red-600">
+        {{ form.monto_contado.errors|striptags }}
+      </p>
       {% endif %}
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1">
-        Observación (opcional)
+      <label for="id_observacion" class="block text-xs font-bold text-pirula-dark mb-2 uppercase tracking-wide">
+        📝 Observación (opcional)
       </label>
       {{ form.observacion }}
       {% if form.observacion.errors %}
-        <p class="mt-1 text-sm text-red-600">
-          {{ form.observacion.errors|striptags }}
-        </p>
+      <p class="mt-2 text-sm text-red-600">
+        {{ form.observacion.errors|striptags }}
+      </p>
       {% endif %}
     </div>
 
-    <div class="border-t border-slate-200 pt-4 text-sm">
-      <p class="text-slate-700">
-        <span class="font-semibold">Diferencia:</span>
-        <span id="diferencia-label" class="font-mono ml-1">–</span>
+    <div class="bg-pirula-cream/50 rounded-lg p-4 border border-pirula-beige/30">
+      <p class="text-sm">
+        <span class="font-bold text-pirula-dark">📊 Diferencia:</span>
+        <span id="diferencia-label" class="font-mono font-bold ml-2 text-lg">–</span>
       </p>
-      <p class="text-xs text-slate-500 mt-1">
+      <p class="text-xs text-slate-500 mt-2">
         La diferencia se calculará automáticamente al escribir el monto contado.
       </p>
     </div>
 
-    <div class="flex justify-end gap-3 pt-2">
+    <div class="flex flex-col sm:flex-row justify-end gap-3 pt-5 border-t border-pirula-beige/30">
       <a href="{% url 'ventas:venta_lista' %}"
-         class="px-4 py-2 rounded-lg border text-sm text-slate-700 hover:bg-slate-50">
-        Volver
+        class="w-full sm:w-auto px-4 py-2.5 rounded-lg border border-pirula-beige text-pirula-dark text-sm text-center hover:bg-pirula-cream transition-colors">
+        ← Volver
       </a>
       <button type="submit"
-              class="px-4 py-2 rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700">
-        Registrar arqueo
+        class="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white text-sm font-semibold transition-colors shadow-md">
+        🔢 Registrar arqueo
       </button>
     </div>
   </form>
 </div>
 
 <script>
-  // Script simple para mostrar la diferencia visualmente
-  (function() {
+  (function () {
     const esperado = parseFloat("{{ monto_esperado|floatformat:2 }}".replace(",", "."));
     const inputContado = document.getElementById("id_monto_contado");
     const diffLabel = document.getElementById("diferencia-label");
@@ -89,20 +95,19 @@
       const valor = parseFloat(inputContado.value.replace(",", "."));
       if (isNaN(valor)) {
         diffLabel.textContent = "–";
-        diffLabel.className = "font-mono";
+        diffLabel.className = "font-mono font-bold ml-2 text-lg text-slate-400";
         return;
       }
       const diff = valor - esperado;
       const formato = diff.toLocaleString("es-CL", { minimumFractionDigits: 0 });
-      diffLabel.textContent = (diff >= 0 ? "+" : "") + formato;
+      diffLabel.textContent = (diff >= 0 ? "+" : "") + "$" + formato;
 
-      // Colores según signo
       if (diff === 0) {
-        diffLabel.className = "font-mono text-emerald-600";
+        diffLabel.className = "font-mono font-bold ml-2 text-lg text-emerald-600";
       } else if (diff > 0) {
-        diffLabel.className = "font-mono text-amber-600";
+        diffLabel.className = "font-mono font-bold ml-2 text-lg text-amber-600";
       } else {
-        diffLabel.className = "font-mono text-red-600";
+        diffLabel.className = "font-mono font-bold ml-2 text-lg text-red-600";
       }
     }
 

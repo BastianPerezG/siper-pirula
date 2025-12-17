@@ -20,22 +20,23 @@
                 ➕ Nuevo Producto
             </a>
             {% endif %}
-            <a href="{% url 'inventario:scan_ean' %}"
-                class="px-4 py-2 rounded-lg bg-pirula-medium hover:bg-pirula-dark text-white text-sm font-semibold transition-colors shadow-md">
-                📷 Escanear
-            </a>
         </div>
     </div>
 
     <!-- Filtros -->
     <form method="get" class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-4">
         <div class="grid gap-4 md:grid-cols-5 items-end">
-            <div>
+            <div class="md:col-span-2">
                 <label for="q" class="block text-xs font-bold text-pirula-dark mb-2 uppercase tracking-wide">
-                    🔍 Buscar
+                    🔍 Buscar / Escanear
                 </label>
-                <input type="text" id="q" name="q" value="{{ filtros.q }}" placeholder="Nombre, SKU o EAN..."
-                    class="w-full border border-pirula-beige rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
+                <div class="relative">
+                    <input type="text" id="q" name="q" value="{{ filtros.q }}"
+                        placeholder="Nombre, SKU, EAN o escanea código de barras..." autofocus
+                        class="w-full border border-pirula-beige rounded-lg pl-3 pr-10 py-2 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
+                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-pirula-medium text-lg">📷</span>
+                </div>
+                <p class="text-xs text-pirula-medium mt-1">Usa la pistola lectora o escribe para buscar</p>
             </div>
 
             <div>
@@ -46,7 +47,7 @@
                     class="w-full border border-pirula-beige rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pirula-accent">
                     <option value="">Todas</option>
                     {% for c in categorias %}
-                    <option value="{{ c.id }}" {% if filtros.categoria == c.id %}selected{% endif %}>
+                    <option value="{{ c.id }}" {% if filtros.categoria==c.id %}selected{% endif %}>
                         {{ c.nombre }}
                     </option>
                     {% endfor %}
@@ -61,7 +62,7 @@
                     class="w-full border border-pirula-beige rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pirula-accent">
                     <option value="">Todos</option>
                     {% for p in proveedores %}
-                    <option value="{{ p.id }}" {% if filtros.proveedor == p.id %}selected{% endif %}>
+                    <option value="{{ p.id }}" {% if filtros.proveedor==p.id %}selected{% endif %}>
                         {{ p.nombre }}
                     </option>
                     {% endfor %}
@@ -74,10 +75,10 @@
                 </label>
                 <select id="estado" name="estado"
                     class="w-full border border-pirula-beige rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pirula-accent">
-                    <option value="activos" {% if filtros.estado == "activos" %}selected{% endif %}>Solo activos</option>
-                    <option value="inactivos" {% if filtros.estado == "inactivos" %}selected{% endif %}>Solo inactivos
+                    <option value="activos" {% if filtros.estado=="activos" %}selected{% endif %}>Solo activos</option>
+                    <option value="inactivos" {% if filtros.estado=="inactivos" %}selected{% endif %}>Solo inactivos
                     </option>
-                    <option value="todos" {% if filtros.estado == "todos" %}selected{% endif %}>Todos</option>
+                    <option value="todos" {% if filtros.estado=="todos" %}selected{% endif %}>Todos</option>
                 </select>
             </div>
 
@@ -97,7 +98,8 @@
         <div class="mt-4 pt-4 border-t border-pirula-beige/30 flex flex-wrap items-center gap-4">
             <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" name="stock_critico" value="1"
-                    class="w-4 h-4 rounded border-pirula-beige text-red-500 focus:ring-red-500" {% if filtros.stock_critico == "1" %}checked{% endif %} onchange="this.form.submit()">
+                    class="w-4 h-4 rounded border-pirula-beige text-red-500 focus:ring-red-500" {% if
+                    filtros.stock_critico=="1" %}checked{% endif %} onchange="this.form.submit()">
                 <span class="text-sm font-medium text-red-600">
                     ⚠️ Solo stock crítico
                 </span>
@@ -197,7 +199,8 @@
                                     title="Ver detalle">
                                     👁️
                                 </a>
-                                {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
+                                {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol ==
+                                'CAJERO' %}
                                 <a href="{% url 'inventario:producto_editar' p.pk %}"
                                     class="text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors"
                                     title="Editar">
@@ -253,7 +256,8 @@
                                 <p class="font-semibold text-pirula-dark truncate">{{ p.nombre }}</p>
                                 <p class="text-xs text-slate-400 font-mono">{{ p.sku|default:"—" }}</p>
                             </div>
-                            <span class="font-bold text-pirula-accent whitespace-nowrap">${{ p.precio|floatformat:0 }}</span>
+                            <span class="font-bold text-pirula-accent whitespace-nowrap">${{ p.precio|floatformat:0
+                                }}</span>
                         </div>
 
                         <div class="flex items-center gap-2 mt-2">
@@ -276,7 +280,8 @@
                         <div class="flex gap-3 mt-3">
                             <a href="{% url 'inventario:producto_detalle' p.pk %}"
                                 class="text-sm font-medium text-pirula-accent">Ver</a>
-                            {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
+                            {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol ==
+                            'CAJERO' %}
                             <a href="{% url 'inventario:producto_editar' p.pk %}"
                                 class="text-sm font-medium text-blue-600">Editar</a>
                             {% endif %}

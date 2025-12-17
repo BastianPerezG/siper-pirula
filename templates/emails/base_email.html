@@ -17,8 +17,13 @@
                     <tr>
                         <td
                             style="background:linear-gradient(135deg,#5d4037 0%,#8d6e63 100%);padding:24px;text-align:center;">
+                            {% if logo_url %}
                             <img src="{{ logo_url }}" alt="El Gran Pirula" height="70"
                                 style="display:block;margin:0 auto;border-radius:8px;">
+                            {% else %}
+                            <h1 style="color:#ffffff;margin:0;font-size:28px;font-weight:700;">🍷 El Gran Pirula</h1>
+                            <p style="color:#d4c4b0;margin:4px 0 0 0;font-size:12px;">Botillería & Más</p>
+                            {% endif %}
                         </td>
                     </tr>
 

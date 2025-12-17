@@ -1,70 +1,248 @@
 {% extends "../core/base.html" %}
 
-{% block title %}Confirmar venta POS{% endblock %}
+{% block title %}💳 Cobrar Pedido - {{ pedido.codigo }}{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto mt-10 bg-white shadow-sm rounded-2xl p-8">
-    <h1 class="text-2xl font-bold text-slate-900 mb-4">
-        Confirmar conversión a venta POS
-    </h1>
-
-    <p class="text-slate-600 mb-6">
-        Vas a convertir el <span class="font-semibold">Pedido {{ pedido.codigo }}</span>
-        en una venta POS. Se usarán los mismos productos y cantidades.
-    </p>
-
-    <div class="border border-slate-200 rounded-xl mb-6">
-        <div class="px-4 py-3 border-b border-slate-200 bg-slate-50 rounded-t-xl">
-            <p class="text-sm font-semibold text-slate-700">Resumen del pedido</p>
-        </div>
-        <div class="p-4 space-y-2 text-sm text-slate-700">
-            <p><span class="font-semibold">Cliente:</span> {{ pedido.nombre }}</p>
-            <p><span class="font-semibold">Total:</span> $ {{ pedido.total|floatformat:0 }}</p>
-        </div>
-
-        <div class="border-t border-slate-200">
-            <table class="min-w-full text-sm">
-                <thead class="bg-slate-50">
-                    <tr>
-                        <th class="px-4 py-2 text-left font-semibold text-slate-600">Producto</th>
-                        <th class="px-4 py-2 text-right font-semibold text-slate-600">Cantidad</th>
-                        <th class="px-4 py-2 text-right font-semibold text-slate-600">Precio</th>
-                        <th class="px-4 py-2 text-right font-semibold text-slate-600">Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in pedido.items.all %}
-                        <tr class="border-t border-slate-100">
-                            <td class="px-4 py-2 text-slate-800">
-                                {{ item.producto.nombre }}
-                            </td>
-                            <td class="px-4 py-2 text-right">{{ item.cantidad }}</td>
-                            <td class="px-4 py-2 text-right">$ {{ item.precio|floatformat:0 }}</td>
-                            <td class="px-4 py-2 text-right">$ {{ item.subtotal|floatformat:0 }}</td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="4" class="px-4 py-4 text-center text-slate-500">
-                                Este pedido no tiene productos.
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex items-center gap-3 mb-2">
+            <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
+                class="p-2 rounded-lg hover:bg-pirula-cream transition-colors">
+                <span class="text-xl">←</span>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-pirula-dark flex items-center gap-2">
+                    💳 Cobrar Pedido
+                </h1>
+                <p class="text-pirula-medium text-sm">
+                    Pedido <span class="font-mono font-bold">{{ pedido.codigo }}</span> • {{ pedido.nombre }}
+                </p>
+            </div>
         </div>
     </div>
 
-    <form method="post" class="flex items-center justify-between gap-4">
+    <form method="post" id="form-cobrar">
         {% csrf_token %}
-        <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
-           class="inline-flex items-center justify-center px-5 py-2.5 rounded-full border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">
-            Cancelar
-        </a>
 
-        <button type="submit"
-                class="inline-flex items-center justify-center px-6 py-2.5 rounded-full text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800">
-            Sí, convertir a venta POS
-        </button>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Columna izquierda: Resumen del pedido -->
+            <div class="lg:col-span-2 space-y-4">
+                <!-- Productos del pedido -->
+                <div class="bg-white rounded-xl shadow-md border border-pirula-beige/30 overflow-hidden">
+                    <div class="px-4 py-3 border-b border-pirula-beige/30 bg-pirula-cream/30">
+                        <h2 class="text-sm font-bold text-pirula-dark uppercase tracking-wide flex items-center gap-2">
+                            📦 Productos del pedido
+                        </h2>
+                    </div>
+                    <div class="divide-y divide-pirula-beige/20">
+                        {% for item in pedido.items.all %}
+                        <div class="px-4 py-3 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <span
+                                    class="w-8 h-8 bg-pirula-cream rounded-lg flex items-center justify-center text-sm font-bold text-pirula-dark">
+                                    {{ item.cantidad }}
+                                </span>
+                                <div>
+                                    <p class="font-medium text-pirula-dark">{{ item.producto.nombre }}</p>
+                                    <p class="text-sm text-pirula-medium">${{ item.precio|floatformat:0 }} c/u</p>
+                                </div>
+                            </div>
+                            <span class="font-bold text-pirula-dark">${{ item.subtotal|floatformat:0 }}</span>
+                        </div>
+                        {% empty %}
+                        <div class="px-4 py-8 text-center text-pirula-medium">
+                            Este pedido no tiene productos.
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <!-- Total -->
+                    <div class="px-4 py-4 bg-pirula-dark text-white flex items-center justify-between">
+                        <span class="text-lg font-bold">TOTAL A COBRAR</span>
+                        <span class="text-2xl font-black" id="total-display">${{ total_pedido|floatformat:0 }}</span>
+                    </div>
+                </div>
+
+                <!-- Tipo de documento -->
+                <div class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-4">
+                    <label class="block text-xs font-bold text-pirula-dark uppercase tracking-wide mb-2">
+                        📄 Tipo de documento
+                    </label>
+                    {{ form.doc_tipo }}
+                </div>
+            </div>
+
+            <!-- Columna derecha: Medio de pago -->
+            <div class="space-y-4">
+                <!-- Selección de medio de pago -->
+                <div class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-4">
+                    <label class="block text-xs font-bold text-pirula-dark uppercase tracking-wide mb-3">
+                        💰 Medio de pago
+                    </label>
+                    <div class="space-y-2">
+                        {% for radio in form.medio_pago %}
+                        <label
+                            class="flex items-center gap-3 p-3 border border-pirula-beige/50 rounded-lg cursor-pointer hover:bg-pirula-cream/50 transition-colors medio-pago-option"
+                            data-value="{{ radio.data.value }}">
+                            {{ radio.tag }}
+                            <span class="font-medium text-pirula-dark">{{ radio.choice_label }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    {% if form.medio_pago.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.medio_pago.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Sección de efectivo (solo visible si selecciona efectivo) -->
+                <div id="seccion-efectivo"
+                    class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-4 hidden">
+                    <label class="block text-xs font-bold text-pirula-dark uppercase tracking-wide mb-2">
+                        💵 Monto recibido
+                    </label>
+                    {{ form.monto_recibido }}
+                    {% if form.monto_recibido.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.monto_recibido.errors.0 }}</p>
+                    {% endif %}
+
+                    <!-- Botones de monto rápido -->
+                    <div class="grid grid-cols-3 gap-2 mt-3">
+                        <button type="button" onclick="setMontoRapido({{ total_pedido }})"
+                            class="py-2 text-sm font-medium bg-pirula-cream text-pirula-dark rounded-lg hover:bg-pirula-beige transition-colors">
+                            Exacto
+                        </button>
+                        <button type="button" onclick="redondearArriba(1000)"
+                            class="py-2 text-sm font-medium bg-pirula-cream text-pirula-dark rounded-lg hover:bg-pirula-beige transition-colors">
+                            +1.000
+                        </button>
+                        <button type="button" onclick="redondearArriba(5000)"
+                            class="py-2 text-sm font-medium bg-pirula-cream text-pirula-dark rounded-lg hover:bg-pirula-beige transition-colors">
+                            +5.000
+                        </button>
+                    </div>
+
+                    <!-- Vuelto -->
+                    <div class="mt-4 p-4 bg-pirula-accent/10 rounded-xl border-2 border-pirula-accent">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-bold text-pirula-dark uppercase">Vuelto</span>
+                            <span id="vuelto-display" class="text-2xl font-black text-pirula-accent">$0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Errores generales del form -->
+                {% if form.non_field_errors %}
+                <div class="bg-red-50 border border-red-200 rounded-xl p-4">
+                    <p class="text-sm text-red-700">{{ form.non_field_errors.0 }}</p>
+                </div>
+                {% endif %}
+
+                <!-- Botones de acción -->
+                <div class="space-y-2">
+                    <button type="submit"
+                        class="w-full py-4 bg-pirula-accent hover:bg-pirula-light text-white font-bold text-lg rounded-xl shadow-md transition-colors flex items-center justify-center gap-2">
+                        ✅ Confirmar Venta
+                    </button>
+
+                    <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
+                        class="w-full py-3 bg-white border-2 border-pirula-beige text-pirula-dark font-medium rounded-xl hover:bg-pirula-cream transition-colors flex items-center justify-center gap-2">
+                        ← Cancelar
+                    </a>
+                </div>
+
+                <!-- Info del cliente -->
+                <div class="bg-pirula-cream/50 rounded-xl p-4 text-sm">
+                    <p class="font-bold text-pirula-dark mb-1">👤 Cliente</p>
+                    <p class="text-pirula-medium">{{ pedido.nombre }}</p>
+                    {% if pedido.telefono %}
+                    <p class="text-pirula-medium">📞 {{ pedido.telefono }}</p>
+                    {% endif %}
+                    {% if pedido.correo %}
+                    <p class="text-pirula-medium">📧 {{ pedido.correo }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </form>
 </div>
+
+<script>
+    const totalPedido = {{ total_pedido }};
+
+    // Mostrar/ocultar sección de efectivo según medio de pago
+    document.querySelectorAll('input[name="medio_pago"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+            const seccionEfectivo = document.getElementById('seccion-efectivo');
+            if (this.value === 'EFECTIVO') {
+                seccionEfectivo.classList.remove('hidden');
+            } else {
+                seccionEfectivo.classList.add('hidden');
+            }
+            actualizarEstiloOpciones();
+        });
+    });
+
+    // Estilo visual para opción seleccionada
+    function actualizarEstiloOpciones() {
+        document.querySelectorAll('.medio-pago-option').forEach(label => {
+            const radio = label.querySelector('input[type="radio"]');
+            if (radio.checked) {
+                label.classList.add('bg-pirula-accent/10', 'border-pirula-accent');
+                label.classList.remove('border-pirula-beige/50');
+            } else {
+                label.classList.remove('bg-pirula-accent/10', 'border-pirula-accent');
+                label.classList.add('border-pirula-beige/50');
+            }
+        });
+    }
+
+    // Calcular vuelto
+    function calcularVuelto() {
+        const montoInput = document.getElementById('monto_recibido');
+        const vueltoDisplay = document.getElementById('vuelto-display');
+        const monto = parseInt(montoInput.value) || 0;
+        const vuelto = Math.max(monto - totalPedido, 0);
+        vueltoDisplay.textContent = '$' + vuelto.toLocaleString('es-CL');
+
+        // Color del vuelto
+        if (monto < totalPedido && monto > 0) {
+            vueltoDisplay.classList.add('text-red-500');
+            vueltoDisplay.classList.remove('text-pirula-accent');
+            vueltoDisplay.textContent = '-$' + (totalPedido - monto).toLocaleString('es-CL');
+        } else {
+            vueltoDisplay.classList.remove('text-red-500');
+            vueltoDisplay.classList.add('text-pirula-accent');
+        }
+    }
+
+    // Monto rápido exacto
+    function setMontoRapido(monto) {
+        document.getElementById('monto_recibido').value = monto;
+        calcularVuelto();
+    }
+
+    // Redondear hacia arriba
+    function redondearArriba(incremento) {
+        const montoActual = parseInt(document.getElementById('monto_recibido').value) || totalPedido;
+        const nuevoMonto = Math.ceil(montoActual / incremento) * incremento + incremento;
+        document.getElementById('monto_recibido').value = nuevoMonto;
+        calcularVuelto();
+    }
+
+    // Event listener para input de monto
+    document.getElementById('monto_recibido').addEventListener('input', calcularVuelto);
+
+    // Inicialización
+    document.addEventListener('DOMContentLoaded', function () {
+        actualizarEstiloOpciones();
+
+        // Si hay error en el form, mostrar sección de efectivo si estaba seleccionada
+        const efectivoRadio = document.querySelector('input[name="medio_pago"][value="EFECTIVO"]');
+        if (efectivoRadio && efectivoRadio.checked) {
+            document.getElementById('seccion-efectivo').classList.remove('hidden');
+        }
+
+        calcularVuelto();
+    });
+</script>
 {% endblock %}

@@ -10,8 +10,7 @@ urlpatterns = [
     path("producto/crear/", views.ProductoCrearView.as_view(), name="producto_crear"),
     path("producto/<int:pk>/", views.ProductoDetalleView.as_view(), name="producto_detalle"),
     path("producto/<int:pk>/editar/", views.ProductoActualizarView.as_view(), name="producto_editar"),
-    path("productos/<int:pk>/toggle-activo/", views.producto_toggle_activo, name="producto_toggle_activo",
-),
+    path("productos/<int:pk>/toggle-activo/", views.producto_toggle_activo, name="producto_toggle_activo"),
     # Movimientos de stock
     path("flujos/", views.FlujosInventarioView.as_view(), name="flujos_inventario"),
     path("producto/<int:producto_pk>/movimiento/crear/", views.MovimientoCrearView.as_view(), name="movimiento_crear"),

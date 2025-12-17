@@ -185,12 +185,6 @@
                     <span class="text-sm font-medium text-pirula-dark mt-2">Productos</span>
                 </a>
 
-                <a href="{% url 'inventario:scan_ean' %}"
-                    class="flex flex-col items-center p-4 bg-amber-50 hover:bg-amber-100 rounded-xl transition-colors group">
-                    <span class="text-3xl group-hover:scale-110 transition-transform">📷</span>
-                    <span class="text-sm font-medium text-pirula-dark mt-2">Escanear</span>
-                </a>
-
                 {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
                 <a href="{% url 'reportes:ventas' %}"
                     class="flex flex-col items-center p-4 bg-pink-50 hover:bg-pink-100 rounded-xl transition-colors group">

@@ -111,3 +111,80 @@ class EditarPerfilForm(forms.ModelForm):
             if User.objects.exclude(pk=self.instance.user.pk).filter(email=email).exists():
                  raise forms.ValidationError("Este correo ya está en uso por otro usuario.")
         return email
+
+
+class ConvertirPedidoVentaForm(forms.Form):
+    """
+    Formulario para convertir un pedido en venta POS.
+    Permite seleccionar el medio de pago y, si es efectivo, el monto recibido.
+    """
+    MEDIO_PAGO_CHOICES = [
+        ("EFECTIVO", "💵 Efectivo"),
+        ("DEBITO", "💳 Tarjeta Débito"),
+        ("CREDITO", "💳 Tarjeta Crédito"),
+        ("TRANSFERENCIA", "🏦 Transferencia"),
+    ]
+    
+    DOC_TIPO_CHOICES = [
+        ("BOLETA", "📄 Boleta"),
+        ("FACTURA", "📋 Factura"),
+        ("SIN_DOC", "📝 Sin documento"),
+    ]
+    
+    medio_pago = forms.ChoiceField(
+        choices=MEDIO_PAGO_CHOICES,
+        initial="EFECTIVO",
+        widget=forms.RadioSelect(attrs={
+            "class": "h-4 w-4 text-pirula-accent border-pirula-beige focus:ring-pirula-accent"
+        }),
+        label="Medio de pago"
+    )
+    
+    doc_tipo = forms.ChoiceField(
+        choices=DOC_TIPO_CHOICES,
+        initial="BOLETA",
+        widget=forms.Select(attrs={
+            "class": "w-full px-3 py-2 border border-pirula-beige rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pirula-accent"
+        }),
+        label="Tipo de documento"
+    )
+    
+    monto_recibido = forms.IntegerField(
+        required=False,
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            "class": "w-full px-4 py-3 text-xl font-bold text-center border-2 border-pirula-beige rounded-xl focus:outline-none focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent",
+            "placeholder": "$ 0",
+            "id": "monto_recibido"
+        }),
+        label="Monto recibido (efectivo)"
+    )
+    
+    def __init__(self, *args, total_pedido=0, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.total_pedido = total_pedido
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        medio_pago = cleaned_data.get("medio_pago")
+        monto_recibido = cleaned_data.get("monto_recibido")
+        
+        # Si es efectivo, validar monto recibido
+        if medio_pago == "EFECTIVO":
+            if not monto_recibido:
+                raise forms.ValidationError({
+                    "monto_recibido": "Debes ingresar el monto recibido para pagos en efectivo."
+                })
+            if monto_recibido < self.total_pedido:
+                raise forms.ValidationError({
+                    "monto_recibido": f"El monto recibido (${monto_recibido:,}) es menor al total (${self.total_pedido:,})."
+                })
+        
+        return cleaned_data
+    
+    def get_vuelto(self):
+        """Calcula el vuelto si es pago en efectivo."""
+        if self.is_valid() and self.cleaned_data.get("medio_pago") == "EFECTIVO":
+            monto_recibido = self.cleaned_data.get("monto_recibido", 0) or 0
+            return max(monto_recibido - self.total_pedido, 0)
+        return 0

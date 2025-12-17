@@ -11,7 +11,7 @@ from django.db import transaction
 from django.db.models import Q
 from pedidos.emails import enviar_correo_cambio_estado
 from .models import Pedido
-from .forms import PedidoForm, PedidoItemFormSet
+from .forms import PedidoForm, PedidoItemFormSet, ConvertirPedidoVentaForm
 from ventas.models import Venta, VentaItem
 from tienda.views import get_negocio_actual
 from django.contrib import messages
@@ -30,7 +30,46 @@ class PedidoListaView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         negocio = self.request.user.perfilusuario.negocio
-        return Pedido.objects.filter(negocio=negocio).order_by("-fecha")
+        qs = Pedido.objects.filter(negocio=negocio).select_related("cliente").prefetch_related("items", "ventas")
+        
+        # Filtro por búsqueda
+        q = self.request.GET.get("q", "").strip()
+        if q:
+            qs = qs.filter(
+                Q(codigo__icontains=q) |
+                Q(nombre__icontains=q) |
+                Q(correo__icontains=q) |
+                Q(telefono__icontains=q) |
+                Q(cliente__nombre__icontains=q) |
+                Q(cliente__rut__icontains=q)
+            )
+        
+        # Filtro por estado de pago
+        estado_pago = self.request.GET.get("estado_pago", "")
+        if estado_pago:
+            qs = qs.filter(estado_pago=estado_pago)
+        
+        # Filtro por estado de preparación
+        estado_prep = self.request.GET.get("estado_prep", "")
+        if estado_prep:
+            qs = qs.filter(estado_preparacion=estado_prep)
+        
+        # Filtro por forma de pago
+        forma_pago = self.request.GET.get("forma_pago", "")
+        if forma_pago:
+            qs = qs.filter(forma_pago=forma_pago)
+        
+        return qs.order_by("-fecha")
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["filtros"] = {
+            "q": self.request.GET.get("q", ""),
+            "estado_pago": self.request.GET.get("estado_pago", ""),
+            "estado_prep": self.request.GET.get("estado_prep", ""),
+            "forma_pago": self.request.GET.get("forma_pago", ""),
+        }
+        return context
 
 
 class PedidoDetalleView(LoginRequiredMixin, DetailView):
@@ -220,7 +259,7 @@ def pedidos_monitor_view(request):
                                 'estado_preparacion_anterior': estado_anterior,
                                 'estado_preparacion_nuevo': nuevo_estado,
                                 'estado_pago': pedido.estado_pago,
-                                'origen': 'monitor_cocina'
+                                'origen': 'monitor_pedidos'
                             }
                         )
                     except Exception as e:
@@ -246,7 +285,7 @@ def pedidos_monitor_view(request):
                             'estado_preparacion_anterior': estado_anterior,
                             'estado_pago_anterior': pago_anterior,
                             'accion_inventario': 'Stock liberado por cancelación',
-                            'origen': 'monitor_cocina'
+                            'origen': 'monitor_pedidos'
                         }
                     )
                 except Exception as e:
@@ -273,7 +312,7 @@ def pedidos_monitor_view(request):
                             'estado_preparacion_anterior': estado_anterior,
                             'estado_pago': pedido.estado_pago,
                             'accion_inventario': 'Stock liberado porque cliente no retiró',
-                            'origen': 'monitor_cocina'
+                            'origen': 'monitor_pedidos'
                         }
                     )
                 except Exception as e:
@@ -351,7 +390,7 @@ def pedidos_monitor_view(request):
         "stats": stats,
         "ESTADO_PREPARACION_CHOICES": Pedido.ESTADO_PREPARACION_CHOICES,
     }
-    return render(request, "pedidos/pedido_cocina.html", context)
+    return render(request, "pedidos/pedido_monitor.html", context)
 
 
 @login_required
@@ -369,53 +408,125 @@ def pedido_convertir_en_venta_view(request, pk):
 
     # Reglas simples por ahora: no convertir CANCELADO / NO_RETIRA
     if pedido.estado in ["CANCELADO", "NO_RETIRA"]:
+        messages.warning(request, "No se puede convertir un pedido cancelado.")
         return redirect("pedidos:pedido_detalle", pk=pedido.pk)
 
     if not pedido.items.exists():
+        messages.warning(request, "El pedido no tiene productos.")
         return redirect("pedidos:pedido_detalle", pk=pedido.pk)
+    
+    # Verificar si el pedido ya tiene una venta asociada (ej: pagado con Webpay)
+    venta_existente = pedido.ventas.first()
+    if venta_existente:
+        messages.info(
+            request, 
+            f"Este pedido ya tiene una venta asociada (#{venta_existente.pk}). "
+            "No es necesario convertirlo."
+        )
+        return redirect("ventas:venta_detalle", pk=venta_existente.pk)
 
     if request.method == "POST":
-        import logging
-        logger = logging.getLogger(__name__)
+        total_pedido = int(pedido.total_monto or pedido.total or 0)
+        form = ConvertirPedidoVentaForm(request.POST, total_pedido=total_pedido)
         
-        with transaction.atomic():
-            venta = Venta.objects.create(
-                negocio=negocio,
-                pedido=pedido,  # ← vinculación directa
-                doc_tipo=Venta.DOC_BOLETA,
-                medio_pago=Venta.MED_EFECTIVO,
-                comentario=f"Venta generada desde pedido {pedido.codigo}",
-                estado=Venta.EST_CERRADA,
-            )
-
-            for p_item in pedido.items.all():
-                VentaItem.objects.create(
-                    venta=venta,
-                    producto=p_item.producto,
-                    cantidad=p_item.cantidad,
-                    precio_unit=p_item.precio,
-                    pedido_item=p_item,  # ← vínculo para reutilizar la reserva
+        if form.is_valid():
+            import logging
+            logger = logging.getLogger(__name__)
+            
+            medio_pago = form.cleaned_data["medio_pago"]
+            doc_tipo = form.cleaned_data["doc_tipo"]
+            monto_recibido = form.cleaned_data.get("monto_recibido") or 0
+            vuelto = form.get_vuelto()
+            
+            with transaction.atomic():
+                # Crear la Venta con los datos del formulario
+                venta = Venta.objects.create(
+                    negocio=negocio,
+                    pedido=pedido,
+                    doc_tipo=doc_tipo,
+                    medio_pago=medio_pago,
+                    comentario=f"Venta generada desde pedido {pedido.codigo}",
+                    estado=Venta.EST_CERRADA,
+                    monto_total=total_pedido,
                 )
                 
-            # Marcamos el pedido como RETIRADO (y opcionalmente podrías notificar)
-            # Agregamos manejo de errores para SMTP
-            try:
-                pedido.cambiar_estado(pedido.EST_RETIRADO, usuario=request.user)
-            except AttributeError:
-                # Fallback si no existe el método
-                pedido.estado = "RETIRADO"
-                pedido.save(update_fields=["estado"])
-            except Exception as e:
-                # Si falla el envío de correo, solo registramos el error
-                logger.warning(f"Error al cambiar estado o enviar correo para pedido {pedido.codigo}: {str(e)}")
-                # Actualizar el estado manualmente
-                pedido.estado = "RETIRADO"
-                pedido.save(update_fields=["estado"])
+                # Generar número de documento automáticamente
+                if doc_tipo != "SIN_DOC":
+                    venta.doc_num = venta.generar_numero_documento()
+                    venta.save(update_fields=["doc_num"])
 
-            return redirect("ventas:venta_detalle", pk=venta.pk)
+                # Crear los VentaItems
+                for p_item in pedido.items.all():
+                    VentaItem.objects.create(
+                        venta=venta,
+                        producto=p_item.producto,
+                        cantidad=p_item.cantidad,
+                        precio_unit=p_item.precio,
+                        pedido_item=p_item,
+                    )
+                
+                # Registrar en bitácora
+                try:
+                    registrar_bitacora_estructurada(
+                        negocio=negocio,
+                        usuario=request.user,
+                        tipo_accion="VENTA_DESDE_PEDIDO",
+                        nombre_modelo="Venta",
+                        accion=f"Venta #{venta.pk} creada desde pedido {pedido.codigo}",
+                        entidad_id=venta.pk,
+                        detalles={
+                            "pedido_codigo": pedido.codigo,
+                            "pedido_id": pedido.pk,
+                            "venta_id": venta.pk,
+                            "medio_pago": medio_pago,
+                            "doc_tipo": doc_tipo,
+                            "monto_total": str(total_pedido),
+                            "monto_recibido": str(monto_recibido) if medio_pago == "EFECTIVO" else None,
+                            "vuelto": str(vuelto) if medio_pago == "EFECTIVO" else None,
+                        },
+                    )
+                except Exception as e:
+                    logger.warning(f"Error al registrar bitácora para venta {venta.pk}: {e}")
+                
+                # Si el pedido estaba pendiente de pago (RETIRO), marcarlo como PAGADO
+                if pedido.estado_pago == Pedido.PAGO_PENDIENTE:
+                    pedido.estado_pago = Pedido.PAGO_PAGADO
+                    pedido.save(update_fields=["estado_pago"])
+                
+                # Marcar pedido como RETIRADO
+                try:
+                    pedido.cambiar_estado(pedido.EST_RETIRADO, usuario=request.user)
+                except AttributeError:
+                    pedido.estado = "RETIRADO"
+                    pedido.save(update_fields=["estado"])
+                except Exception as e:
+                    logger.warning(f"Error al cambiar estado de pedido {pedido.codigo}: {str(e)}")
+                    pedido.estado = "RETIRADO"
+                    pedido.save(update_fields=["estado"])
+                
+                # Mensaje de éxito con info del vuelto si aplica
+                if medio_pago == "EFECTIVO" and vuelto > 0:
+                    messages.success(
+                        request,
+                        f"Venta #{venta.pk} creada exitosamente. Vuelto: ${vuelto:,}"
+                    )
+                else:
+                    messages.success(
+                        request,
+                        f"Venta #{venta.pk} creada exitosamente desde el pedido {pedido.codigo}."
+                    )
+
+                return redirect("ventas:venta_detalle", pk=venta.pk)
+    else:
+        total_pedido = int(pedido.total_monto or pedido.total or 0)
+        form = ConvertirPedidoVentaForm(total_pedido=total_pedido)
 
     return render(
         request,
         "pedidos/pedido_convertir_venta_confirmar.html",
-        {"pedido": pedido},
+        {
+            "pedido": pedido,
+            "form": form,
+            "total_pedido": total_pedido,
+        },
     )

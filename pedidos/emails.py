@@ -5,8 +5,19 @@ from django.template.loader import render_to_string
 
 
 def _get_logo_url():
-    base = getattr(settings, "SITE_URL", "http://localhost:8000")
-    return f"{base}{settings.STATIC_URL}img/logo_gran_pirula_marron.jpg"
+    """
+    Obtiene la URL del logo para emails.
+    En producción usa SITE_URL, en desarrollo usa un placeholder.
+    """
+    base = getattr(settings, "SITE_URL", "")
+    
+    # Si tenemos SITE_URL configurado (producción), usar la URL del logo
+    if base and "localhost" not in base and "127.0.0.1" not in base:
+        return f"{base}/static/img/logo_gran_pirula_marron.jpg"
+    
+    # En desarrollo o si SITE_URL no está configurado, usar un placeholder
+    # o simplemente retornar vacío para que no se muestre imagen rota
+    return ""
 
 
 def _enviar_email_resend(destinatario, subject, template_html, template_txt, context):

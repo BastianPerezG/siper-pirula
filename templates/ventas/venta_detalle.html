@@ -1,209 +1,263 @@
-{% extends "../core/base.html" %}
+{% extends "core/base.html" %}
 
 {% block title %}Venta #{{ venta.id }} - SIPER Pirula{% endblock %}
 
 {% block content %}
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-    <h1 class="text-2xl font-bold">
-        Venta #{{ venta.id }}
-    </h1>
-    <div class="flex flex-wrap gap-2">
-        <a href="{% url 'ventas:venta_lista' %}"
-           class="inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 text-xs sm:text-sm hover:bg-slate-50">
-            ← Volver a lista
-        </a>
-    </div>
-</div>
-
-<section class="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6 text-xs sm:text-sm">
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <p class="text-slate-500 font-semibold">Fecha</p>
-            <p>{{ venta.fecha }}</p>
+            <h1 class="text-2xl font-bold text-pirula-dark">📄 Venta #{{ venta.id }}</h1>
+            <p class="text-sm text-slate-500 mt-1">
+                Detalle completo de la venta y sus pagos asociados.
+            </p>
         </div>
-        <div>
-            <p class="text-slate-500 font-semibold">Documento</p>
-            <p>{{ venta.doc_tipo }} {{ venta.doc_num }}</p>
-        </div>
-        <div>
-            <p class="text-slate-500 font-semibold">Medio de pago</p>
-            <p>{{ venta.medio_pago }}</p>
-        </div>
-        <div class="md:col-span-2">
-            <p class="text-slate-500 font-semibold">Comentario</p>
-            <p>{{ venta.comentario|default:"(sin comentario)" }}</p>
+        <div class="flex flex-wrap gap-2">
+            <a href="{% url 'ventas:venta_lista' %}"
+                class="inline-flex items-center px-4 py-2 rounded-lg border border-pirula-beige text-pirula-dark text-sm hover:bg-pirula-cream transition-colors">
+                ← Volver a lista
+            </a>
         </div>
     </div>
-</section>
 
-<section class="bg-white rounded-lg shadow-sm p-4 sm:p-6">
-    <h2 class="text-lg font-semibold mb-4">Ítems</h2>
+    <!-- Información de la venta -->
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-4 sm:p-6">
+        <h2 class="text-lg font-bold text-pirula-dark mb-4">📋 Información General</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">📅 Fecha</p>
+                <p class="text-sm text-slate-700">{{ venta.fecha }}</p>
+            </div>
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">📄 Documento</p>
+                <p class="text-sm text-slate-700">{{ venta.doc_tipo }} {{ venta.doc_num }}</p>
+            </div>
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">💳 Medio de pago</p>
+                <p class="text-sm text-slate-700">{{ venta.medio_pago }}</p>
+            </div>
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">⚡ Estado</p>
+                <p class="text-sm">
+                    {% if venta.estado == "ABIERTA" %}
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        ⏳ En espera
+                    </span>
+                    {% elif venta.estado == "ANULADA" %}
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                        ❌ Anulada
+                    </span>
+                    {% else %}
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                        ✅ Cerrada
+                    </span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        {% if venta.comentario %}
+        <div class="mt-4 bg-pirula-cream/30 rounded-lg p-3">
+            <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">💬 Comentario</p>
+            <p class="text-sm text-slate-700">{{ venta.comentario }}</p>
+        </div>
+        {% endif %}
+    </section>
 
-    {% if venta.items.all %}
+    <!-- Ítems de la venta -->
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-4 sm:p-6">
+        <h2 class="text-lg font-bold text-pirula-dark mb-4">📦 Ítems de la venta</h2>
+
+        {% if venta.items.all %}
         <div class="overflow-x-auto -mx-4 sm:mx-0">
-            <table class="min-w-full text-xs sm:text-sm border border-slate-200">
-                <thead class="bg-slate-50 border-b border-slate-200">
+            <table class="min-w-full">
+                <thead class="bg-pirula-cream border-b border-pirula-beige">
                     <tr>
-                        <th class="px-2 sm:px-3 py-2 text-left">Producto</th>
-                        <th class="px-2 sm:px-3 py-2 text-center">Cantidad</th>
-                        <th class="px-2 sm:px-3 py-2 text-right hidden sm:table-cell">Precio unitario</th>
-                        <th class="px-2 sm:px-3 py-2 text-right">Subtotal</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">
+                            Producto</th>
+                        <th class="px-4 py-3 text-center text-xs font-bold text-pirula-dark uppercase tracking-wide">
+                            Cantidad</th>
+                        <th
+                            class="px-4 py-3 text-right text-xs font-bold text-pirula-dark uppercase tracking-wide hidden sm:table-cell">
+                            Precio unitario</th>
+                        <th class="px-4 py-3 text-right text-xs font-bold text-pirula-dark uppercase tracking-wide">
+                            Subtotal</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-pirula-beige/30">
                     {% for item in venta.items.all %}
-                        <tr class="border-b border-slate-100">
-                            <td class="px-2 sm:px-3 py-2">
-                                <div class="flex flex-col sm:flex-row sm:items-center gap-1">
-                                    <span class="font-medium">{{ item.producto.nombre }}</span>
-                                    <span class="text-xs text-slate-500 sm:hidden">${{ item.precio_unit }} c/u</span>
-                                </div>
-                            </td>
-                            <td class="px-2 sm:px-3 py-2 text-center">
+                    <tr class="hover:bg-pirula-cream/50 transition-colors">
+                        <td class="px-4 py-3">
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-1">
+                                <span class="font-medium text-pirula-dark">{{ item.producto.nombre }}</span>
+                                <span class="text-xs text-slate-500 sm:hidden">${{ item.precio_unit }} c/u</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <span
+                                class="inline-flex items-center justify-center min-w-[32px] px-2 py-1 rounded-lg text-sm font-bold bg-pirula-cream text-pirula-dark">
                                 {{ item.cantidad }}
-                            </td>
-                            <td class="px-2 sm:px-3 py-2 text-right hidden sm:table-cell">
-                                ${{ item.precio_unit|floatformat:0 }}
-                            </td>
-                            <td class="px-2 sm:px-3 py-2 text-right font-semibold">
-                                ${{ item.subtotal|floatformat:0 }}
-                            </td>
-                        </tr>
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-right hidden sm:table-cell text-slate-600">
+                            ${{ item.precio_unit|floatformat:0 }}
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <span class="font-bold text-pirula-dark">${{ item.subtotal|floatformat:0 }}</span>
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
 
-        <p class="mt-4 text-right text-base">
-            <span class="font-semibold">Total:</span>
-            <span class="font-bold">$ {{ venta.monto_total|default:venta.total|floatformat:0 }}</span>
-        </p>
-        {% if venta.estado == "CERRADA" and venta.monto_total != venta.total %}
-        <p class="mt-2 text-right text-sm text-slate-500">
-            <span>Total bruto (sin descuento):</span>
-            <span>$ {{ venta.total|floatformat:0 }}</span>
-        </p>
-        {% endif %}
-    {% else %}
-        <p class="text-sm text-slate-500">No hay ítems en esta venta.</p>
-    {% endif %}
-</section>
-
-<!-- Sección de Pagos -->
-{% if venta.pagos.exists %}
-<section class="bg-white rounded-lg shadow-sm p-6 mb-6">
-    <h2 class="text-lg font-semibold mb-4">Pagos registrados</h2>
-    
-    <div class="overflow-x-auto">
-        <table class="min-w-full text-sm border border-slate-200">
-            <thead class="bg-slate-50 border-b border-slate-200">
-                <tr>
-                    <th class="px-3 py-2 text-left">Método</th>
-                    <th class="px-3 py-2 text-right">Monto</th>
-                    <th class="px-3 py-2 text-right">Vuelto</th>
-                    <th class="px-3 py-2 text-center">Estado</th>
-                    <th class="px-3 py-2 text-left">Fecha</th>
-                    <th class="px-3 py-2 text-center">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for pago in venta.pagos.all %}
-                <tr class="border-b border-slate-100">
-                    <td class="px-3 py-2">
-                        {{ pago.get_metodo_display }}
-                        {% if pago.es_transferencia and pago.codigo_referencia %}
-                        <br>
-                        <span class="text-xs text-slate-500">Ref: {{ pago.codigo_referencia }}</span>
-                        {% endif %}
-                    </td>
-                    <td class="px-3 py-2 text-right font-semibold">
-                        ${{ pago.monto|floatformat:0 }}
-                    </td>
-                    <td class="px-3 py-2 text-right">
-                        {% if pago.vuelto > 0 %}
-                        <span class="text-emerald-600">${{ pago.vuelto|floatformat:0 }}</span>
-                        {% else %}
-                        <span class="text-slate-400">—</span>
-                        {% endif %}
-                    </td>
-                    <td class="px-3 py-2 text-center">
-                        {% if pago.estado == "PENDIENTE" %}
-                        <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                            Pendiente
-                        </span>
-                        {% elif pago.estado == "COMPLETADO" %}
-                        <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                            Completado
-                        </span>
-                        {% elif pago.estado == "RECHAZADO" %}
-                        <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                            Rechazado
-                        </span>
-                        {% else %}
-                        <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
-                            {{ pago.get_estado_display }}
-                        </span>
-                        {% endif %}
-                    </td>
-                    <td class="px-3 py-2 text-sm text-slate-600">
-                        {{ pago.fecha_hora|date:"d/m/Y H:i" }}
-                    </td>
-                    <td class="px-3 py-2 text-center">
-                        {% if pago.esta_pendiente and user.perfilusuario.rol == "ADMIN" %}
-                        <a href="{% url 'ventas:pago_confirmar' pago.pk %}"
-                           class="text-xs text-emerald-700 hover:text-emerald-900 font-medium">
-                            Confirmar
-                        </a>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    
-    {% for pago in venta.pagos.all %}
-        {% if pago.estado == "PENDIENTE" %}
-        <div class="mt-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-4 py-2">
-            <p class="font-semibold">⚠️ Atención:</p>
-            <p>Esta venta tiene pagos pendientes de confirmación.</p>
+        <div class="mt-4 pt-4 border-t border-pirula-beige/30 text-right">
+            <p class="text-lg">
+                <span class="font-semibold text-pirula-dark">Total:</span>
+                <span class="font-bold text-pirula-accent text-xl ml-2">$ {{ venta.monto_total|default:venta.total|floatformat:0 }}</span>
+            </p>
+            {% if venta.estado == "CERRADA" and venta.monto_total != venta.total %}
+            <p class="mt-2 text-sm text-slate-500">
+                <span>Total bruto (sin descuento):</span>
+                <span class="line-through">$ {{ venta.total|floatformat:0 }}</span>
+            </p>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="py-8 text-center text-slate-400">
+            <div class="text-4xl mb-2">📦</div>
+            <p>No hay ítems en esta venta.</p>
         </div>
         {% endif %}
-    {% endfor %}
-</section>
-{% endif %}
+    </section>
 
-<div class="mt-6 flex flex-wrap gap-3">
+    <!-- Sección de Pagos -->
+    {% if venta.pagos.exists %}
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-4 sm:p-6">
+        <h2 class="text-lg font-bold text-pirula-dark mb-4">💳 Pagos registrados</h2>
 
-    {# Solo permitir checkout si la venta no está cerrada ni anulada #}
-    {% if venta.estado != venta.EST_CERRADA and venta.estado != venta.EST_ANULADA %}
+        <div class="overflow-x-auto -mx-4 sm:mx-0">
+            <table class="min-w-full">
+                <thead class="bg-pirula-cream border-b border-pirula-beige">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">
+                            Método</th>
+                        <th class="px-4 py-3 text-right text-xs font-bold text-pirula-dark uppercase tracking-wide">
+                            Monto</th>
+                        <th class="px-4 py-3 text-right text-xs font-bold text-pirula-dark uppercase tracking-wide">
+                            Vuelto</th>
+                        <th class="px-4 py-3 text-center text-xs font-bold text-pirula-dark uppercase tracking-wide">
+                            Estado</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">Fecha
+                        </th>
+                        <th class="px-4 py-3 text-center text-xs font-bold text-pirula-dark uppercase tracking-wide">
+                            Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-pirula-beige/30">
+                    {% for pago in venta.pagos.all %}
+                    <tr class="hover:bg-pirula-cream/50 transition-colors">
+                        <td class="px-4 py-3">
+                            <span class="font-medium text-pirula-dark">{{ pago.get_metodo_display }}</span>
+                            {% if pago.es_transferencia and pago.codigo_referencia %}
+                            <br>
+                            <span class="text-xs text-slate-500">Ref: {{ pago.codigo_referencia }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <span class="font-bold text-pirula-dark">${{ pago.monto|floatformat:0 }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            {% if pago.vuelto > 0 %}
+                            <span class="text-emerald-600 font-medium">${{ pago.vuelto|floatformat:0 }}</span>
+                            {% else %}
+                            <span class="text-slate-400">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            {% if pago.estado == "PENDIENTE" %}
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                ⏳ Pendiente
+                            </span>
+                            {% elif pago.estado == "COMPLETADO" %}
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                ✅ Completado
+                            </span>
+                            {% elif pago.estado == "RECHAZADO" %}
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                ❌ Rechazado
+                            </span>
+                            {% else %}
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                                {{ pago.get_estado_display }}
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-slate-600">
+                            {{ pago.fecha_hora|date:"d/m/Y H:i" }}
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            {% if pago.esta_pendiente and user.perfilusuario.rol == "ADMIN" %}
+                            <a href="{% url 'ventas:pago_confirmar' pago.pk %}"
+                                class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
+                                ✅ Confirmar
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% for pago in venta.pagos.all %}
+        {% if pago.estado == "PENDIENTE" %}
+        <div class="mt-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-3">
+            <p class="font-semibold">⚠️ Atención:</p>
+            <p class="text-sm">Esta venta tiene pagos pendientes de confirmación.</p>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </section>
+    {% endif %}
+
+    <!-- Acciones -->
+    <div class="flex flex-wrap gap-3">
+        {# Solo permitir checkout si la venta no está cerrada ni anulada #}
+        {% if venta.estado != venta.EST_CERRADA and venta.estado != venta.EST_ANULADA %}
         <a href="{% url 'ventas:venta_checkout' venta.id %}"
-           class="px-4 py-2 rounded bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
-            Cobrar / aplicar descuento
+            class="inline-flex items-center px-4 py-2 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white text-sm font-semibold transition-colors shadow-md">
+            💰 Cobrar / aplicar descuento
         </a>
 
         <a href="{% url 'ventas:venta_editar' venta.id %}"
-           class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
-            Volver a editar ítems
+            class="inline-flex items-center px-4 py-2 rounded-lg border border-pirula-beige text-pirula-dark text-sm hover:bg-pirula-cream transition-colors">
+            ✏️ Volver a editar ítems
         </a>
-    {% endif %}
+        {% endif %}
 
-    <a href="{% url 'ventas:venta_lista' %}"
-       class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
-        Volver a la lista
-    </a>
+        <a href="{% url 'ventas:venta_lista' %}"
+            class="inline-flex items-center px-4 py-2 rounded-lg border border-pirula-beige text-pirula-dark text-sm hover:bg-pirula-cream transition-colors">
+            📋 Volver a la lista
+        </a>
 
-    <a href="{% url 'core:dashboard' %}"
-       class="px-4 py-2 rounded border border-slate-300 text-sm hover:bg-slate-50">
-        Volver al inicio
-    </a>
-    
-    {% if venta.estado == "CERRADA" %}
-    <a href="{% url 'ventas:venta_nota_imprimir' venta.pk %}"
-       target="_blank"
-       class="px-4 py-2 rounded bg-slate-700 text-white text-sm font-semibold hover:bg-slate-800">
-        🖨️ Imprimir nota de venta
-    </a>
-    {% endif %}
+        <a href="{% url 'core:dashboard' %}"
+            class="inline-flex items-center px-4 py-2 rounded-lg border border-pirula-beige text-pirula-dark text-sm hover:bg-pirula-cream transition-colors">
+            🏠 Volver al inicio
+        </a>
+
+        {% if venta.estado == "CERRADA" %}
+        <a href="{% url 'ventas:venta_nota_imprimir' venta.pk %}" target="_blank"
+            class="inline-flex items-center px-4 py-2 rounded-lg bg-pirula-dark hover:bg-pirula-medium text-white text-sm font-semibold transition-colors shadow-md">
+            🖨️ Imprimir nota de venta
+        </a>
+        {% endif %}
+    </div>
 </div>
 {% endblock %}

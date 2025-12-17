@@ -1,4 +1,4 @@
-{% extends "../core/base.html" %}
+{% extends "core/base.html" %}
 
 {% block title %}Informe de caja #{{ caja.id }} - SIPER Pirula{% endblock %}
 
@@ -31,13 +31,13 @@
 <div class="print-container max-w-4xl mx-auto space-y-6">
 
     <!-- Encabezado e info general -->
-    <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-slate-900">
-                Informe de arqueo y cierre de caja
+            <h1 class="text-2xl font-bold text-pirula-dark">
+                📋 Informe de Arqueo y Cierre de Caja
             </h1>
-            <p class="text-sm text-slate-600">
-                Folio: <span class="font-mono">CAJA-{{ caja.id }}</span>
+            <p class="text-sm text-slate-600 mt-1">
+                Folio: <span class="font-mono font-medium">CAJA-{{ caja.id }}</span>
             </p>
             <p class="text-xs text-slate-500 mt-1">
                 Generado el {% now "d/m/Y H:i" %}
@@ -45,150 +45,141 @@
         </div>
 
         {% if not for_pdf %}
-        <div class="no-print flex flex-col items-end gap-2">
+        <div class="no-print flex flex-wrap gap-2">
             <button type="button" onclick="window.print()"
-                class="px-4 py-2 rounded-lg bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700">
-                Imprimir / Guardar como PDF
+                class="inline-flex items-center px-4 py-2 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white text-xs font-semibold transition-colors shadow-md">
+                🖨️ Imprimir
             </button>
 
             <a href="{% url 'ventas:caja_pdf' caja.pk %}"
-                class="px-4 py-2 rounded-lg bg-slate-900 text-xs font-semibold text-white hover:bg-slate-800">
-                Descargar PDF
+                class="inline-flex items-center px-4 py-2 rounded-lg bg-pirula-dark hover:bg-pirula-medium text-white text-xs font-semibold transition-colors">
+                📄 Descargar PDF
             </a>
 
             <a href="{% url 'ventas:caja_historial' %}"
-                class="px-3 py-1.5 rounded-lg border text-xs text-slate-700 hover:bg-slate-50">
-                Volver al historial
+                class="inline-flex items-center px-3 py-2 rounded-lg border border-pirula-beige text-pirula-dark text-xs hover:bg-pirula-cream transition-colors">
+                ← Volver al historial
             </a>
         </div>
         {% endif %}
-
-
     </header>
 
     <!-- Datos del turno -->
-    <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 text-sm space-y-1">
-        <p>
-            <span class="font-semibold text-slate-800">Negocio:</span>
-            {{ caja.negocio.nombre }}
-        </p>
-        <p>
-            <span class="font-semibold text-slate-800">Estado:</span>
-            {% if caja.estado == caja.EST_ABIERTA %}
-            <span class="text-emerald-600 font-medium">ABIERTA</span>
-            {% else %}
-            <span class="text-slate-900 font-medium">CERRADA</span>
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-4 sm:p-5">
+        <h2 class="text-base font-bold text-pirula-dark mb-3">🏪 Datos del Turno</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs text-slate-500 mb-1">Negocio</p>
+                <p class="font-medium text-pirula-dark">{{ caja.negocio.nombre }}</p>
+            </div>
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs text-slate-500 mb-1">Estado</p>
+                <p class="font-medium">
+                    {% if caja.estado == caja.EST_ABIERTA %}
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                        ✅ ABIERTA
+                    </span>
+                    {% else %}
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                        🔒 CERRADA
+                    </span>
+                    {% endif %}
+                </p>
+            </div>
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs text-slate-500 mb-1">Apertura</p>
+                <p class="font-medium text-pirula-dark">{{ caja.fecha_apertura|date:"d/m/Y H:i" }}</p>
+                <p class="text-xs text-slate-600">Por: {{ caja.usuario_apertura.get_full_name|default:caja.usuario_apertura.username }}</p>
+            </div>
+            {% if caja.fecha_cierre %}
+            <div class="bg-pirula-cream/50 rounded-lg p-3">
+                <p class="text-xs text-slate-500 mb-1">Cierre</p>
+                <p class="font-medium text-pirula-dark">{{ caja.fecha_cierre|date:"d/m/Y H:i" }}</p>
+                <p class="text-xs text-slate-600">Por: {{ caja.usuario_cierre.get_full_name|default:caja.usuario_cierre.username }}</p>
+            </div>
             {% endif %}
-        </p>
-        <p>
-            <span class="font-semibold text-slate-800">Apertura:</span>
-            {{ caja.fecha_apertura|date:"d/m/Y H:i" }}
-            · Por:
-            {{ caja.usuario_apertura.get_full_name|default:caja.usuario_apertura.username }}
-        </p>
-        {% if caja.fecha_cierre %}
-        <p>
-            <span class="font-semibold text-slate-800">Cierre:</span>
-            {{ caja.fecha_cierre|date:"d/m/Y H:i" }}
-            · Por:
-            {{ caja.usuario_cierre.get_full_name|default:caja.usuario_cierre.username }}
-        </p>
-        {% endif %}
+        </div>
     </section>
 
     <!-- Resumen financiero del turno -->
-    <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 text-sm space-y-4">
-        <h2 class="text-base font-semibold text-slate-800">
-            Resumen financiero del turno
-        </h2>
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-4 sm:p-5">
+        <h2 class="text-base font-bold text-pirula-dark mb-4">💰 Resumen Financiero del Turno</h2>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="space-y-1">
-                <p>
-                    <span class="font-semibold">Fondo inicial:</span>
-                    <span class="font-mono">
-                        ${{ caja.monto_inicial|floatformat:0 }}
-                    </span>
-                </p>
-                <p>
-                    <span class="font-semibold">Total ventas del turno:</span>
-                    <span class="font-mono">
-                        ${{ total_ventas|floatformat:0 }}
-                    </span>
-                </p>
-                <p>
-                    <span class="font-semibold">Total descuentos aplicados:</span>
-                    <span class="font-mono">
-                        ${{ total_descuentos|floatformat:0 }}
-                    </span>
-                </p>
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between items-center py-2 border-b border-pirula-beige/30">
+                    <span class="text-slate-600">Fondo inicial:</span>
+                    <span class="font-mono font-bold text-pirula-dark">${{ caja.monto_inicial|floatformat:0 }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-pirula-beige/30">
+                    <span class="text-slate-600">Total ventas del turno:</span>
+                    <span class="font-mono font-bold text-pirula-dark">${{ total_ventas|floatformat:0 }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-pirula-beige/30">
+                    <span class="text-slate-600">Total descuentos aplicados:</span>
+                    <span class="font-mono font-bold text-red-600">-${{ total_descuentos|floatformat:0 }}</span>
+                </div>
             </div>
 
-            <div class="space-y-1">
-                <p>
-                    <span class="font-semibold">Monto esperado en caja (efectivo):</span>
-                    <span class="font-mono">
-                        ${{ monto_esperado_efectivo|floatformat:0 }}
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between items-center py-2 border-b border-pirula-beige/30">
+                    <span class="text-slate-600">Monto esperado (efectivo):</span>
+                    <span class="font-mono font-bold text-emerald-600">${{ monto_esperado_efectivo|floatformat:0 }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-pirula-beige/30">
+                    <span class="text-slate-600">Monto contado al cierre:</span>
+                    <span class="font-mono font-bold text-pirula-dark">
+                        {% if caja.monto_contado_cierre %}${{ caja.monto_contado_cierre|floatformat:0 }}{% else %}—{% endif %}
                     </span>
-                </p>
-                <p>
-                    <span class="font-semibold">Monto contado al cierre:</span>
-                    <span class="font-mono">
-                        {% if caja.monto_contado_cierre %}
-                        ${{ caja.monto_contado_cierre|floatformat:0 }}
-                        {% else %}
-                        —
-                        {% endif %}
-                    </span>
-                </p>
-                <p>
-                    <span class="font-semibold">Diferencia final:</span>
+                </div>
+                <div class="flex justify-between items-center py-2 bg-pirula-cream/50 rounded-lg px-3">
+                    <span class="font-semibold text-pirula-dark">Diferencia final:</span>
                     {% if diferencia_cierre is not None %}
                     {% with diff=diferencia_cierre %}
                     <span
-                        class="font-mono {% if diff < 0 %}text-red-600{% elif diff > 0 %}text-amber-600{% else %}text-emerald-600{% endif %}">
-                        {{ diff|floatformat:0 }}
+                        class="font-mono font-bold text-lg {% if diff < 0 %}text-red-600{% elif diff > 0 %}text-amber-600{% else %}text-emerald-600{% endif %}">
+                        {% if diff > 0 %}+{% endif %}${{ diff|floatformat:0 }}
                     </span>
                     {% endwith %}
                     {% else %}
-                    <span class="font-mono text-slate-500">—</span>
+                    <span class="font-mono text-slate-400">—</span>
                     {% endif %}
-                </p>
+                </div>
                 {% if caja.observacion_cierre %}
-                <p class="text-xs text-slate-600 mt-1">
-                    <span class="font-semibold">Observación de cierre:</span>
-                    {{ caja.observacion_cierre }}
-                </p>
+                <div class="bg-pirula-cream/30 rounded-lg p-3 mt-2">
+                    <p class="text-xs font-bold text-pirula-dark mb-1">📝 Observación de cierre:</p>
+                    <p class="text-sm text-slate-700">{{ caja.observacion_cierre }}</p>
+                </div>
                 {% endif %}
             </div>
         </div>
 
         <!-- Ventas por medio de pago -->
-        <div class="border-t border-slate-200 pt-3">
-            <h3 class="text-xs font-semibold text-slate-600 mb-1">
-                Ventas por método de pago
+        <div class="mt-6 pt-4 border-t border-pirula-beige/30">
+            <h3 class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-3">
+                💳 Ventas por Método de Pago
             </h3>
             <div class="overflow-x-auto">
-                <table class="min-w-full text-xs">
-                    <thead>
-                        <tr class="text-left text-slate-500">
-                            <th class="py-1 pr-4">Medio de pago</th>
-                            <th class="py-1 pr-4">Monto</th>
+                <table class="min-w-full text-sm">
+                    <thead class="bg-pirula-cream border-b border-pirula-beige">
+                        <tr>
+                            <th class="py-2 px-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">
+                                Medio de pago</th>
+                            <th class="py-2 px-3 text-right text-xs font-bold text-pirula-dark uppercase tracking-wide">
+                                Monto</th>
                         </tr>
                     </thead>
-                    <tbody class="text-slate-800">
+                    <tbody class="divide-y divide-pirula-beige/30">
                         {% for row in totales_medios %}
-                        <tr>
-                            <td class="py-0.5 pr-4">
-                                {{ row.medio_pago }}
-                            </td>
-                            <td class="py-0.5 pr-4 font-mono">
-                                ${{ row.monto|floatformat:0 }}
-                            </td>
+                        <tr class="hover:bg-pirula-cream/50 transition-colors">
+                            <td class="py-2 px-3 text-slate-700">{{ row.medio_pago }}</td>
+                            <td class="py-2 px-3 font-mono font-bold text-pirula-dark text-right">${{ row.monto|floatformat:0 }}</td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="2" class="py-1 text-slate-500">
+                            <td colspan="2" class="py-4 text-center text-slate-400">
                                 No hay ventas registradas en el turno.
                             </td>
                         </tr>
@@ -200,122 +191,113 @@
     </section>
 
     <!-- Anulaciones y ajustes -->
-    <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 text-sm space-y-3">
-        <h2 class="text-base font-semibold text-slate-800">
-            Anulaciones y ajustes del turno
-        </h2>
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-4 sm:p-5">
+        <h2 class="text-base font-bold text-pirula-dark mb-4">🚫 Anulaciones y Ajustes del Turno</h2>
 
         {% if anulaciones %}
         <div class="overflow-x-auto">
-            <table class="min-w-full text-xs">
-                <thead>
-                    <tr class="text-left text-slate-500">
-                        <th class="py-1 pr-3">Fecha</th>
-                        <th class="py-1 pr-3">Venta</th>
-                        <th class="py-1 pr-3">Usuario</th>
-                        <th class="py-1 pr-3">Motivo</th>
+            <table class="min-w-full text-sm">
+                <thead class="bg-pirula-cream border-b border-pirula-beige">
+                    <tr>
+                        <th class="py-2 px-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">Fecha
+                        </th>
+                        <th class="py-2 px-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">Venta
+                        </th>
+                        <th class="py-2 px-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">
+                            Usuario</th>
+                        <th class="py-2 px-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">
+                            Motivo</th>
                     </tr>
                 </thead>
-                <tbody class="text-slate-800">
+                <tbody class="divide-y divide-pirula-beige/30">
                     {% for a in anulaciones %}
-                    <tr>
-                        <td class="py-0.5 pr-3">
-                            {{ a.created_at|date:"d/m/Y H:i" }}
+                    <tr class="hover:bg-pirula-cream/50 transition-colors">
+                        <td class="py-2 px-3 text-slate-600">{{ a.created_at|date:"d/m/Y H:i" }}</td>
+                        <td class="py-2 px-3">
+                            <span class="font-medium text-pirula-dark">#{{ a.venta.id }}</span>
+                            <span class="text-slate-500 ml-1">· ${{ a.venta.monto_total|floatformat:0 }}</span>
                         </td>
-                        <td class="py-0.5 pr-3">
-                            #{{ a.venta.id }} · ${{ a.venta.monto_total|floatformat:0 }}
+                        <td class="py-2 px-3 text-slate-600">{{ a.usuario.get_full_name|default:a.usuario.username }}
                         </td>
-                        <td class="py-0.5 pr-3">
-                            {{ a.usuario.get_full_name|default:a.usuario.username }}
-                        </td>
-                        <td class="py-0.5 pr-3">
-                            {{ a.motivo|default:"(sin motivo registrado)" }}
-                        </td>
+                        <td class="py-2 px-3 text-slate-600">{{ a.motivo|default:"(sin motivo registrado)" }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
         {% else %}
-        <p class="text-xs text-slate-600">
-            No se registraron anulaciones en este turno.
-        </p>
+        <div class="py-6 text-center text-slate-400">
+            <div class="text-2xl mb-2">✅</div>
+            <p class="text-sm">No se registraron anulaciones en este turno.</p>
+        </div>
         {% endif %}
     </section>
 
     <!-- Arqueos parciales -->
-    <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 text-sm space-y-3">
-        <h2 class="text-base font-semibold text-slate-800">
-            Arqueos parciales
-        </h2>
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-4 sm:p-5">
+        <h2 class="text-base font-bold text-pirula-dark mb-4">🔢 Arqueos Parciales</h2>
 
         {% if caja.arqueos.all %}
         <div class="overflow-x-auto">
-            <table class="min-w-full text-xs">
-                <thead>
-                    <tr class="text-left text-slate-500">
-                        <th class="py-1 pr-3">Fecha</th>
-                        <th class="py-1 pr-3">Usuario</th>
-                        <th class="py-1 pr-3">Monto esperado</th>
-                        <th class="py-1 pr-3">Contado</th>
-                        <th class="py-1 pr-3">Diferencia</th>
-                        <th class="py-1 pr-3">Observación</th>
+            <table class="min-w-full text-sm">
+                <thead class="bg-pirula-cream border-b border-pirula-beige">
+                    <tr>
+                        <th class="py-2 px-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">Fecha
+                        </th>
+                        <th class="py-2 px-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">
+                            Usuario</th>
+                        <th class="py-2 px-3 text-right text-xs font-bold text-pirula-dark uppercase tracking-wide">
+                            Esperado</th>
+                        <th class="py-2 px-3 text-right text-xs font-bold text-pirula-dark uppercase tracking-wide">
+                            Contado</th>
+                        <th class="py-2 px-3 text-right text-xs font-bold text-pirula-dark uppercase tracking-wide">
+                            Diferencia</th>
+                        <th class="py-2 px-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">
+                            Observación</th>
                     </tr>
                 </thead>
-                <tbody class="text-slate-800">
+                <tbody class="divide-y divide-pirula-beige/30">
                     {% for a in caja.arqueos.all %}
-                    <tr>
-                        <td class="py-0.5 pr-3">
-                            {{ a.fecha|date:"d/m/Y H:i" }}
+                    <tr class="hover:bg-pirula-cream/50 transition-colors">
+                        <td class="py-2 px-3 text-slate-600">{{ a.fecha|date:"d/m/Y H:i" }}</td>
+                        <td class="py-2 px-3 text-slate-600">{{ a.usuario.get_full_name|default:a.usuario.username }}
                         </td>
-                        <td class="py-0.5 pr-3">
-                            {{ a.usuario.get_full_name|default:a.usuario.username }}
+                        <td class="py-2 px-3 font-mono text-right">${{ a.monto_esperado|floatformat:0 }}</td>
+                        <td class="py-2 px-3 font-mono text-right">${{ a.monto_contado|floatformat:0 }}</td>
+                        <td
+                            class="py-2 px-3 font-mono font-bold text-right {% if a.diferencia < 0 %}text-red-600{% elif a.diferencia > 0 %}text-amber-600{% else %}text-emerald-600{% endif %}">
+                            {% if a.diferencia > 0 %}+{% endif %}${{ a.diferencia|floatformat:0 }}
                         </td>
-                        <td class="py-0.5 pr-3 font-mono">
-                            ${{ a.monto_esperado|floatformat:0 }}
-                        </td>
-                        <td class="py-0.5 pr-3 font-mono">
-                            ${{ a.monto_contado|floatformat:0 }}
-                        </td>
-                        <td class="py-0.5 pr-3 font-mono
-                       {% if a.diferencia < 0 %}text-red-600
-                       {% elif a.diferencia > 0 %}text-amber-600
-                       {% else %}text-emerald-600{% endif %}">
-                            {{ a.diferencia|floatformat:0 }}
-                        </td>
-                        <td class="py-0.5 pr-3">
-                            {{ a.observacion|default:"—" }}
-                        </td>
+                        <td class="py-2 px-3 text-slate-600">{{ a.observacion|default:"—" }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
         {% else %}
-        <p class="text-xs text-slate-600">
-            No se realizaron arqueos parciales en este turno.
-        </p>
+        <div class="py-6 text-center text-slate-400">
+            <div class="text-2xl mb-2">📋</div>
+            <p class="text-sm">No se realizaron arqueos parciales en este turno.</p>
+        </div>
         {% endif %}
     </section>
 
     <!-- Firmas -->
-    <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 text-sm space-y-8">
-        <h2 class="text-base font-semibold text-slate-800">
-            Firmas
-        </h2>
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-4 sm:p-5">
+        <h2 class="text-base font-bold text-pirula-dark mb-6">✍️ Firmas</h2>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div class="flex flex-col items-start">
-                <div class="w-full border-t border-slate-400 mt-10"></div>
-                <p class="mt-1 text-xs text-slate-700">
-                    Firma cajero(a): {{ cajero_nombre }}
+                <div class="w-full border-t-2 border-pirula-dark mt-16"></div>
+                <p class="mt-2 text-sm text-pirula-dark">
+                    <strong>Firma cajero(a):</strong> {{ cajero_nombre }}
                 </p>
             </div>
 
             <div class="flex flex-col items-start">
-                <div class="w-full border-t border-slate-400 mt-10"></div>
-                <p class="mt-1 text-xs text-slate-700">
-                    Firma supervisor(a): {{ supervisor_nombre }}
+                <div class="w-full border-t-2 border-pirula-dark mt-16"></div>
+                <p class="mt-2 text-sm text-pirula-dark">
+                    <strong>Firma supervisor(a):</strong> {{ supervisor_nombre }}
                 </p>
             </div>
         </div>

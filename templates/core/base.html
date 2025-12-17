@@ -116,11 +116,6 @@
                         <span class="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{{ stock_critico_count }}</span>
                         {% endif %}
                     </a>
-                    <a href="{% url 'inventario:scan_ean' %}"
-                        class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
-                        <span>📷</span>
-                        <span>Escanear</span>
-                    </a>
                     {% if request.user.perfilusuario.rol == 'ADMIN' %}
                     <a href="{% url 'inventario:categoria_lista' %}"
                         class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
@@ -204,13 +199,13 @@
                     <p class="px-4 text-xs font-bold text-pirula-light uppercase tracking-wider mb-2">Pedidos Online</p>
                     <a href="{% url 'pedidos:pedido_lista' %}"
                         class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
-                        <span>🛒</span>
-                        <span>Listado</span>
+                        <span>📋</span>
+                        <span>Historial</span>
                     </a>
                     <a href="{% url 'pedidos:pedidos_monitor' %}"
                         class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
-                        <span>📡</span>
-                        <span>Monitor Cocina</span>
+                        <span>📺</span>
+                        <span>Monitor</span>
                     </a>
                 </div>
 
@@ -298,7 +293,8 @@
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-semibold text-white truncate">{{ request.user.get_full_name|default:request.user.username }}</p>
                         <p class="text-xs text-pirula-beige">
-                            {% if request.user.perfilusuario %}{{ request.user.perfilusuario.get_rol_display }}{% else %}Sin perfil{% endif %}
+                            {% if request.user.perfilusuario %}{{ request.user.perfilusuario.get_rol_display }}{% else
+                            %}Sin perfil{% endif %}
                         </p>
                     </div>
                 </div>

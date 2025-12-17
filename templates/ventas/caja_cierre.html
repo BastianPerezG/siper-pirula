@@ -1,88 +1,95 @@
-{% extends "../core/base.html" %}
+{% extends "core/base.html" %}
 
 {% block title %}Cierre de caja - SIPER Pirula{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-6">
-  <header>
-    <h1 class="text-2xl font-bold text-slate-900">Cierre de caja</h1>
-    <p class="mt-2 text-sm text-slate-600">
+  <!-- Header -->
+  <div class="text-center sm:text-left">
+    <h1 class="text-2xl font-bold text-pirula-dark">🔒 Cierre de Caja</h1>
+    <p class="text-sm text-slate-500 mt-1">
       Realiza el conteo final de efectivo y registra el cierre del turno.
     </p>
-  </header>
+  </div>
 
-  <section class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm space-y-1">
-    <p class="font-medium text-slate-800">
-      Caja abierta por: {{ caja.usuario_apertura.get_full_name|default:caja.usuario_apertura.username }}
-    </p>
-    <p class="text-slate-700">
-      Fecha apertura: {{ caja.fecha_apertura|date:"d/m/Y H:i" }}
-    </p>
-    <p class="text-slate-700">
-      Monto inicial: <span class="font-mono">
-        ${{ caja.monto_inicial|floatformat:0 }}
-      </span>
-    </p>
-    <p class="mt-2">
-      <span class="font-semibold text-slate-900">Monto esperado en efectivo al cierre:</span>
-      <span id="monto-esperado" class="font-mono">
-        ${{ monto_esperado|floatformat:0 }}
-      </span>
-    </p>
+  <!-- Info de la caja actual -->
+  <section class="bg-pirula-cream/50 border border-pirula-beige rounded-xl p-4 sm:p-5">
+    <h2 class="text-sm font-bold text-pirula-dark uppercase tracking-wide mb-3">📋 Información de la caja</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+      <div class="bg-white rounded-lg p-3 border border-pirula-beige/50">
+        <p class="text-xs text-slate-500 mb-1">Abierta por</p>
+        <p class="font-medium text-pirula-dark">{{ caja.usuario_apertura.get_full_name|default:caja.usuario_apertura.username }}</p>
+      </div>
+      <div class="bg-white rounded-lg p-3 border border-pirula-beige/50">
+        <p class="text-xs text-slate-500 mb-1">Fecha de apertura</p>
+        <p class="font-medium text-pirula-dark">{{ caja.fecha_apertura|date:"d/m/Y H:i" }}</p>
+      </div>
+      <div class="bg-white rounded-lg p-3 border border-pirula-beige/50">
+        <p class="text-xs text-slate-500 mb-1">Monto inicial</p>
+        <p class="font-mono font-bold text-pirula-dark">${{ caja.monto_inicial|floatformat:0 }}</p>
+      </div>
+      <div class="bg-white rounded-lg p-3 border border-pirula-beige/50">
+        <p class="text-xs text-slate-500 mb-1">💰 Monto esperado al cierre</p>
+        <p id="monto-esperado" class="font-mono font-bold text-emerald-600 text-lg">${{ monto_esperado|floatformat:0 }}
+        </p>
+      </div>
+    </div>
   </section>
 
-  <form method="post" class="bg-white shadow-sm rounded-xl p-5 space-y-5">
+  <!-- Formulario de cierre -->
+  <form method="post" class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-5 sm:p-6 space-y-5">
     {% csrf_token %}
 
     <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1">
-        Monto contado al cierre (efectivo en caja)
+      <label for="id_monto_contado_cierre"
+        class="block text-xs font-bold text-pirula-dark mb-2 uppercase tracking-wide">
+        💵 Monto contado al cierre (efectivo en caja)
       </label>
       {{ form.monto_contado_cierre }}
       {% if form.monto_contado_cierre.errors %}
-        <p class="mt-1 text-sm text-red-600">
-          {{ form.monto_contado_cierre.errors|striptags }}
-        </p>
+      <p class="mt-2 text-sm text-red-600">
+        {{ form.monto_contado_cierre.errors|striptags }}
+      </p>
       {% endif %}
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1">
-        Observación de cierre (opcional)
+      <label for="id_observacion_cierre" class="block text-xs font-bold text-pirula-dark mb-2 uppercase tracking-wide">
+        📝 Observación de cierre (opcional)
       </label>
       {{ form.observacion_cierre }}
       {% if form.observacion_cierre.errors %}
-        <p class="mt-1 text-sm text-red-600">
-          {{ form.observacion_cierre.errors|striptags }}
-        </p>
+      <p class="mt-2 text-sm text-red-600">
+        {{ form.observacion_cierre.errors|striptags }}
+      </p>
       {% endif %}
     </div>
 
-    <div class="border-t border-slate-200 pt-4 text-sm">
-      <p class="text-slate-700">
-        <span class="font-semibold">Diferencia final:</span>
-        <span id="diferencia-label" class="font-mono ml-1">–</span>
+    <div class="bg-pirula-cream/50 rounded-lg p-4 border border-pirula-beige/30">
+      <p class="text-sm">
+        <span class="font-bold text-pirula-dark">📊 Diferencia final:</span>
+        <span id="diferencia-label" class="font-mono font-bold ml-2 text-lg">–</span>
       </p>
-      <p class="text-xs text-slate-500 mt-1">
+      <p class="text-xs text-slate-500 mt-2">
         Si hay diferencia, se registrará en la bitácora junto con esta observación.
       </p>
     </div>
 
-    <div class="flex justify-end gap-3 pt-2">
+    <div class="flex flex-col sm:flex-row justify-end gap-3 pt-5 border-t border-pirula-beige/30">
       <a href="{% url 'ventas:venta_lista' %}"
-         class="px-4 py-2 rounded-lg border text-sm text-slate-700 hover:bg-slate-50">
+        class="w-full sm:w-auto px-4 py-2.5 rounded-lg border border-pirula-beige text-pirula-dark text-sm text-center hover:bg-pirula-cream transition-colors">
         Cancelar
       </a>
       <button type="submit"
-              class="px-4 py-2 rounded-lg bg-rose-600 text-sm font-semibold text-white hover:bg-rose-700">
-        Cerrar caja
+        class="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors shadow-md">
+        🔒 Cerrar caja
       </button>
     </div>
   </form>
 </div>
 
 <script>
-  (function() {
+  (function () {
     const esperado = parseFloat("{{ monto_esperado|floatformat:2 }}".replace(",", "."));
     const inputContado = document.getElementById("id_monto_contado_cierre");
     const diffLabel = document.getElementById("diferencia-label");
@@ -93,19 +100,19 @@
       const valor = parseFloat(inputContado.value.replace(",", "."));
       if (isNaN(valor)) {
         diffLabel.textContent = "–";
-        diffLabel.className = "font-mono";
+        diffLabel.className = "font-mono font-bold ml-2 text-lg text-slate-400";
         return;
       }
       const diff = valor - esperado;
       const formato = diff.toLocaleString("es-CL", { minimumFractionDigits: 0 });
-      diffLabel.textContent = (diff >= 0 ? "+" : "") + formato;
+      diffLabel.textContent = (diff >= 0 ? "+" : "") + "$" + formato;
 
       if (diff === 0) {
-        diffLabel.className = "font-mono text-emerald-600";
+        diffLabel.className = "font-mono font-bold ml-2 text-lg text-emerald-600";
       } else if (diff > 0) {
-        diffLabel.className = "font-mono text-amber-600";
+        diffLabel.className = "font-mono font-bold ml-2 text-lg text-amber-600";
       } else {
-        diffLabel.className = "font-mono text-red-600";
+        diffLabel.className = "font-mono font-bold ml-2 text-lg text-red-600";
       }
     }
 

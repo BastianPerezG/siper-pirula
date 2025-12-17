@@ -8,45 +8,68 @@
 {% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="max-w-7xl mx-auto space-y-6">
 
     <!-- Header con Stats -->
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold text-slate-900 dark:text-white mb-6">🍽️ Monitor de Pedidos</h1>
+    <div class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-pirula-dark flex items-center gap-2">
+                    📺 Monitor de Pedidos
+                </h1>
+                <p class="text-pirula-medium text-sm">
+                    Gestión en tiempo real de pedidos entrantes
+                </p>
+            </div>
+            <a href="{% url 'pedidos:pedido_lista' %}"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-pirula-cream border border-pirula-beige text-pirula-dark font-medium hover:bg-pirula-beige transition-colors">
+                📋 Ver Historial
+            </a>
+        </div>
 
         <!-- Quick Stats -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div class="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-700 rounded-xl p-4">
-                <div class="text-sm font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Nuevos</div>
-                <div class="text-3xl font-bold text-blue-700 dark:text-blue-300 mt-1">{{ stats.recibidos }}</div>
-            </div>
-            <div
-                class="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-700 rounded-xl p-4">
-                <div class="text-sm font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide">En
-                    Preparación</div>
-                <div class="text-3xl font-bold text-amber-700 dark:text-amber-300 mt-1">{{ stats.preparando }}</div>
-            </div>
-            <div
-                class="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-700 rounded-xl p-4">
-                <div class="text-sm font-semibold text-green-600 dark:text-green-400 uppercase tracking-wide">Listos
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-blue-500 rounded-xl p-4 text-white shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-sm font-semibold uppercase tracking-wide opacity-90">Nuevos</div>
+                        <div class="text-4xl font-black mt-1">{{ stats.recibidos }}</div>
+                    </div>
+                    <div class="text-5xl opacity-50">🆕</div>
                 </div>
-                <div class="text-3xl font-bold text-green-700 dark:text-green-300 mt-1">{{ stats.listos }}</div>
+            </div>
+            <div class="bg-amber-500 rounded-xl p-4 text-white shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-sm font-semibold uppercase tracking-wide opacity-90">En Preparación</div>
+                        <div class="text-4xl font-black mt-1">{{ stats.preparando }}</div>
+                    </div>
+                    <div class="text-5xl opacity-50">👨‍🍳</div>
+                </div>
+            </div>
+            <div class="bg-green-500 rounded-xl p-4 text-white shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-sm font-semibold uppercase tracking-wide opacity-90">Listos</div>
+                        <div class="text-4xl font-black mt-1">{{ stats.listos }}</div>
+                    </div>
+                    <div class="text-5xl opacity-50">✅</div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Filtros -->
-    <form method="get"
-        class="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-6 mb-8">
+    <form method="get" class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-4">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
 
             <!-- Estado de Preparación -->
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wide">
+                <label class="block text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">
                     📦 Estado
                 </label>
                 <select name="estado"
-                    class="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="w-full border border-pirula-beige rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pirula-accent">
                     <option value="TODOS">Todos los estados</option>
                     {% for value, label in ESTADO_PREPARACION_CHOICES %}
                     <option value="{{ value }}" {% if estado == value %}selected{% endif %}>
@@ -58,20 +81,20 @@
 
             <!-- Buscar -->
             <div class="md:col-span-2 lg:col-span-2">
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wide">
+                <label class="block text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">
                     🔍 Buscar
                 </label>
                 <input type="text" name="q" value="{{ q }}" placeholder="Código, nombre, RUT, correo..."
-                    class="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="w-full border border-pirula-beige rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pirula-accent">
             </div>
 
             <!-- Días -->
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wide">
+                <label class="block text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">
                     📅 Período
                 </label>
                 <select name="dias"
-                    class="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="w-full border border-pirula-beige rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pirula-accent">
                     <option value="">Todos</option>
                     <option value="1" {% if dias == "1" %}selected{% endif %}>Últimas 24h</option>
                     <option value="3" {% if dias == "3" %}selected{% endif %}>Últimos 3 días</option>
@@ -83,23 +106,23 @@
             <!-- Botones -->
             <div class="flex items-end gap-2">
                 <button type="submit"
-                    class="flex-1 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-lg hover:shadow-xl transition-all">
+                    class="flex-1 px-4 py-2 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white text-sm font-bold transition-colors">
                     Filtrar
                 </button>
                 <a href="{% url 'pedidos:pedidos_monitor' %}"
-                    class="px-4 py-2.5 rounded-lg border-2 border-slate-300 dark:border-slate-600 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
+                    class="px-4 py-2 rounded-lg border border-pirula-beige text-sm font-medium text-pirula-dark hover:bg-pirula-cream transition-colors">
                     Limpiar
                 </a>
             </div>
         </div>
 
         <!-- Toggle mostrar finalizados -->
-        <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+        <div class="mt-4 pt-4 border-t border-pirula-beige/30">
             <label class="flex items-center cursor-pointer">
                 <input type="checkbox" name="finalizados" value="si" {% if mostrar_finalizados %}checked{% endif %}
                     onchange="this.form.submit()"
-                    class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
-                <span class="ml-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                    class="w-4 h-4 text-pirula-accent border-pirula-beige rounded focus:ring-pirula-accent">
+                <span class="ml-2 text-sm font-medium text-pirula-dark">
                     Mostrar pedidos finalizados (retirados, cancelados)
                 </span>
             </label>
