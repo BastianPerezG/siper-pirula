@@ -256,7 +256,20 @@ class Pedido(models.Model):
         """
         Crea un MovimientoInventario.TIPO_RESERVA por cada ítem del pedido.
         Esto descuenta stock mientras el pedido está pendiente de retiro.
+        Valida que haya stock suficiente antes de crear las reservas.
         """
+        from django.core.exceptions import ValidationError
+        
+        # Primero validar que hay stock suficiente para todos los productos
+        for item in self.items.select_related("producto"):
+            stock_actual = item.producto.stock_actual
+            if item.cantidad > stock_actual:
+                raise ValidationError(
+                    f"No hay stock suficiente de '{item.producto.nombre}'. "
+                    f"Disponible: {stock_actual}, Solicitado: {item.cantidad}"
+                )
+        
+        # Si la validación pasa, crear las reservas
         for item in self.items.select_related("producto"):
             MovimientoInventario.objects.create(
                 producto=item.producto,
