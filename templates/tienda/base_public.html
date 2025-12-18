@@ -95,7 +95,7 @@
 <body class="bg-pirula-light dark:bg-slate-900 min-h-screen flex flex-col font-sans transition-colors duration-300">
 
     <header class="bg-pirula-dark dark:bg-black text-slate-100 shadow-md transition-colors duration-300">
-        <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+        <div class="w-full max-w-[1400px] mx-auto px-4 lg:px-6 py-4 flex items-center justify-between gap-3">
             <a href="{% url 'tienda:home' %}" class="flex items-center gap-2">
                 <!-- Modo Claro: Logo Color/Marron -->
                 <img src="{% static 'img/logo_light.png' %}?v=3" alt="SIPER Pirula"
@@ -105,7 +105,7 @@
                     class="h-24 w-auto hidden dark:block transistion-all hover:scale-105">
             </a>
 
-            <nav class="hidden sm:flex items-center gap-3 sm:gap-4 text-xs sm:text-sm">
+            <nav class="hidden sm:flex items-center gap-3 sm:gap-4 text-sm sm:text-base">
                 <a href="{% url 'tienda:home' %}" class="hover:text-amber-300 whitespace-nowrap">
                     Inicio
                 </a>
@@ -128,21 +128,21 @@
                 </a>
 
                 {% if request.user.is_authenticated %}
-                <span class="text-xs text-slate-300 hidden md:inline">
+                <span class="text-sm text-slate-300 hidden md:inline">
                     Hola, {{ request.user.first_name | default:request.user.username }}
                 </span>
                 <a href="{% url 'tienda:perfil' %}"
-                    class="hover:text-amber-300 text-xs whitespace-nowrap font-bold text-pirula-amber">
+                    class="hover:text-amber-300 text-sm whitespace-nowrap font-bold text-pirula-amber">
                     Mi Cuenta
                 </a>
-                <a href="{% url 'tienda:logout' %}" class="hover:text-amber-300 text-xs whitespace-nowrap">
+                <a href="{% url 'tienda:logout' %}" class="hover:text-amber-300 text-sm whitespace-nowrap">
                     Salir
                 </a>
                 {% else %}
-                <a href="{% url 'tienda:login' %}" class="hover:text-amber-300 text-xs whitespace-nowrap">
+                <a href="{% url 'tienda:login' %}" class="hover:text-amber-300 text-sm whitespace-nowrap">
                     Iniciar sesión
                 </a>
-                <a href="{% url 'tienda:registro' %}" class="hover:text-amber-300 text-xs whitespace-nowrap">
+                <a href="{% url 'tienda:registro' %}" class="hover:text-amber-300 text-sm whitespace-nowrap">
                     Registrarme
                 </a>
                 {% endif %}
@@ -206,7 +206,7 @@
     </header>
 
     <main class="flex-1">
-        <div class="max-w-6xl mx-auto px-4 py-6">
+        <div class="w-full max-w-[1400px] mx-auto">
 
 
             {% block content %}{% endblock %}
@@ -415,6 +415,76 @@
         if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
         if (themeToggleBtnMobile) themeToggleBtnMobile.addEventListener('click', toggleTheme);
     </script>
+
+    <!-- Mobile Sticky Bottom Navigation -->
+    <div
+        class="fixed bottom-0 left-0 z-50 w-full h-16 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 md:hidden">
+        <div class="grid h-full max-w-lg grid-cols-4 mx-auto font-medium">
+            <a href="{% url 'tienda:home' %}"
+                class="inline-flex flex-col items-center justify-center px-5 hover:bg-slate-50 dark:hover:bg-slate-800 group transition-colors">
+                <svg class="w-6 h-6 mb-1 text-slate-500 dark:text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors"
+                    fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z">
+                    </path>
+                </svg>
+                <span
+                    class="text-[10px] text-slate-500 dark:text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors">Inicio</span>
+            </a>
+            <a href="{% url 'tienda:productos' %}"
+                class="inline-flex flex-col items-center justify-center px-5 hover:bg-slate-50 dark:hover:bg-slate-800 group transition-colors">
+                <svg class="w-6 h-6 mb-1 text-slate-500 dark:text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors"
+                    fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd"
+                        d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 13h12a1 1 0 001-1V7a1 1 0 00-1-1h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z"
+                        clip-rule="evenodd"></path>
+                </svg>
+                <span
+                    class="text-[10px] text-slate-500 dark:text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors">Tienda</span>
+            </a>
+            <a href="{% url 'tienda:carrito_ver' %}"
+                class="inline-flex flex-col items-center justify-center px-5 hover:bg-slate-50 dark:hover:bg-slate-800 group transition-colors relative">
+                <svg class="w-6 h-6 mb-1 text-slate-500 dark:text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors"
+                    fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z">
+                    </path>
+                </svg>
+                <span
+                    class="text-[10px] text-slate-500 dark:text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors">Carrito</span>
+                {% if request.session.carrito|length > 0 %}
+                <div
+                    class="absolute top-2 right-5 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white bg-pirula-amber rounded-full">
+                    {{ request.session.carrito|length }}
+                </div>
+                {% endif %}
+            </a>
+            {% if user.is_authenticated %}
+            <a href="{% url 'core:dashboard' %}"
+                class="inline-flex flex-col items-center justify-center px-5 hover:bg-slate-50 dark:hover:bg-slate-800 group transition-colors">
+                <svg class="w-6 h-6 mb-1 text-slate-500 dark:text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors"
+                    fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                        clip-rule="evenodd"></path>
+                </svg>
+                <span
+                    class="text-[10px] text-slate-500 dark:text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors">Perfil</span>
+            </a>
+            {% else %}
+            <a href="{% url 'core:login_interno' %}"
+                class="inline-flex flex-col items-center justify-center px-5 hover:bg-slate-50 dark:hover:bg-slate-800 group transition-colors">
+                <svg class="w-6 h-6 mb-1 text-slate-500 dark:text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors"
+                    fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd"
+                        d="M3 3a1 1 0 011 1v12a1 1 0 11-2 0V4a1 1 0 011-1zm7.707 3.293a1 1 0 010 1.414L9.414 9H17a1 1 0 110 2H9.414l1.293 1.293a1 1 0 01-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0z"
+                        clip-rule="evenodd"></path>
+                </svg>
+                <span
+                    class="text-[10px] text-slate-500 dark:text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors">Entrar</span>
+            </a>
+            {% endif %}
+        </div>
+    </div>
 
     <!-- Popup de verificación de edad -->
     {% if not request.session.mayor_edad_verificado %}

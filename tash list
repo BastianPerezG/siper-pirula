@@ -1,0 +1,42 @@
+* [33mb2f924e[m[33m ([m[1;32mmain[m[33m)[m Fix rutas static y export PDF reportes
+[31m|[m * [33mfe18543[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m arreglos varios
+[31m|[m *   [33mf88b311[m miercoles1613
+[31m|[m [33m|[m[31m\[m  
+[31m|[m [33m|[m[31m/[m  
+[31m|[m[31m/[m[33m|[m   
+* [33m|[m [33mc6b68c7[m arreglando requeriments.txt
+* [33m|[m [33m8f30da9[m Arreglando bug de pedidos y agregando backup
+[34m|[m * [33mbac4b96[m miercoles 1607
+[34m|[m[34m/[m  
+* [33m99e56ee[m martes 1709
+* [33m045e1aa[m mini arreglo tienda
+* [33m46b2847[m Arreglando el front-end
+* [33m3673ccf[m arreglando el front de tienda
+* [33m8462615[m viernes_0818
+* [33m10d8056[m viernes_0755
+*   [33m39cf2c6[m viernes_0731
+[35m|[m[36m\[m  
+[35m|[m * [33mc75e391[m Agregando varios bugs de la tienda y responsividad
+* [36m|[m [33m2a8a288[m viernes_0726
+* [36m|[m [33m4969747[m 0106
+[1;31m|[m[36m\[m[36m|[m 
+[1;31m|[m * [33m25715e4[m Agregando sistemas de ventas y arreglando bugs
+* [1;32m|[m [33mb148e08[m 0057
+* [1;32m|[m [33m0e63f6c[m 2303
+* [1;32m|[m [33meb0948b[m evitar pycache
+* [1;32m|[m [33mab3212f[m 2252
+[1;32m|[m[1;32m/[m  
+* [33mf75dcf6[m agregando descuentos no terminado - algunos bugs - falta poco
+* [33m70cadf5[m agregando funciones de caja - arqueos y base de los descts
+[1;32m|[m * [33m7cd7357[m[33m ([m[1;31morigin/sebastian[m[33m)[m seba_sabado_1
+[1;32m|[m *   [33m15c7f51[m viernes_noche3
+[1;32m|[m [1;34m|[m[1;32m\[m  
+[1;32m|[m [1;34m|[m[1;32m/[m  
+[1;32m|[m[1;32m/[m[1;34m|[m   
+* [1;34m|[m [33m62508b7[m viernes_noche2
+* [1;34m|[m   [33m5b29a27[m Merge branch 'main' of https://github.com/BastianPerezG/siper-pirula
+[1;36m|[m[31m\[m [1;34m\[m  
+* [31m|[m [1;34m|[m [33m3eb2817[m agregando admin usuarios
+* [31m|[m [1;34m|[m [33me5319eb[m arreglando errores minimos en base y dashboard
+* [31m|[m [1;34m|[m   [33m35cc4fc[m probando despues del merge
+[32m|[m[33m\[m [31m\[m [1;34m\[m  

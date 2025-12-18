@@ -5,22 +5,27 @@
 {% block content %}
 <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
   <a href="javascript:history.back()"
-     class="inline-flex items-center text-xs sm:text-sm text-slate-600 hover:text-slate-900 mb-4">
+    class="inline-flex items-center text-xs sm:text-sm text-slate-600 hover:text-slate-900 mb-4">
     ← Volver
   </a>
 
   <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
     <div class="flex flex-col lg:flex-row">
       <!-- Imagen del producto -->
-      <div class="lg:w-1/2 bg-slate-50 flex items-center justify-center p-6 sm:p-8">
+      <div class="lg:w-1/2 bg-slate-50 flex items-center justify-center p-6 sm:p-8 relative">
+        {% if producto.contiene_alcohol %}
+        <div class="absolute top-0 left-0 bg-black text-white p-2.5 max-w-[40%] z-20 rounded-br-xl shadow-md">
+          <p class="text-xs font-bold leading-none mb-1">ADVERTENCIA</p>
+          <p class="text-[9px] leading-tight font-medium">El consumo de alcohol en menores de 18 años se encuentra
+            prohibido.</p>
+        </div>
+        {% endif %}
         {% if producto.imagen %}
-          <img src="{{ producto.imagen.url }}"
-               alt="{{ producto.nombre }}"
-               class="w-full h-full object-contain max-h-96">
+        <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" class="w-full h-full object-contain max-h-96">
         {% else %}
-          <div class="w-full h-full flex items-center justify-center text-5xl text-slate-300">
-            {{ producto.nombre|slice:":1" }}
-          </div>
+        <div class="w-full h-full flex items-center justify-center text-5xl text-slate-300">
+          {{ producto.nombre|slice:":1" }}
+        </div>
         {% endif %}
       </div>
 
@@ -54,19 +59,18 @@
               Stock disponible
             </p>
             {% if producto.stock_actual > 0 %}
-              <p class="text-base text-emerald-700 font-semibold">
-                {{ producto.stock_actual }} unidades
+            <p class="text-base text-emerald-700 font-semibold">
+              {{ producto.stock_actual }} unidades
+            </p>
+            {% if producto.stock_actual <= producto.stock_min %} <p class="text-xs text-amber-600 mt-1">
+              ⚠️ Stock bajo
               </p>
-              {% if producto.stock_actual <= producto.stock_min %}
-                <p class="text-xs text-amber-600 mt-1">
-                  ⚠️ Stock bajo
-                </p>
               {% endif %}
-            {% else %}
+              {% else %}
               <p class="text-base text-red-600 font-semibold">
                 Sin stock
               </p>
-            {% endif %}
+              {% endif %}
           </div>
 
           <!-- Unidad de venta -->
@@ -113,7 +117,7 @@
             <span class="font-mono text-slate-700">{{ producto.sku }}</span>
           </div>
           {% endif %}
-          
+
           {% if producto.ean %}
           <div class="flex items-center justify-between text-xs">
             <span class="text-slate-500">Código de barras:</span>
@@ -132,52 +136,46 @@
         <!-- Botón agregar al carrito -->
         <div class="mt-auto pt-4 border-t border-slate-200">
           {% if producto.stock_actual > 0 %}
-            <form method="post" action="{% url 'tienda:carrito_agregar' producto.id %}" class="space-y-3">
-              {% csrf_token %}
-              
-              <div class="flex items-center gap-3">
-                <label for="cantidad" class="text-sm font-medium text-slate-700 whitespace-nowrap">
-                  Cantidad:
-                </label>
-                <div class="flex items-center gap-2 flex-1">
-                  <button type="button" 
-                          onclick="decrementarCantidad()"
-                          class="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 font-semibold">
-                    −
-                  </button>
-                  <input type="number" 
-                         id="cantidad" 
-                         name="cantidad" 
-                         value="1" 
-                         min="1" 
-                         max="{{ producto.stock_actual }}"
-                         class="w-20 text-center border border-slate-300 rounded-lg px-2 py-1.5 text-sm font-medium"
-                         onchange="validarCantidad()">
-                  <button type="button" 
-                          onclick="incrementarCantidad()"
-                          class="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 font-semibold">
-                    +
-                  </button>
-                </div>
-                <span class="text-xs text-slate-500">
-                  Máx: {{ producto.stock_actual }}
-                </span>
-              </div>
+          <form method="post" action="{% url 'tienda:carrito_agregar' producto.id %}" class="space-y-3">
+            {% csrf_token %}
 
-              <button type="submit"
-                      class="w-full inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition-colors">
-                Agregar al carrito
-              </button>
-            </form>
-            {% if cantidad_en_carrito > 0 %}
-              <p class="mt-2 text-xs text-slate-500 text-center">
-                Ya tienes {{ cantidad_en_carrito }} en el carrito.
-              </p>
-            {% endif %}
-          {% else %}
-            <div class="w-full inline-flex items-center justify-center rounded-full bg-red-100 text-red-700 px-4 py-3 text-sm font-semibold">
-              Sin stock disponible
+            <div class="flex items-center gap-3">
+              <label for="cantidad" class="text-sm font-medium text-slate-700 whitespace-nowrap">
+                Cantidad:
+              </label>
+              <div class="flex items-center gap-2 flex-1">
+                <button type="button" onclick="decrementarCantidad()"
+                  class="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 font-semibold">
+                  −
+                </button>
+                <input type="number" id="cantidad" name="cantidad" value="1" min="1" max="{{ producto.stock_actual }}"
+                  class="w-20 text-center border border-slate-300 rounded-lg px-2 py-1.5 text-sm font-medium"
+                  onchange="validarCantidad()">
+                <button type="button" onclick="incrementarCantidad()"
+                  class="w-8 h-8 rounded-full border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 font-semibold">
+                  +
+                </button>
+              </div>
+              <span class="text-xs text-slate-500">
+                Máx: {{ producto.stock_actual }}
+              </span>
             </div>
+
+            <button type="submit"
+              class="w-full inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition-colors">
+              Agregar al carrito
+            </button>
+          </form>
+          {% if cantidad_en_carrito > 0 %}
+          <p class="mt-2 text-xs text-slate-500 text-center">
+            Ya tienes {{ cantidad_en_carrito }} en el carrito.
+          </p>
+          {% endif %}
+          {% else %}
+          <div
+            class="w-full inline-flex items-center justify-center rounded-full bg-red-100 text-red-700 px-4 py-3 text-sm font-semibold">
+            Sin stock disponible
+          </div>
           {% endif %}
         </div>
       </div>
@@ -190,14 +188,14 @@
     const input = document.getElementById('cantidad');
     let valor = parseInt(input.value) || 1;
     const max = parseInt(input.getAttribute('max')) || 999;
-    
+
     if (valor < 1) {
       valor = 1;
     }
     if (valor > max) {
       valor = max;
     }
-    
+
     input.value = valor;
   }
 
@@ -205,7 +203,7 @@
     const input = document.getElementById('cantidad');
     const max = parseInt(input.getAttribute('max')) || 999;
     let valor = parseInt(input.value) || 1;
-    
+
     if (valor < max) {
       valor++;
       input.value = valor;
@@ -215,7 +213,7 @@
   function decrementarCantidad() {
     const input = document.getElementById('cantidad');
     let valor = parseInt(input.value) || 1;
-    
+
     if (valor > 1) {
       valor--;
       input.value = valor;

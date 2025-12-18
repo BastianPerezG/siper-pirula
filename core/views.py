@@ -284,27 +284,29 @@ def login_interno_view(request):
 
 
 def logout_interno_view(request):
-    # 1. Verificar autenticación y obtener el objeto Negocio (si es necesario)
+    # Determine if user is internal BEFORE logging out
+    is_internal = False
     if request.user.is_authenticated:
+        perfil = getattr(request.user, 'perfilusuario', None)
+        is_internal = perfil is not None
+        
         # Intenta obtener el negocio asociado al usuario o el primero disponible
-        try:
-            negocio_instancia = Negocio.objects.first() 
-        except Negocio.DoesNotExist:
-            negocio_instancia = None
+        negocio_obj = perfil.negocio if perfil else Negocio.objects.first()
 
         # 2. Registrar el evento ANTES del logout
-        if negocio_instancia:
+        if negocio_obj:
             detalles_registro = {
                     'usuario_id': request.user.pk,
+                    'tipo_usuario': 'INTERNO' if is_internal else 'CLIENTE',
                     'ip_address': request.META.get('REMOTE_ADDR'), 
                 }
             registrar_bitacora_estructurada(
-                negocio=request.user.perfilusuario.negocio,
+                negocio=negocio_obj,
                 usuario=request.user,
                 nombre_modelo="Log",
                 tipo_accion="LOGOUT",
                 entidad_id=request.user.pk,
-                accion=f"Cierre de sesión exitoso por el usuario {request.user.username} con ID: {request.user.pk}.",
+                accion=f"Cierre de sesión exitoso por el usuario {request.user.username}.",
                 detalles=detalles_registro
             )
 
@@ -312,8 +314,13 @@ def logout_interno_view(request):
     logout(request)
     
     # 4. Mensaje y redirección
-    messages.info(request, "Sesión cerrada.")
-    return redirect("core:login_interno")
+    messages.info(request, "Sesión cerrada correctamente.")
+    
+    if is_internal:
+        return redirect("core:login_interno")
+    else:
+        # Clientes vuelven a la tienda
+        return redirect("tienda:home")
 
 
 # ---------------------------
