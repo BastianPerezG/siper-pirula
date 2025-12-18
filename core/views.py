@@ -741,7 +741,8 @@ def bitacora_export_csv(request):
     response['Content-Disposition'] = f'attachment; filename="bitacora_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv"'
     response.write('\ufeff')  # BOM para Excel UTF-8
     
-    writer = csv.writer(response)
+    # Usamos punto y coma para mejor compatibilidad con Excel en español/latinoamérica
+    writer = csv.writer(response, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     
     # Encabezados
     writer.writerow([
@@ -754,11 +755,16 @@ def bitacora_export_csv(request):
     ])
     
     # Datos
-    for log in queryset[:1000]:  # Limitar a 1000 registros
+    for log in queryset[:2000]:  # Aumentamos el límite un poco
+        # Lógica de etiqueta amigable para el Área
+        nombre_modelo_display = log.nombre_modelo
+        if nombre_modelo_display == 'PagoVenta':
+            nombre_modelo_display = 'Venta'
+
         writer.writerow([
-            log.fecha_hora.strftime('%Y-%m-%d %H:%M:%S'),
+            log.fecha_hora.strftime('%d/%m/%Y %H:%M:%S'), # Formato más local
             log.usuario.username if log.usuario else 'Sistema',
-            log.nombre_modelo,
+            nombre_modelo_display,
             log.tipo_accion,
             log.accion,
             log.entidad_id,

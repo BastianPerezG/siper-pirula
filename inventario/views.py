@@ -1138,7 +1138,10 @@ def promo_crear_view(request):
                 # 'items_incluidos': formset.total_form_count(),
             }
             registrar_bitacora_estructurada(
+                negocio=negocio,
                 usuario=request.user,
+                nombre_modelo='Promo',
+                tipo_accion='CREACION_PROMO',
                 accion=f"Creación de Promoción: {promo.id}",
                 entidad_id=promo.pk,
                 detalles=detalles_registro

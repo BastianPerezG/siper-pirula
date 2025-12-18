@@ -25,7 +25,7 @@
             <select name="proveedor" class="mt-1 border rounded px-2 py-1 text-sm">
                 <option value="">Todos</option>
                 {% for p in proveedores %}
-                <option value="{{ p.id }}" {% if filtros.proveedor_id == p.id %}selected{% endif %}>
+                <option value="{{ p.id }}" {% if filtros.proveedor_id==p.id %}selected{% endif %}>
                     {{ p.nombre }}
                 </option>
                 {% endfor %}
@@ -36,7 +36,7 @@
             <select name="categoria" class="mt-1 border rounded px-2 py-1 text-sm">
                 <option value="">Todas</option>
                 {% for c in categorias %}
-                <option value="{{ c.id }}" {% if filtros.categoria_id == c.id %}selected{% endif %}>
+                <option value="{{ c.id }}" {% if filtros.categoria_id==c.id %}selected{% endif %}>
                     {{ c.nombre }}
                 </option>
                 {% endfor %}
@@ -51,6 +51,10 @@
         <button type="submit" name="export" value="csv"
             class="bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded hover:bg-emerald-700">
             Exportar CSV
+        </button>
+        <button type="submit" name="export" value="pdf"
+            class="bg-red-600 text-white text-sm font-medium px-4 py-2 rounded hover:bg-red-700">
+            Exportar PDF
         </button>
     </form>
 

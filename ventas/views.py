@@ -1396,14 +1396,17 @@ def pago_confirmar_view(request, pk):
                 pago.confirmar(request.user)
                 
                 registrar_bitacora_estructurada(
+                    negocio=request.user.perfilusuario.negocio,
                     usuario=request.user,
+                    nombre_modelo='PagoVenta',
+                    tipo_accion='CONFIRMACION_PAGO',
                     accion=f"Confirmación de pago #{pago.pk} - Venta #{pago.venta.pk}",
                     entidad_id=pago.venta.pk,
-                    detalles=(
-                        f"Método: {pago.get_metodo_display()} | "
-                        f"Monto: ${pago.monto} | "
-                        f"Código referencia: {pago.codigo_referencia or 'N/A'}"
-                    ),
+                    detalles={
+                        'metodo': pago.get_metodo_display(),
+                        'monto': str(pago.monto),
+                        'codigo_referencia': pago.codigo_referencia or 'N/A'
+                    },
                 )
                 
                 messages.success(

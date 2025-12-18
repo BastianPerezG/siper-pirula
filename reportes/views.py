@@ -13,6 +13,9 @@ from inventario.models import Categoria, Producto, MovimientoInventario, Proveed
 from django.views import View
 from django.shortcuts import render
 from pedidos.models import Pedido
+from django.conf import settings
+from core.utils import render_to_pdf
+import os
 
 
 
@@ -68,6 +71,8 @@ class ReporteStockQuiebresView(LoginRequiredMixin, TemplateView):
         context = self.get_context_data(**kwargs)
 
         export = request.GET.get("export")
+        if export == "pdf":
+            return self.export_pdf(request)
         if export == "csv":
             filtros = context.get("filtros", {})
             estado = filtros.get("estado", "ambos")
@@ -169,6 +174,17 @@ class ReporteStockQuiebresView(LoginRequiredMixin, TemplateView):
 
         # Render normal (HTML)
         return self.render_to_response(context)
+
+
+    def export_pdf(self, request):
+        context = self.get_context_data()
+        context["user"] = request.user
+        context["logo_path"] = "img/logo_gran_pirula_marron.jpg"
+        filename = f"reporte_quiebres_{timezone.now().strftime('%Y%m%d')}.pdf"
+        response = render_to_pdf("reportes/pdf/quiebres_pdf.html", context)
+        if response.status_code == 200:
+             response["Content-Disposition"] = f'inline; filename="{filename}"'
+        return response
 
 
     def get_context_data(self, **kwargs):
@@ -426,7 +442,22 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
     def get(self, request, *args, **kwargs):
         if request.GET.get("export") == "csv":
             return self.exportar_csv(request)
+        if request.GET.get("export") == "pdf":
+            return self.export_pdf(request)
         return super().get(request, *args, **kwargs)
+
+    def export_pdf(self, request):
+        # Para obtener el contexto completo calculamos primero todo
+        # Aprovechamos get_context_data que ya hace todo el trabajo pesado
+        # Pasamos kwargs vacíos o lo que requiera
+        context = self.get_context_data()
+        context["user"] = request.user
+        context["logo_path"] = "img/logo_gran_pirula_marron.jpg"
+        filename = f"reporte_ventas_{timezone.now().strftime('%Y%m%d')}.pdf"
+        response = render_to_pdf("reportes/pdf/ventas_pdf.html", context)
+        if response.status_code == 200:
+            response["Content-Disposition"] = f'inline; filename="{filename}"'
+        return response
 
 
     # ----------------- Exportar CSV -----------------
@@ -759,13 +790,12 @@ class ReporteNoRetiraView(LoginRequiredMixin, TemplateView):
 
         total_pedidos = pedidos_qs.count()
 
-        # ----- Pedidos con estado No retira -----
-        estado_no_retira = getattr(Pedido, "EST_NO_RETIRA", None)
-        if estado_no_retira is not None:
-            pedidos_no_retirados = pedidos_qs.filter(estado=estado_no_retira)
-        else:
-            
-            pedidos_no_retirados = pedidos_qs.filter(estado="NO_RETIRA")
+        # ----- Pedidos con estado No retira o Cancelado -----
+        estados_filtro = [
+            getattr(Pedido, "EST_NO_RETIRA", "NO_RETIRA"),
+            getattr(Pedido, "EST_CANCELADO", "CANCELADO")
+        ]
+        pedidos_no_retirados = pedidos_qs.filter(estado__in=estados_filtro)
 
         total_no_retirados = pedidos_no_retirados.count()
 
@@ -805,7 +835,19 @@ class ReporteNoRetiraView(LoginRequiredMixin, TemplateView):
     def get(self, request, *args, **kwargs):
         if request.GET.get("export") == "csv":
             return self.export_csv(request)
+        if request.GET.get("export") == "pdf":
+            return self.export_pdf(request)
         return super().get(request, *args, **kwargs)
+
+    def export_pdf(self, request):
+        context = self.get_context_data()
+        context["user"] = request.user
+        context["logo_path"] = "img/logo_gran_pirula_marron.jpg"
+        filename = f"reporte_no_retira_{timezone.now().strftime('%Y%m%d')}.pdf"
+        response = render_to_pdf("reportes/pdf/no_retira_pdf.html", context)
+        if response.status_code == 200:
+            response["Content-Disposition"] = f'inline; filename="{filename}"'
+        return response
 
     # ------------------ contexto ------------------
     def get_context_data(self, **kwargs):
@@ -1139,12 +1181,26 @@ class ReporteMermasProveedorView(LoginRequiredMixin, TemplateView):
 
         return response
 
+    def export_pdf(self, data):
+        # data ya tiene las estructuras listas
+        context = self.get_context_data(**data)
+        context["user"] = self.request.user
+        context["logo_path"] = "img/logo_gran_pirula_marron.jpg"
+        filename = f"reporte_mermas_{timezone.now().strftime('%Y%m%d')}.pdf"
+        response = render_to_pdf("reportes/pdf/mermas_pdf.html", context)
+        if response.status_code == 200:
+            response["Content-Disposition"] = f'inline; filename="{filename}"'
+        return response
+
     # --------- 5) GET: HTML o CSV ---------
     def get(self, request, *args, **kwargs):
         data = self._build_data()
 
         if request.GET.get("export") == "csv":
             return self._export_csv(data)
+        
+        if request.GET.get("export") == "pdf":
+            return self.export_pdf(data)
 
         context = self.get_context_data(**data)
         return self.render_to_response(context)
@@ -1167,7 +1223,19 @@ class ReporteDiaHoraView(LoginRequiredMixin, TemplateView):
         # sirve para la exportación
         if request.GET.get("export") == "csv":
             return self.export_csv(request)
+        if request.GET.get("export") == "pdf":
+            return self.export_pdf(request)
         return super().get(request, *args, **kwargs)
+
+    def export_pdf(self, request):
+        context = self.get_context_data()
+        context["user"] = request.user
+        context["logo_path"] = "img/logo_gran_pirula_marron.jpg"
+        filename = f"reporte_dia_hora_{timezone.now().strftime('%Y%m%d')}.pdf"
+        response = render_to_pdf("reportes/pdf/dia_hora_pdf.html", context)
+        if response.status_code == 200:
+            response["Content-Disposition"] = f'inline; filename="{filename}"'
+        return response
 
     # ------------------ LÓGICA PRINCIPAL ------------------
     def _get_datos_base(self, request):

@@ -95,9 +95,14 @@
 <body class="bg-pirula-light dark:bg-slate-900 min-h-screen flex flex-col font-sans transition-colors duration-300">
 
     <header class="bg-pirula-dark dark:bg-black text-slate-100 shadow-md transition-colors duration-300">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-            <a href="{% url 'tienda:home' %}" class="font-bold text-base sm:text-lg tracking-wide">
-                SIPER Pirula
+        <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+            <a href="{% url 'tienda:home' %}" class="flex items-center gap-2">
+                <!-- Modo Claro: Logo Color/Marron -->
+                <img src="{% static 'img/logo_light.png' %}?v=3" alt="SIPER Pirula"
+                    class="h-24 w-auto block dark:hidden transistion-all hover:scale-105">
+                <!-- Modo Oscuro: Logo Blanco/Negativo -->
+                <img src="{% static 'img/logo_dark.png' %}?v=3" alt="SIPER Pirula"
+                    class="h-24 w-auto hidden dark:block transistion-all hover:scale-105">
             </a>
 
             <nav class="hidden sm:flex items-center gap-3 sm:gap-4 text-xs sm:text-sm">

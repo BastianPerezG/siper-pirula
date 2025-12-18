@@ -1,0 +1,219 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        @page {
+            size: letter;
+            margin: 1.5cm;
+
+            @frame footer_frame {
+                -pdf-frame-content: footer_content;
+                bottom: 1cm;
+                height: 1cm;
+                margin-left: 1.5cm;
+                margin-right: 1.5cm;
+            }
+        }
+
+        body {
+            font-family: Helvetica, sans-serif;
+            font-size: 10pt;
+            color: #334155;
+            /* Slate 700 */
+            line-height: 1.4;
+        }
+
+        /* HEADER LAYOUT */
+        .header-table {
+            width: 100%;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #10b981;
+            /* Emerald 500 */
+            padding-bottom: 15px;
+        }
+
+        .header-title {
+            font-size: 24pt;
+            color: #0f172a;
+            /* Slate 900 */
+            font-weight: bold;
+        }
+
+        .header-meta {
+            font-size: 9pt;
+            color: #64748b;
+            /* Slate 500 */
+            margin-top: 5px;
+        }
+
+        .header-logo {
+            text-align: right;
+            vertical-align: top;
+        }
+
+        .header-logo img {
+            height: 60px;
+        }
+
+        /* TYPOGRAPHY */
+        h1 {
+            color: #0f172a;
+            font-size: 20pt;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        h2 {
+            color: #10b981;
+            /* Emerald 500 */
+            font-size: 14pt;
+            margin-top: 25px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        h3 {
+            color: #475569;
+            font-size: 11pt;
+            font-weight: bold;
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+
+        p {
+            margin-bottom: 10px;
+        }
+
+        /* TABLES */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+            margin-bottom: 20px;
+        }
+
+        th {
+            background-color: #ecfdf5;
+            /* Emerald 50 */
+            color: #065f46;
+            /* Emerald 800 */
+            font-weight: bold;
+            font-size: 9pt;
+            text-transform: uppercase;
+            padding: 8px 6px;
+            border-bottom: 2px solid #10b981;
+            /* Emerald 500 */
+            text-align: left;
+        }
+
+        td {
+            padding: 8px 6px;
+            border-bottom: 1px solid #e2e8f0;
+            /* Slate 200 */
+            color: #334155;
+            vertical-align: top;
+        }
+
+        /* UTILS */
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-emerald {
+            color: #059669;
+        }
+
+        .text-red {
+            color: #dc2626;
+        }
+
+        .font-bold {
+            font-weight: bold;
+        }
+
+        .text-sm {
+            font-size: 8pt;
+        }
+
+        .text-xs {
+            font-size: 7pt;
+        }
+
+        /* SUMMARY BOX */
+        .summary-box {
+            background-color: #f8fafc;
+            border: 1px solid #cbd5e1;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .summary-label {
+            font-size: 8pt;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 2px;
+        }
+
+        .summary-value {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #0f172a;
+        }
+
+        /* FOOTER */
+        .footer {
+            text-align: center;
+            color: #94a3b8;
+            /* Slate 400 */
+            font-size: 8pt;
+            padding-top: 10px;
+            border-top: 1px solid #e2e8f0;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- HEADER -->
+    <table class="header-table">
+        <tr>
+            <td style="border: none; padding: 0;">
+                <div class="header-title">{% block report_title %}Reporte SIPER Pirula{% endblock %}</div>
+                <div class="header-meta">
+                    <strong>Generado el:</strong> {% now "d/m/Y H:i" %}<br>
+                    <strong>Por:</strong> {{ user.get_full_name|default:user.username }}<br>
+                    {% if filtros_str %}
+                    <strong>Filtros:</strong> {{ filtros_str }}
+                    {% endif %}
+                </div>
+            </td>
+            <td class="header-logo" style="border: none; padding: 0;">
+                {% if logo_path %}
+                <img src="{{ logo_path }}">
+                {% else %}
+                <h1 style="margin:0; color:#10b981;">SIPER</h1>
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+
+    <!-- CONTENT -->
+    {% block content %}{% endblock %}
+
+    <!-- FOOTER -->
+    <div id="footer_content" class="footer">
+        Sistema SIPER Pirula - Reporte confidencial - Página <pdf:pagenumber> de <pdf:pagecount>
+    </div>
+</body>
+
+</html>

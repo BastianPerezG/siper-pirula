@@ -133,7 +133,11 @@ class ProveedorForm(forms.ModelForm):
             'nombre': forms.TextInput(attrs={'placeholder': 'Nombre completo o Razón Social'}),
             # 'rut': forms.TextInput(attrs={'placeholder': 'Ej: 76.284.425-4'}),
             'contacto': forms.TextInput(attrs={'placeholder': 'Nombre del vendedor o encargado'}),
-            'telefono': forms.TextInput(attrs={'placeholder': '+56 9 XXXXXXXX'}),
+            'telefono': forms.TextInput(attrs={
+                'placeholder': '+56 9 XXXXXXXX',
+                'type': 'tel',
+                'oninput': "this.value = this.value.replace(/[^0-9+\s]/g, '');"
+            }),
             'correo': forms.EmailInput(attrs={'placeholder': 'contacto@proveedor.cl'}),
         }
 
@@ -144,6 +148,15 @@ class ProveedorForm(forms.ModelForm):
             'telefono': 'Teléfono',
             'correo': 'Correo Electrónico',
         }
+
+    def clean_telefono(self):
+        telefono = self.cleaned_data.get('telefono')
+        if telefono:
+            # Eliminar todos los caracteres que no sean dígitos o '+'
+            import re
+            if not re.match(r'^[\d\s+()-]+$', telefono):
+                raise forms.ValidationError("El teléfono solo debe contener números y símbolos válidos (+).")
+        return telefono
 
 # =================sebastian-plantilla-prov================#
 # =========================================================#

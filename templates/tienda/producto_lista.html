@@ -45,7 +45,7 @@
 
   <!-- Filtros (chips + buscador) -->
   {% if categorias %}
-  <form method="get" class="mb-5 flex flex-col sm:flex-row gap-3 sm:items-center">
+  <form method="get" action="{% url 'tienda:productos' %}" class="mb-5 flex flex-col sm:flex-row gap-3 sm:items-center">
     <select name="categoria"
       class="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm w-full sm:w-56 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-pirula-amber focus:ring-1 focus:ring-pirula-amber"
       onchange="this.form.submit()">

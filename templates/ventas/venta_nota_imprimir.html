@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,14 +11,17 @@
                 size: 80mm auto;
                 margin: 0;
             }
+
             body {
                 margin: 0;
                 padding: 10px;
             }
+
             .no-print {
                 display: none;
             }
         }
+
         body {
             font-family: 'Courier New', monospace;
             font-size: 12px;
@@ -27,24 +31,29 @@
             padding: 10px;
             background: white;
         }
+
         .header {
             text-align: center;
             border-bottom: 1px dashed #000;
             padding-bottom: 10px;
             margin-bottom: 10px;
         }
+
         .header h1 {
             font-size: 16px;
             font-weight: bold;
             margin: 5px 0;
         }
+
         .header p {
             margin: 2px 0;
             font-size: 10px;
         }
+
         .section {
             margin: 10px 0;
         }
+
         .section-title {
             font-weight: bold;
             text-transform: uppercase;
@@ -53,20 +62,24 @@
             padding-bottom: 2px;
             margin-bottom: 5px;
         }
+
         .item-row {
             display: flex;
             justify-content: space-between;
             margin: 3px 0;
             font-size: 11px;
         }
+
         .item-name {
             flex: 1;
             margin-right: 5px;
         }
+
         .item-details {
             text-align: right;
             white-space: nowrap;
         }
+
         .total-row {
             border-top: 1px dashed #000;
             padding-top: 5px;
@@ -75,6 +88,7 @@
             justify-content: space-between;
             font-weight: bold;
         }
+
         .footer {
             text-align: center;
             margin-top: 15px;
@@ -82,16 +96,20 @@
             border-top: 1px dashed #000;
             font-size: 10px;
         }
+
         .divider {
             border-top: 1px dashed #000;
             margin: 10px 0;
         }
+
         .text-center {
             text-align: center;
         }
+
         .text-right {
             text-align: right;
         }
+
         .btn-print {
             position: fixed;
             top: 20px;
@@ -105,11 +123,13 @@
             font-size: 14px;
             z-index: 1000;
         }
+
         .btn-print:hover {
             background: #059669;
         }
     </style>
 </head>
+
 <body>
     <button onclick="window.print()" class="btn-print no-print">🖨️ Imprimir</button>
 
@@ -172,14 +192,14 @@
             <span>Total bruto:</span>
             <span>${{ venta.total|floatformat:0 }}</span>
         </div>
-        {% if venta.monto_total != venta.total %}
+        {% if venta.monto_total and venta.monto_total != venta.total %}
         <div class="item-row" style="color: #dc2626;">
             <span>Descuento ticket:</span>
             <span id="descuento-calc">-</span>
         </div>
         <script>
             // Calcular descuento en JavaScript
-            (function() {
+            (function () {
                 const totalBruto = parseFloat('{{ venta.total|floatformat:0 }}'.replace(/\./g, '')) || 0;
                 const totalNeto = parseFloat('{{ venta.monto_total|floatformat:0 }}'.replace(/\./g, '')) || 0;
                 const descuento = totalBruto - totalNeto;
@@ -205,9 +225,9 @@
         </div>
         {% for pago in venta.pagos.all %}
         <div class="item-row" style="font-size: 10px;">
-            <span>{{ pago.get_metodo_display }}: ${{ pago.monto|floatformat:0 }}</span>
+            <span>{{ pago.get_metodo_display }}: ${{ pago.monto | floatformat:0 }}</span>
             {% if pago.vuelto > 0 %}
-            <span>Vuelto: ${{ pago.vuelto|floatformat:0 }}</span>
+            <span>Vuelto:${{ pago.vuelto | floatformat:0 }}</span>
             {% endif %}
         </div>
         {% if pago.estado == "PENDIENTE" %}
@@ -228,13 +248,13 @@
     <script>
         // Auto-imprimir si se abre en nueva ventana
         if (window.opener) {
-            window.onload = function() {
-                setTimeout(function() {
+            window.onload = function () {
+                setTimeout(function () {
                     window.print();
                 }, 250);
             };
         }
     </script>
 </body>
-</html>
 
+</html>

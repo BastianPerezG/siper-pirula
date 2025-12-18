@@ -1,0 +1,75 @@
+{% extends "reportes/pdf/base_pdf.html" %}
+
+{% block report_title %}Informe de Mermas por Proveedor{% endblock %}
+
+{% block content %}
+
+<h3>Resumen por Proveedor</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Proveedor</th>
+            <th class="text-right">Comprado ($)</th>
+            <th class="text-right">Merma ($)</th>
+            <th class="text-center">Cant. Merma</th>
+            <th class="text-center">% Impacto</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in resumen_proveedores %}
+        <tr>
+            <td>{{ row.proveedor }}</td>
+            <td class="text-right">${{ row.monto_comprado|floatformat:0 }}</td>
+            <td class="text-right">${{ row.monto_merma|floatformat:0 }}</td>
+            <td class="text-center">{{ row.cantidad_merma }}</td>
+            <td class="text-center">
+                {% if row.porcentaje_merma %}
+                <span class="{% if row.porcentaje_merma > 5 %}text-red{% endif %}">
+                    {{ row.porcentaje_merma }}%
+                </span>
+                {% else %}
+                0%
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5" class="text-center">No hay datos en el período.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h3>Detalle de Mermas</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Fecha</th>
+            <th>Proveedor</th>
+            <th>Producto</th>
+            <th class="text-center">Cant</th>
+            <th>Motivo</th>
+            <th class="text-right">Pérdida</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for d in detalle_mermas %}
+        <tr>
+            <td>{{ d.fecha|date:"d/m/Y" }}</td>
+            <td>{{ d.proveedor }}</td>
+            <td>
+                {{ d.producto }}
+                <br><span style="font-size: 8pt; color: #666;">{{ d.categoria }}</span>
+            </td>
+            <td class="text-center">{{ d.cantidad }} {{ d.unidad }}</td>
+            <td>{{ d.motivo }}</td>
+            <td class="text-right">${{ d.monto_merma|floatformat:0 }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" class="text-center">No hay registros detallados.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -241,35 +241,35 @@
   </div>
   {% endif %}
 
-  <!-- Horizontal Marquee Section -->
-  {% if categorias_data %}
+  <!-- Horizontal Marquee Section (Marcas) -->
+  {% if marcas %}
   <div class="mt-20 mb-8">
     <h2
       class="text-2xl font-header font-bold text-pirula-dark dark:text-slate-200 mb-6 text-center uppercase tracking-widest">
-      Explora nuestras variedades
+      Nuestras Marcas
     </h2>
     <div class="marquee-container bg-pirula-dark dark:bg-slate-800 py-8 relative">
       <div class="marquee-content gap-8 px-4">
         <!-- Duplicate content to ensure seamless loop -->
-        {% for i in "123" %}
-        {% for grupo in categorias_data %}
+        {% for i in "12345" %}
+        {% for marca in marcas %}
         <div
-          class="w-64 shrink-0 bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-lg border-2 border-transparent hover:border-pirula-amber transition-colors cursor-pointer group"
-          onclick="window.location.href='{% url 'tienda:categoria_detalle' grupo.categoria.id %}'">
-          {% if grupo.categoria.imagen %}
-          <div class="h-32 w-full overflow-hidden">
-            <img src="{{ grupo.categoria.imagen.url }}"
-              class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+          class="w-48 shrink-0 bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-lg border-2 border-transparent hover:border-pirula-amber transition-colors cursor-pointer group"
+          onclick="window.location.href='{% url 'tienda:productos' %}?marca={{ marca.id }}'">
+          {% if marca.imagen %}
+          <div class="h-32 w-full overflow-hidden p-4 flex items-center justify-center bg-white">
+            <img src="{{ marca.imagen.url }}" alt="{{ marca.nombre }}"
+              class="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform duration-500">
           </div>
           {% else %}
           <div class="h-32 w-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-400">
-            <span class="text-3xl">🍷</span>
+            <span class="text-3xl font-bold">{{ marca.nombre|slice:":2" }}</span>
           </div>
           {% endif %}
-          <div class="p-3 text-center">
+          <div class="p-2 text-center bg-slate-50 dark:bg-slate-900">
             <h4
-              class="font-bold text-slate-800 dark:text-slate-200 uppercase text-sm tracking-wide group-hover:text-pirula-amber transition-colors">
-              {{ grupo.categoria.nombre }}
+              class="font-bold text-slate-800 dark:text-slate-200 uppercase text-xs tracking-wide group-hover:text-pirula-amber transition-colors truncate">
+              {{ marca.nombre }}
             </h4>
           </div>
         </div>

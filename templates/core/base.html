@@ -97,7 +97,7 @@
 
             <!-- Navegación Principal -->
             <nav class="flex-1 overflow-y-auto sidebar-content py-4">
-
+                {% if request.user.perfilusuario %}
                 <!-- Dashboard -->
                 <a href="{% url 'core:dashboard' %}"
                     class="sidebar-link flex items-center gap-3 px-4 py-2.5 text-sm text-pirula-beige hover:text-white">
@@ -113,7 +113,7 @@
                         <span>📦</span>
                         <span>Productos</span>
                         {% if stock_critico_count %}
-                        <span class="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{{ stock_critico_count }}</span>
+                        <span class="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{{stock_critico_count }}</span>
                         {% endif %}
                     </a>
                     <a href="{% url 'inventario:scan_ean' %}"
@@ -286,6 +286,7 @@
                         <span class="text-xs">↗</span>
                     </a>
                 </div>
+                {% endif %}
             </nav>
 
             <!-- Usuario y Logout -->
@@ -296,7 +297,9 @@
                         {{ request.user.username|slice:":1"|upper }}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-white truncate">{{ request.user.get_full_name|default:request.user.username }}</p>
+                        {% with full_name=request.user.get_full_name|default:request.user.username %}
+                        <p class="text-sm font-semibold text-white truncate">{{ full_name }}</p>
+                        {% endwith %}
                         <p class="text-xs text-pirula-beige">
                             {% if request.user.perfilusuario %}{{ request.user.perfilusuario.get_rol_display }}{% else %}Sin perfil{% endif %}
                         </p>

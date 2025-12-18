@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.db.models import Q
 from core.models import Negocio
-from inventario.models import Producto, Categoria, Promo
+from inventario.models import Producto, Categoria, Promo, Marca
 from pedidos.models import Pedido, PedidoItem, Cliente
 from pedidos.emails import enviar_correo_pedido_creado
 from django.contrib.auth.models import User  # para crear el usuario
@@ -256,6 +256,12 @@ def tienda_home(request):
         negocio=negocio,
     ).order_by("-id")[:6]
 
+    # Marcas para el carrusel
+    marcas = Marca.objects.filter(
+        activo=True,
+        negocio=negocio,
+    ).order_by("nombre")
+
     # Armamos la estructura que el template espera: categoria + algunos productos
     categorias_data = []
     for cat in categorias_qs:
@@ -279,6 +285,7 @@ def tienda_home(request):
         "negocio": negocio,
         "promos": promos,
         "categorias_data": categorias_data,
+        "marcas": marcas,
     }
     return render(request, "tienda/home.html", context)
 
@@ -1006,12 +1013,20 @@ def productos_list_view(request):
     # Obtener parámetros de búsqueda y filtro
     q = request.GET.get("q", "").strip()
     categoria_slug = request.GET.get("categoria", "").strip()
+    marca_id = request.GET.get("marca", "").strip()
     
     # Query base
     productos_qs = Producto.objects.filter(
         negocio=negocio,
         activo=True,
     )
+
+    # Filtro por marca
+    if marca_id:
+        try:
+            productos_qs = productos_qs.filter(marca_id=marca_id)
+        except ValueError:
+            pass
     
     # Filtro por categoría
     categoria = None

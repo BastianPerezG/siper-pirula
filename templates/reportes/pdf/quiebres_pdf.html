@@ -1,0 +1,90 @@
+{% extends "reportes/pdf/base_pdf.html" %}
+
+{% block report_title %}Reporte Stock Crítico y Quiebres{% endblock %}
+
+{% block content %}
+
+{% if productos_criticos %}
+<h3>Productos con Stock Crítico / Sin Stock</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th>Proveedor</th>
+            <th class="text-center">Stock Actual</th>
+            <th class="text-center">Mínimo</th>
+            <th class="text-center">Déficit</th>
+            <th class="text-center">Estado</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in productos_criticos %}
+        <tr>
+            <td>
+                {{ item.producto.nombre }}
+                <br><small>{{ item.categoria.nombre }}</small>
+            </td>
+            <td>{{ item.proveedor.nombre|default:"-" }}</td>
+            <td class="text-center">{{ item.stock }}</td>
+            <td class="text-center">{{ item.minimo }}</td>
+            <td class="text-center text-red">{{ item.diferencia }}</td>
+            <td class="text-center">
+                {% if item.sin_stock %}
+                <span class="text-red font-bold">AGOTADO</span>
+                {% else %}
+                <span class="text-emerald">CRÍTICO</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% if quiebres %}
+<h3 style="margin-top: 20px;">Historial de Quiebres (Último período)</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th>Fecha Quiebre</th>
+            <th>Reposición</th>
+            <th class="text-center">Días sin stock</th>
+            <th class="text-center">Total Quiebres</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for q in quiebres %}
+        <tr>
+            <td>
+                {{ q.producto.nombre }}
+            </td>
+            <td>{{ q.fecha_quiebre|date:"d/m/Y" }}</td>
+            <td>
+                {% if q.fecha_reposicion %}
+                {{ q.fecha_reposicion|date:"d/m/Y" }}
+                {% else %}
+                <span class="text-red">No repuesto</span>
+                {% endif %}
+            </td>
+            <td class="text-center">
+                {% if q.duracion is not None %}
+                {{ q.duracion }} días
+                {% else %}
+                -
+                {% endif %}
+            </td>
+            <td class="text-center">{{ q.total_quiebres_producto }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% if not productos_criticos and not quiebres %}
+<div class="summary-box">
+    <p class="text-center">No se encontraron datos de stock crítico ni quiebres para los filtros seleccionados.</p>
+</div>
+{% endif %}
+
+{% endblock %}

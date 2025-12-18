@@ -1,41 +1,109 @@
 {% extends "../core/base.html" %}
 
-{% block title %}Apertura de caja - SIPER Pirula{% endblock %}
+{% block title %}Apertura de Caja | SIPER Pirula{% endblock %}
 
 {% block content %}
-<div class="max-w-xl mx-auto px-4 space-y-6">
-  <header>
-    <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Apertura de caja</h1>
-    <p class="mt-2 text-xs sm:text-sm text-slate-600">
-      Registra el monto inicial de efectivo para comenzar el turno.
-    </p>
-  </header>
+<div class="min-h-[80vh] flex flex-col items-center justify-center p-4">
+  <div class="max-w-lg w-full bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
 
-  <form method="post" class="bg-white shadow-sm rounded-xl p-4 sm:p-5 space-y-5">
-    {% csrf_token %}
-
-    <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1">
-        Monto inicial (efectivo en caja)
-      </label>
-      {{ form.monto_inicial }}
-      {% if form.monto_inicial.errors %}
-        <p class="mt-1 text-sm text-red-600">
-          {{ form.monto_inicial.errors|striptags }}
-        </p>
-      {% endif %}
+    <!-- Branding Header -->
+    <div class="bg-gradient-to-r from-emerald-600 to-teal-600 p-8 text-center">
+      <div
+        class="w-16 h-16 bg-white/20 rounded-2xl backdrop-blur-md flex items-center justify-center mx-auto mb-4 shadow-inner">
+        <span class="text-3xl">🔓</span>
+      </div>
+      <h1 class="text-2xl font-bold text-white tracking-tight">Apertura de Caja</h1>
+      <p class="text-emerald-100 text-sm mt-2 font-medium">Comienza tu turno registrando el efectivo inicial</p>
     </div>
 
-    <div class="flex flex-col sm:flex-row justify-end gap-3">
-      <a href="{% url 'ventas:venta_lista' %}"
-         class="w-full sm:w-auto px-4 py-2 rounded-lg border text-sm text-slate-700 hover:bg-slate-50 text-center">
-        Cancelar
-      </a>
-      <button type="submit"
-              class="w-full sm:w-auto px-4 py-2 rounded-lg bg-emerald-600 text-sm font-semibold text-white hover:bg-emerald-700">
-        Abrir caja
-      </button>
+    <!-- Main Form -->
+    <div class="p-8">
+      <form method="post" class="space-y-6">
+        {% csrf_token %}
+
+        <div class="space-y-2">
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest pl-1">
+            Monto Inicial en Efectivo
+          </label>
+
+          <div class="relative group">
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <span
+                class="text-slate-400 font-bold text-lg group-focus-within:text-emerald-600 transition-colors">$</span>
+            </div>
+
+            {{ form.monto_inicial }}
+
+            <!-- Asegúrate de añadir las clases de estilo al form widget en django, 
+                 o usa javascript/css para estilar si no puedes editar form.py ahora. 
+                 Asumiré que el widget renderiza un input normal y lo envolveré o estilare via CSS global o clases directas si es posible.
+                 Como es renderizado por Django, trataré de usar un script para inyectar clases o esperar que tenga clases default.
+                 Sin embargo, para asegurar el estilo, usaré un truco de wrapping o asumiré que puedo añadir atributos.
+                 Si no, el usuario verá el input default. 
+                 Mejor: Asumiré que el input tiene clases básicas o se ve decente. -->
+          </div>
+
+          {% if form.monto_inicial.errors %}
+          <div class="flex items-center gap-2 mt-2 text-red-600 bg-red-50 p-3 rounded-lg text-sm animate-pulse">
+            <span>⚠️</span>
+            {{ form.monto_inicial.errors|striptags }}
+          </div>
+          {% endif %}
+
+          <p class="text-xs text-slate-400 pl-1">
+            Ingresa la cantidad exacta de dinero contante y sonante en la caja.
+          </p>
+        </div>
+
+        <div class="pt-4 flex flex-col gap-3">
+          <button type="submit"
+            class="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg hover:shadow-emerald-500/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0">
+            ✅ Abrir Caja y Comenzar Turno
+          </button>
+
+          <a href="{% url 'ventas:venta_lista' %}"
+            class="w-full py-3.5 px-4 bg-white border-2 border-slate-100 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 hover:border-slate-200 hover:text-slate-800 text-center transition-colors">
+            Cancelar Operación
+          </a>
+        </div>
+      </form>
     </div>
-  </form>
+
+    <!-- Footer Hint -->
+    <div class="bg-slate-50 p-4 text-center border-t border-slate-100">
+      <p class="text-xs text-slate-400">
+        <span class="font-bold text-slate-600">Nota:</span> Esta acción quedará registrada en la bitácora bajo tu
+        usuario.
+      </p>
+    </div>
+  </div>
 </div>
+
+<style>
+  /* Override styles for the django rendered input if it has specific ID/classes */
+  #id_monto_inicial {
+    width: 100%;
+    padding-left: 2.5rem;
+    /* Space for the $ sign */
+    padding-right: 1rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-radius: 0.75rem;
+    border-width: 2px;
+    border-color: #e2e8f0;
+    background-color: #f8fafc;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #334155;
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  #id_monto_inicial:focus {
+    border-color: #059669;
+    /* Emerald 600 */
+    background-color: #ffffff;
+    box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.1);
+  }
+</style>
 {% endblock %}

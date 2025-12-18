@@ -3,48 +3,53 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-slate-900 dark:text-white">📋 Bitácora del Sistema</h1>
+    <div class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+        <h1 class="text-3xl font-bold text-slate-800 tracking-tight flex items-center gap-3">
+            <span
+                class="bg-indigo-600 text-white w-10 h-10 rounded-lg flex items-center justify-center text-xl shadow-md">📋</span>
+            Bitácora del Sistema
+        </h1>
 
         <!-- Botones de Exportación -->
-        <div class="flex gap-2">
+        <div class="flex gap-3">
             <a href="{% url 'core:bitacora_export_csv' %}?{{ request.GET.urlencode }}"
-                class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-lg shadow transition-all flex items-center gap-2">
-                📥 Exportar CSV
+                class="px-5 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 font-semibold rounded-xl transition-all flex items-center gap-2">
+                <span class="text-lg">📥</span> CSV
             </a>
             <a href="{% url 'core:bitacora_export_pdf' %}?{{ request.GET.urlencode }}"
-                class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg shadow transition-all flex items-center gap-2">
-                📄 Exportar PDF
+                class="px-5 py-2.5 bg-red-50 border border-red-200 text-red-700 hover:bg-red-100 font-semibold rounded-xl transition-all flex items-center gap-2">
+                <span class="text-lg">📄</span> PDF
             </a>
         </div>
     </div>
 
     <!-- Panel de Filtros Avanzados -->
-    <form method="get"
-        class="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-6 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-4">
+    <form method="get" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5 mb-6">
 
             <!-- Área/Módulo -->
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wide">
+                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">
                     📦 Área
                 </label>
                 <select name="area"
-                    class="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                    class="w-full border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all">
                     <option value="">Todas las áreas</option>
                     {% for area in areas_funcionales %}
-                    <option value="{{ area }}" {% if area_activa == area %}selected{% endif %}>{{ area }}</option>
+                    <option value="{{ area }}" {% if area_activa == area %}selected{% endif %}>
+                        {% if area == 'PagoVenta' %}Venta{% else %}{{ area }}{% endif %}
+                    </option>
                     {% endfor %}
                 </select>
             </div>
 
             <!-- Tipo de Acción -->
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wide">
+                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">
                     ⚡ Tipo Acción
                 </label>
                 <select name="tipo_accion"
-                    class="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                    class="w-full border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all">
                     <option value="">Todos los tipos</option>
                     {% for value, label in tipos_accion %}
                     <option value="{{ value }}" {% if tipo_accion_activo == value %}selected{% endif %}>{{ label }}
@@ -55,150 +60,150 @@
 
             <!-- Usuario -->
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wide">
+                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">
                     👤 Usuario
                 </label>
                 <select name="usuario"
-                    class="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                    class="w-full border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all">
                     <option value="">Todos los usuarios</option>
                     {% for u in usuarios %}
-                    <option value="{{ u.id }}" {% if usuario_activo == u.id|stringformat:"i" %}selected{% endif %}>{{ u.username }}</option>
+                    <option value="{{ u.id }}" {% if usuario_activo == u.id|stringformat:"i" %}selected{% endif %}>{{u.username }}</option>
                     {% endfor %}
                 </select>
             </div>
 
             <!-- Fecha Desde -->
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wide">
+                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">
                     📅 Desde
                 </label>
                 <input type="date" name="fecha_desde" value="{{ fecha_desde }}"
-                    class="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                    class="w-full border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all">
             </div>
 
             <!-- Fecha Hasta -->
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wide">
+                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">
                     📅 Hasta
                 </label>
                 <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}"
-                    class="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                    class="w-full border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all">
             </div>
 
             <!-- Búsqueda -->
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wide">
+                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">
                     🔍 Buscar
                 </label>
                 <input type="text" name="q" value="{{ q }}" placeholder="Texto en acción..."
-                    class="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400">
+                    class="w-full border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all placeholder-slate-400">
             </div>
         </div>
 
-        <div class="flex justify-between items-center">
-            <div class="text-sm text-slate-600 dark:text-slate-400">
-                <strong>{{ total_resultados }}</strong> registros encontrados
+        <div class="flex flex-col sm:flex-row justify-between items-center pt-5 border-t border-slate-100">
+            <div class="text-sm text-slate-500 font-medium mb-4 sm:mb-0">
+                Se encontraron <strong class="text-slate-800">{{ total_resultados }}</strong> registros
             </div>
-            <div class="flex gap-2">
+            <div class="flex gap-3">
+                <a href="{% url 'core:admin_bitacoras' %}"
+                    class="px-5 py-2 border border-slate-300 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 hover:text-slate-800 transition-all">
+                    Limpiar Filtros
+                </a>
                 <button type="submit"
-                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg shadow transition-all">
+                    class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg shadow-sm hover:shadow transition-all">
                     🔍 Aplicar Filtros
                 </button>
-                <a href="{% url 'core:admin_bitacoras' %}"
-                    class="px-4 py-2 border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-bold rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
-                    Limpiar
-                </a>
             </div>
         </div>
     </form>
 
     <!-- Tabs de Áreas Rápidas -->
-    <div class="mb-6 flex space-x-2 overflow-x-auto pb-2">
+    <div class="mb-8 flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
         <a href="{% url 'core:admin_bitacoras' %}"
-            class="px-4 py-2 text-sm font-medium rounded-lg transition whitespace-nowrap
-           {% if not area_activa %}bg-blue-600 text-white shadow-md{% else %}text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600{% endif %}">
+            class="px-4 py-2 text-sm font-semibold rounded-full transition-all whitespace-nowrap border
+           {% if not area_activa %}bg-slate-800 text-white border-slate-800 shadow-md{% else %}bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50{% endif %}">
             Todos
         </a>
         {% for area in areas_funcionales %}
         <a href="{% url 'core:admin_bitacoras' %}?area={{ area }}"
-            class="px-4 py-2 text-sm font-medium rounded-lg transition whitespace-nowrap
-           {% if area_activa == area %}bg-blue-600 text-white shadow-md{% else %}text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600{% endif %}">
-            {{ area }}
+            class="px-4 py-2 text-sm font-semibold rounded-full transition-all whitespace-nowrap border
+           {% if area_activa == area %}bg-slate-800 text-white border-slate-800 shadow-md{% else %}bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50{% endif %}">
+            {% if area == 'PagoVenta' %}Venta{% else %}{{ area }}{% endif %}
         </a>
         {% endfor %}
     </div>
 
     <!-- Lista de Registros -->
-    <div
-        class="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-            <thead class="bg-slate-50 dark:bg-slate-900/50">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <table class="min-w-full divide-y divide-slate-100">
+            <thead class="bg-slate-50">
                 <tr>
-                    <th
-                        class="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Fecha/Hora</th>
-                    <th
-                        class="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Usuario</th>
-                    <th
-                        class="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Área</th>
-                    <th
-                        class="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Tipo</th>
-                    <th
-                        class="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Acción</th>
-                    <th
-                        class="px-4 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Detalles</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Fecha/Hora
+                    </th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Usuario
+                    </th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Área</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Tipo</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Acción
+                    </th>
+                    <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Detalles
+                    </th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+            <tbody class="divide-y divide-slate-100">
                 {% for log in logs %}
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                    <td class="px-4 py-3 whitespace-nowrap">
-                        <div class="text-sm font-medium text-slate-900 dark:text-white">{{ log.fecha_hora|date:"d/m/Y" }}</div>
-                        <div class="text-xs text-slate-500 dark:text-slate-400">{{ log.fecha_hora|time:"H:i:s" }}</div>
+                <tr class="hover:bg-slate-50 transition-colors group">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-bold text-slate-700">{{ log.fecha_hora|date:"d/m/Y" }}</div>
+                        <div class="text-xs text-slate-400 font-mono mt-0.5">{{ log.fecha_hora|time:"H:i:s" }}</div>
                     </td>
-                    <td class="px-4 py-3 whitespace-nowrap">
+                    <td class="px-6 py-4 whitespace-nowrap">
                         <span
-                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                            class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
                             {{ log.usuario.username|default:"Sistema" }}
                         </span>
                     </td>
-                    <td class="px-4 py-3 whitespace-nowrap">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                            {% if log.nombre_modelo == 'PedidoOnline' %}bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300
-                            {% elif log.nombre_modelo == 'Usuario' %}bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300
-                            {% elif log.nombre_modelo == 'Log' %}bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300
-                            {% elif log.nombre_modelo == 'Venta' %}bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300
-                            {% elif log.nombre_modelo == 'Inventario' %}bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-300
-                            {% else %}bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300{% endif %}">
-                            {{ log.nombre_modelo }}
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {# Lógica para mostrar nombre amigable y color #}
+                        {% with modelo=log.nombre_modelo %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold shadow-sm
+                                {% if modelo == 'PedidoOnline' %}bg-purple-100 text-purple-700 border border-purple-200
+                                {% elif modelo == 'Usuario' %}bg-green-100 text-green-700 border border-green-200
+                                {% elif modelo == 'Log' %}bg-gray-100 text-gray-700 border border-gray-200
+                                {% elif modelo == 'Venta' or modelo == 'PagoVenta' %}bg-amber-100 text-amber-700 border border-amber-200
+                                {% elif modelo == 'Inventario' %}bg-cyan-100 text-cyan-700 border border-cyan-200
+                                {% else %}bg-slate-100 text-slate-700 border border-slate-200{% endif %}">
+                            {% if modelo == 'PagoVenta' %}Venta{% else %}{{ modelo }}{% endif %}
+                        </span>
+                        {% endwith %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span
+                            class="text-xs font-mono font-medium text-slate-500 bg-slate-50 px-2 py-1 rounded border border-slate-100">
+                            {{ log.tipo_accion }}
                         </span>
                     </td>
-                    <td class="px-4 py-3 whitespace-nowrap">
-                        <span class="text-xs font-mono text-slate-600 dark:text-slate-400">{{ log.tipo_accion }}</span>
-                    </td>
-                    <td class="px-4 py-3">
-                        <div class="text-sm text-slate-900 dark:text-white max-w-md truncate" title="{{ log.accion }}">
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-slate-600 font-medium max-w-md truncate group-hover:text-slate-900 transition-colors"
+                            title="{{ log.accion }}">
                             {{ log.accion }}
                         </div>
                     </td>
-                    <td class="px-4 py-3 text-center">
+                    <td class="px-6 py-4 text-center">
                         <a href="{% url 'core:bitacora_detalle' log.pk %}"
-                            class="inline-flex items-center px-3 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors">
-                            👁️ Ver
+                            class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all"
+                            title="Ver detalle">
+                            👁️
                         </a>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="px-4 py-12 text-center">
-                        <div class="text-slate-500 dark:text-slate-400">
-                            <div class="text-4xl mb-2">📭</div>
-                            <p>No se encontraron registros con los filtros aplicados.</p>
+                    <td colspan="6" class="px-6 py-16 text-center">
+                        <div class="bg-slate-50 rounded-xl p-8 max-w-sm mx-auto border border-dashed border-slate-200">
+                            <div class="text-4xl mb-3 opacity-50">📭</div>
+                            <h3 class="text-slate-800 font-semibold mb-1">Sin resultados</h3>
+                            <p class="text-slate-500 text-sm">No se encontraron registros con los filtros aplicados.</p>
                         </div>
                     </td>
                 </tr>
@@ -209,23 +214,22 @@
 
     <!-- Paginación -->
     {% if page_obj.has_other_pages %}
-    <div class="mt-6 flex justify-center">
-        <nav class="inline-flex rounded-lg shadow-sm">
+    <div class="mt-8 flex justify-center">
+        <nav class="inline-flex rounded-xl shadow-sm isolate">
             {% if page_obj.has_previous %}
             <a href="?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}"
-                class="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-l-lg hover:bg-slate-50 dark:hover:bg-slate-700">
+                class="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-l-xl hover:bg-slate-50 hover:text-slate-800 transition-colors">
                 ← Anterior
             </a>
             {% endif %}
 
-            <span
-                class="px-4 py-2 text-sm font-medium text-slate-900 dark:text-white bg-blue-50 dark:bg-blue-900/30 border-y border-slate-300 dark:border-slate-600">
+            <span class="px-4 py-2 text-sm font-bold text-slate-800 bg-slate-50 border-y border-slate-200 z-10">
                 Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
             </span>
 
             {% if page_obj.has_next %}
             <a href="?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.next_page_number }}"
-                class="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-r-lg hover:bg-slate-50 dark:hover:bg-slate-700">
+                class="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-r-xl hover:bg-slate-50 hover:text-slate-800 transition-colors">
                 Siguiente →
             </a>
             {% endif %}

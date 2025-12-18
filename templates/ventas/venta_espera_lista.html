@@ -3,146 +3,204 @@
 {% block title %}Ventas en espera - SIPER Pirula{% endblock %}
 
 {% block content %}
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-    <h1 class="text-2xl font-bold">Ventas en espera</h1>
-    <a href="{% url 'ventas:venta_crear' %}"
-        class="inline-flex items-center px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors">
-        + Registrar nueva venta
-    </a>
-</div>
+<div class="max-w-7xl mx-auto space-y-6">
 
-<!-- Tabs de navegación -->
-<div class="mb-6 border-b border-slate-200">
-    <nav class="flex space-x-1" aria-label="Tabs">
-        <a href="{% url 'ventas:venta_lista' %}"
-           class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
-            Todas las ventas
-        </a>
-        <a href="{% url 'ventas:ventas_en_espera_lista' %}"
-           class="border-amber-500 text-amber-600 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
-            En espera (sin pagar)
-        </a>
-        {% if user.perfilusuario.rol == "ADMIN" %}
-        <a href="{% url 'ventas:pago_pendiente_lista' %}"
-           class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
-            Pagos pendientes
-        </a>
-        {% endif %}
-    </nav>
-</div>
-
-<!-- Búsqueda simple -->
-<div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-    <form method="get" class="flex gap-3">
-        <div class="flex-1">
-            <input type="text" 
-                   name="q" 
-                   value="{{ q }}"
-                   placeholder="Buscar por ID o número de documento..."
-                   class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+    <!-- Header & Actions -->
+    <div
+        class="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-2xl shadow-lg p-6 sm:p-8 text-white flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+            <h1 class="text-3xl font-bold tracking-tight">Ventas en espera</h1>
+            <p class="text-emerald-100 mt-2 text-lg">
+                Gestiona y cobra las ventas pendientes.
+            </p>
         </div>
-        <button type="submit"
-                class="inline-flex items-center px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors">
-            🔍 Buscar
-        </button>
-        {% if q %}
-        <a href="{% url 'ventas:ventas_en_espera_lista' %}"
-           class="inline-flex items-center px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm hover:bg-slate-50 transition-colors">
-            Limpiar
+        <a href="{% url 'ventas:venta_crear' %}"
+            class="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-white text-emerald-700 font-bold shadow-md hover:bg-emerald-50 transform hover:-translate-y-0.5 transition-all gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Registrar Nueva Venta
         </a>
-        {% endif %}
-    </form>
-</div>
+    </div>
 
-<div class="bg-white shadow-sm rounded-lg overflow-hidden">
-    <table class="min-w-full text-sm">
-        <thead class="bg-slate-100 text-left">
-            <tr>
-                <th class="px-4 py-2">ID</th>
-                <th class="px-4 py-2">Fecha</th>
-                <th class="px-4 py-2">Documento</th>
-                <th class="px-4 py-2">Medio de pago</th>
-                <th class="px-4 py-2 text-right">Total</th>
-                <th class="px-4 py-2 text-right">Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for venta in ventas_en_espera %}
-            <tr class="border-t hover:bg-slate-50">
-                <td class="px-4 py-2">
-                    <a href="{% url 'ventas:venta_detalle' venta.pk %}" class="text-emerald-700 hover:underline">
-                        {{ venta.id }}
-                    </a>
-                </td>
-                <td class="px-4 py-2">{{ venta.fecha }}</td>
-                <td class="px-4 py-2">
-                    {{ venta.doc_tipo }}{% if venta.doc_num %} #{{ venta.doc_num }}{% endif %}
-                </td>
-                <td class="px-4 py-2">{{ venta.medio_pago|default:"—" }}</td>
-                <td class="px-4 py-2 text-right">$ {{ venta.total }}</td>
-                <td class="px-4 py-2 text-right">
-                    {% if venta.estado == "ABIERTA" %}
-                    <a href="{% url 'ventas:venta_editar' venta.pk %}" class="text-emerald-700 hover:underline text-sm">
-                        Editar
-                    </a>
-                    <a href="{% url 'ventas:venta_cobrar' venta.pk %}"
-                        class="ml-3 text-amber-700 hover:underline text-sm">
-                        Cobrar
-                    </a>
-                    {% else %}
-                    <a href="{% url 'ventas:venta_detalle' venta.pk %}"
-                        class="text-emerald-700 hover:underline text-sm">
-                        Ver
-                    </a>
-                    {% if venta.estado == "CERRADA" %}
-                    <a href="{% url 'ventas:venta_anular' venta.pk %}"
-                        class="ml-3 text-red-700 hover:underline text-sm">
-                        Anular
-                    </a>
-                    {% endif %}
-                    {% endif %}
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="6" class="px-4 py-4 text-center text-slate-500">
+    <!-- Navigation Tabs -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-2 overflow-x-auto">
+        <nav class="flex space-x-2 min-w-max" aria-label="Tabs">
+            <a href="{% url 'ventas:venta_lista' %}"
+                class="px-4 py-2 rounded-xl text-sm font-bold transition-all text-slate-500 hover:text-slate-700 hover:bg-slate-50">
+                Todas las ventas
+            </a>
+            <a href="{% url 'ventas:ventas_en_espera_lista' %}"
+                class="px-4 py-2 rounded-xl text-sm font-bold transition-all bg-amber-100 text-amber-800">
+                En espera (sin pagar)
+            </a>
+            {% if user.perfilusuario.rol == "ADMIN" %}
+            <a href="{% url 'ventas:pago_pendiente_lista' %}"
+                class="px-4 py-2 rounded-xl text-sm font-bold transition-all text-slate-500 hover:text-slate-700 hover:bg-slate-50">
+                Pagos pendientes
+            </a>
+            {% endif %}
+        </nav>
+    </div>
+
+    <!-- Búsqueda simple -->
+    <div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+            <svg class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <h2 class="font-bold text-slate-700 text-sm uppercase tracking-wide">Buscar Venta</h2>
+        </div>
+        <div class="p-6">
+            <form method="get" class="flex flex-col sm:flex-row gap-4">
+                <div class="flex-1">
+                    <input type="text" name="q" value="{{ q }}" placeholder="Buscar por ID o número de documento..."
+                        class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow">
+                </div>
+                <div class="flex gap-3">
+                    <button type="submit"
+                        class="inline-flex items-center px-6 py-3 rounded-xl bg-emerald-600 text-white text-sm font-bold shadow-md shadow-emerald-200 hover:bg-emerald-700 hover:shadow-lg transition-all gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        Buscar
+                    </button>
                     {% if q %}
-                        No se encontraron ventas en espera con la búsqueda "{{ q }}".
-                    {% else %}
-                        No hay ventas en espera en este momento.
+                    <a href="{% url 'ventas:ventas_en_espera_lista' %}"
+                        class="inline-flex items-center px-6 py-3 rounded-xl border border-slate-300 text-slate-600 text-sm font-bold hover:bg-slate-50 hover:text-slate-800 transition-colors">
+                        Limpiar
+                    </a>
                     {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+                </div>
+            </form>
+        </div>
+    </div>
 
-<!-- Paginación -->
-{% if is_paginated %}
-<div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white px-4 py-3 rounded-lg shadow-sm">
-    <div class="text-sm text-slate-600">
-        Mostrando {{ page_obj.start_index }} a {{ page_obj.end_index }} de {{ paginator.count }} ventas
-    </div>
-    <div class="flex gap-2">
-        {% if page_obj.has_previous %}
-        <a href="?{% if q %}q={{ q }}&{% endif %}page={{ page_obj.previous_page_number }}"
-           class="px-3 py-1.5 rounded border border-slate-300 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
-            ← Anterior
-        </a>
+    <!-- Sales Table -->
+    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm text-left">
+                <thead
+                    class="bg-slate-50 border-b border-slate-100 text-slate-500 uppercase tracking-wider text-xs font-bold">
+                    <tr>
+                        <th class="px-6 py-4">ID</th>
+                        <th class="px-6 py-4">Fecha</th>
+                        <th class="px-6 py-4">Documento</th>
+                        <th class="px-6 py-4">Estado</th>
+                        <th class="px-6 py-4 hidden lg:table-cell">Medio de pago</th>
+                        <th class="px-6 py-4 text-right">Total</th>
+                        <th class="px-6 py-4 text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for venta in ventas_en_espera %}
+                    <tr class="hover:bg-slate-50/80 transition-colors group">
+                        <td class="px-6 py-4">
+                            <a href="{% url 'ventas:venta_detalle' venta.pk %}"
+                                class="font-bold text-emerald-600 hover:text-emerald-700 hover:underline">
+                                #{{ venta.id }}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 text-slate-600 font-medium whitespace-nowrap">
+                            {{ venta.fecha|date:"d/m/Y H:i" }}
+                        </td>
+                        <td class="px-6 py-4 text-slate-700 font-semibold">
+                            <div class="flex items-center gap-2">
+                                <span
+                                    class="bg-slate-100 px-2 py-1 rounded text-xs border border-slate-200 uppercase">{{ venta.doc_tipo }}</span>
+                                <span>{{ venta.doc_num|default:"—" }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>
+                                En espera
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 hidden lg:table-cell text-slate-600 capitalize">
+                            {{ venta.get_medio_pago_display|default:venta.medio_pago|default:"—" }}
+                        </td>
+                        <td class="px-6 py-4 text-right font-black text-slate-700">
+                            ${{ venta.total|floatformat:0 }}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                {% if venta.estado == "ABIERTA" %}
+                                <a href="{% url 'ventas:venta_editar' venta.pk %}"
+                                    class="p-2 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                    title="Editar Venta">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </a>
+                                <a href="{% url 'ventas:venta_cobrar' venta.pk %}"
+                                    class="inline-flex items-center px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 font-bold text-sm transition-all transform hover:-translate-y-0.5 shadow-md gap-2"
+                                    title="Cobrar Venta">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Cobrar
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center text-slate-500">
+                            <div class="flex flex-col items-center justify-center gap-3">
+                                <svg class="w-12 h-12 text-slate-300" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p class="text-lg font-medium text-slate-600">
+                                    {% if q %}
+                                    No se encontraron ventas con la búsqueda "{{ q }}".
+                                    {% else %}
+                                    No hay ventas en espera actualmente.
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div
+            class="bg-white border-t border-slate-100 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <span class="text-sm text-slate-500">
+                Mostrando <span class="font-bold text-slate-700">{{ page_obj.start_index }}</span> a <span
+                    class="font-bold text-slate-700">{{ page_obj.end_index }}</span> de <span
+                    class="font-bold text-slate-700">{{ paginator.count }}</span> ventas
+            </span>
+            <div class="flex gap-2">
+                {% if page_obj.has_previous %}
+                <a href="?{% if q %}q={{ q }}&{% endif %}page={{ page_obj.previous_page_number }}"
+                    class="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors">
+                    Anterior
+                </a>
+                {% endif %}
+
+                {% if page_obj.has_next %}
+                <a href="?{% if q %}q={{ q }}&{% endif %}page={{ page_obj.next_page_number }}"
+                    class="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors">
+                    Siguiente
+                </a>
+                {% endif %}
+            </div>
+        </div>
         {% endif %}
-        
-        <span class="px-3 py-1.5 text-sm text-slate-600">
-            Página {{ page_obj.number }} de {{ paginator.num_pages }}
-        </span>
-        
-        {% if page_obj.has_next %}
-        <a href="?{% if q %}q={{ q }}&{% endif %}page={{ page_obj.next_page_number }}"
-           class="px-3 py-1.5 rounded border border-slate-300 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
-            Siguiente →
-        </a>
-        {% endif %}
     </div>
+
 </div>
-{% endif %}
 {% endblock %}
