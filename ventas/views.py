@@ -908,7 +908,7 @@ def caja_arqueo_parcial_view(request):
                 nombre_modelo="Caja",
                 tipo_accion="CAJA_ARQUEO",
                 entidad_id=request.user.pk,
-                accion=f"Cierre de sesión exitoso por el usuario {request.user.username} con ID: {request.user.pk}.",
+                accion=f"Arqueo parcial exitoso por el usuario {request.user.username} con ID: {request.user.pk}.",
                 detalles=detalles_registro
             )
             messages.success(

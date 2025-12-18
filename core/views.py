@@ -457,7 +457,7 @@ class UsuarioEditarView(RolRequeridoMixin, UpdateView):
             detalles_registro = {
                 'usuario_editado_id': user_afectado_pk,
                 'usuario_editado_username': user_original.username,
-                'rol_asignado_original': perfil_original.rol, # Valor original del rol
+                'rol_asignado': perfil_original.rol, # Valor original del rol
                 'negocio_id': negocio.pk,
                 'admin_responsable_id': self.request.user.pk,
                 'cambios_detallados': cambios, 

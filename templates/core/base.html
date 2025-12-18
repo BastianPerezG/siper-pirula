@@ -39,6 +39,11 @@
             background: #dc2626 !important;
         }
 
+        /* Asegura que el sidebar siempre flote sobre el contenido cuando se activa */
+        #sidebar {
+            position: fixed;
+            height: 100vh;
+        }
         /* Sidebar transitions */
         .sidebar-link {
             transition: all 0.2s ease;
@@ -59,6 +64,11 @@
             width: 6px;
         }
 
+        /* Scrollbar styling */
+        .sidebar-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
         .sidebar-content::-webkit-scrollbar-track {
             background: rgba(0, 0, 0, 0.1);
         }
@@ -66,6 +76,53 @@
         .sidebar-content::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.2);
             border-radius: 3px;
+        }
+
+        /* Collapsible Sidebar Styles */
+        #sidebar {
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #main-content {
+            transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .sidebar-collapsed #sidebar {
+            width: 5rem;
+        }
+
+        .sidebar-collapsed #main-content {
+            margin-left: 5rem;
+        }
+
+        .sidebar-collapsed .sidebar-text,
+        .sidebar-collapsed .sidebar-header-text,
+        .sidebar-collapsed .sidebar-section-title {
+            display: none;
+        }
+
+        .sidebar-collapsed .sidebar-link {
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        .sidebar-collapsed .sidebar-link span:first-child {
+            margin-right: 0;
+            font-size: 1.25rem;
+        }
+
+        /* Mobile specific adjustments to avoid redundancy */
+        @media (max-width: 1023px) {
+            #main-content {
+                margin-left: 0 !important;
+            }
+
+            .sidebar-collapsed #sidebar {
+                transform: translateX(-100%);
+                width: 16rem;
+                /* Full width on mobile when toggled */
+            }
         }
     </style>
 
@@ -81,8 +138,7 @@
 
         <!-- Sidebar Desktop -->
         <aside id="sidebar"
-            class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-pirula-dark text-white transform -translate-x-full lg:translate-x-0 transition-transform duration-300 flex flex-col">
-
+            class="fixed  inset-y-0 left-0 z-50 w-64 bg-pirula-dark text-white transform -translate-x-full transition-all duration-300 flex flex-col shadow-xl">
             <!-- Logo y Marca -->
             <div class="p-4 border-b border-pirula-medium">
                 <a href="{% url 'core:dashboard' %}" class="flex items-center gap-3">
@@ -308,17 +364,20 @@
         </aside>
 
         <!-- Overlay para móvil -->
-        <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden" onclick="toggleSidebar()">
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden " onclick="toggleSidebar()">
         </div>
 
         <!-- Contenido Principal (Autenticado) -->
         <div class="flex-1 flex flex-col min-h-screen">
 
             <!-- Header móvil -->
-            <header class="lg:hidden bg-pirula-dark text-white px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-md">
-                <button onclick="toggleSidebar()" class="p-2 hover:bg-pirula-medium rounded-lg transition-colors focus:outline-none">
+            <header
+                class=" bg-pirula-dark text-white px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-md">
+                <button onclick="toggleSidebar()"
+                    class="p-2 hover:bg-pirula-medium rounded-lg transition-colors focus:outline-none">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16"></path>
                     </svg>
                 </button>
 
@@ -328,17 +387,17 @@
                 </a>
 
                 <div class="flex items-center gap-3 mb-3">
-                                <div
-                                    class="w-10 h-10 rounded-full bg-pirula-beige text-pirula-dark flex items-center justify-center font-bold">
-                                    {{ request.user.username|slice:":1"|upper }}
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-semibold text-white truncate">{{ request.user.get_full_name|default:request.user.username|capfirst }}</p>
-                                    <p class="text-xs text-pirula-beige">
-                                        {% if request.user.perfilusuario %}{{ request.user.perfilusuario.get_rol_display }}{% else%}Sin perfil{% endif %}
-                                    </p>
-                                </div>
-                            </div>
+                    <div
+                        class="w-10 h-10 rounded-full bg-pirula-beige text-pirula-dark flex items-center justify-center font-bold">
+                        {{ request.user.username|slice:":1"|upper }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-white truncate">{{ request.user.get_full_name|default:request.user.username|capfirst }}</p>
+                        <p class="text-xs text-pirula-beige">
+                            {% if request.user.perfilusuario %}{{ request.user.perfilusuario.get_rol_display }}{% else%}Sin perfil{% endif %}
+                        </p>
+                    </div>
+                </div>
             </header>
 
             <!-- Main Content -->
@@ -397,10 +456,11 @@
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
 
-            if (sidebar && overlay) {
-                sidebar.classList.toggle('-translate-x-full');
-                overlay.classList.toggle('hidden');
-            }
+            // Alternar la clase que mueve el sidebar (fuera de pantalla / a la vista)
+            sidebar.classList.toggle('-translate-x-full');
+            
+            // Alternar la visibilidad del fondo oscuro
+            overlay.classList.toggle('hidden');
         }
 
         // Notyf para mensajes

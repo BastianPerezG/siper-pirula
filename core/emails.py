@@ -2,15 +2,14 @@ import os
 import resend
 from django.conf import settings
 from django.template.loader import render_to_string
-
-
+from django.core.mail import send_mail
+from django.utils.html import strip_tags
 def _get_logo_url():
     base = getattr(settings, "SITE_URL", "http://localhost:8000")
     return f"{base}{settings.STATIC_URL}img/logo_gran_pirula_marron.jpg"
 
 
-from django.core.mail import send_mail
-from django.utils.html import strip_tags
+
 
 def _enviar_email_resend(destinatario, subject, template_html, template_txt, context):
     """Envía email usando el backend configurado en Django (SMTP/Resend/etc)."""

@@ -1,5 +1,7 @@
 from decimal import Decimal
 import logging
+import random
+import string
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
