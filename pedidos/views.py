@@ -20,7 +20,7 @@ from core.utils import registrar_bitacora_estructurada
 def _generar_codigo():
     """Código corto tipo 'AB34XZ'."""
     return "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
-
+#probando
 
 class PedidoListaView(LoginRequiredMixin, ListView):
     model = Pedido
