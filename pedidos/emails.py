@@ -20,16 +20,12 @@ def _get_logo_url():
     return ""
 
 
-def _enviar_email_resend(destinatario, subject, template_html, template_txt, context):
-    """Envía email usando Resend API."""
-    if not destinatario:
-        return
+from django.core.mail import send_mail
+from django.utils.html import strip_tags
 
-    # Configurar API key
-    resend.api_key = os.environ.get("RESEND_API_KEY", "")
-    
-    if not resend.api_key:
-        print(f"⚠️ RESEND_API_KEY no configurada. Email no enviado a {destinatario}")
+def _enviar_email_resend(destinatario, subject, template_html, template_txt, context):
+    """Envía email usando el backend configurado en Django (SMTP/Resend/etc)."""
+    if not destinatario:
         return
 
     context = {
@@ -41,26 +37,21 @@ def _enviar_email_resend(destinatario, subject, template_html, template_txt, con
     cuerpo_html = render_to_string(template_html, context)
     cuerpo_txt = render_to_string(template_txt, context)
 
-    # En desarrollo, enviar siempre al correo del desarrollador (limitación de Resend gratuito)
-    dev_email = os.environ.get("DEV_EMAIL", "")
-    email_destino = dev_email if dev_email else destinatario
-    
-    if dev_email and dev_email != destinatario:
-        print(f"📧 [DEV MODE] Redirigiendo email de {destinatario} → {dev_email}")
+    # Si no hay cuerpo de texto, lo generamos del HTML
+    if not cuerpo_txt:
+        cuerpo_txt = strip_tags(cuerpo_html)
 
     try:
-        params = {
-            "from": "El Gran Pirula <onboarding@resend.dev>",  # Dominio de prueba de Resend
-            "to": [email_destino],
-            "subject": subject,
-            "html": cuerpo_html,
-            "text": cuerpo_txt,
-        }
-        
-        response = resend.Emails.send(params)
-        print(f"✅ Email enviado a {email_destino}: {response}")
-        return response
-        
+        # Usamos send_mail de Django que respeta EMAIL_BACKEND
+        send_mail(
+            subject=subject,
+            message=cuerpo_txt,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[destinatario],
+            html_message=cuerpo_html,
+            fail_silently=False,
+        )
+        print(f"✅ Email enviado exitosamente a {destinatario}")
     except Exception as e:
         print(f"❌ Error al enviar email a {destinatario}: {e}")
         raise

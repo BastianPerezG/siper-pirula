@@ -291,10 +291,9 @@
                         {{ request.user.username|slice:":1"|upper }}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-white truncate">{{ request.user.get_full_name|default:request.user.username }}</p>
+                        <p class="text-sm font-semibold text-white truncate">{{ request.user.get_full_name|default:request.user.username|capfirst }}</p>
                         <p class="text-xs text-pirula-beige">
-                            {% if request.user.perfilusuario %}{{ request.user.perfilusuario.get_rol_display }}{% else
-                            %}Sin perfil{% endif %}
+                            {% if request.user.perfilusuario %}{{ request.user.perfilusuario.get_rol_display }}{% else%}Sin perfil{% endif %}
                         </p>
                     </div>
                 </div>
@@ -316,18 +315,31 @@
         <div class="flex-1 flex flex-col min-h-screen">
 
             <!-- Header móvil -->
-            <header
-                class="lg:hidden bg-pirula-dark text-white px-4 py-3 flex items-center justify-between sticky top-0 z-30">
-                <button onclick="toggleSidebar()" class="p-2 hover:bg-pirula-medium rounded-lg transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 6h16M4 12h16M4 18h16"></path>
-                    </svg>
-                </button>
-                <img src="{% static 'img/logo_gran_pirula_marron.jpg' %}" alt="El Gran Pirula"
-                    class="h-8 w-8 rounded-full">
-                <span class="text-sm font-semibold text-pirula-beige">{{ request.user.username }}</span>
-            </header>
+            <header class="lg:hidden bg-pirula-dark text-white px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-md">
+    <button onclick="toggleSidebar()" class="p-2 hover:bg-pirula-medium rounded-lg transition-colors focus:outline-none">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+    </button>
+
+    <a href="{% url 'core:dashboard' %}" class="flex items-center gap-3">
+        <img src="{% static 'img/logo_gran_pirula_marron.jpg' %}" alt="El Gran Pirula"
+             class="h-10 w-10 rounded-full object-cover border-2 border-pirula-beige shadow-sm">
+    </a>
+
+    <div class="flex items-center gap-3 mb-3">
+                    <div
+                        class="w-10 h-10 rounded-full bg-pirula-beige text-pirula-dark flex items-center justify-center font-bold">
+                        {{ request.user.username|slice:":1"|upper }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-white truncate">{{ request.user.get_full_name|default:request.user.username|capfirst }}</p>
+                        <p class="text-xs text-pirula-beige">
+                            {% if request.user.perfilusuario %}{{ request.user.perfilusuario.get_rol_display }}{% else%}Sin perfil{% endif %}
+                        </p>
+                    </div>
+                </div>
+</header>
 
             <!-- Main Content -->
             <main class="flex-1 p-4 lg:p-6">

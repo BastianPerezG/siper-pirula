@@ -10,6 +10,8 @@ from .models import (
     PlantillaProveedorProducto,
     Promo,
     PromoItem,
+    Marca,
+    Categoria,
 )
 
 # -------------------------
@@ -24,6 +26,7 @@ class ProductoCrearForm(forms.ModelForm):
             "ean",
             "proveedor",
             "nombre",
+            "marca",
             "categoria",
             "precio",
             "costo",
@@ -51,9 +54,15 @@ class ProductoCrearForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        negocio = kwargs.pop("negocio", None)
         super().__init__(*args, **kwargs)
         # Pequeño detalle de UX: focus en el nombre
         self.fields["nombre"].widget.attrs.setdefault("autofocus", "autofocus")
+
+        if negocio:
+            self.fields["marca"].queryset = Marca.objects.filter(negocio=negocio, activo=True)
+            self.fields["categoria"].queryset = Categoria.objects.filter(negocio=negocio, activo=True)
+            self.fields["proveedor"].queryset = Proveedor.objects.filter(negocio=negocio, activo=True)
 
 
 # -------------------------

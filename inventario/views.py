@@ -180,6 +180,11 @@ class ProductoCrearView(RolRequeridoMixin, CreateView):
         if ean:
             initial["ean"] = ean
         return initial
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["negocio"] = self.request.user.perfilusuario.negocio
+        return kwargs
     
     def form_valid(self, form):
         producto = form.save(commit=False)
@@ -213,6 +218,11 @@ class ProductoActualizarView(RolRequeridoMixin, UpdateView):
     form_class = ProductoCrearForm
     template_name = "inventario/productos/producto_editar.html"
     context_object_name = "producto"
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["negocio"] = self.request.user.perfilusuario.negocio
+        return kwargs
 
     def get_queryset(self):
         # Seguridad: solo productos del negocio del usuario

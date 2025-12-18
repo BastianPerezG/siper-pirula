@@ -70,9 +70,13 @@ WSGI_APPLICATION = "siper_pirula.wsgi.application"
 
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'new connection',
+        'USER': 'root',
+        'PASSWORD': 'Cocinero777!',
+        'HOST': 'localhost',   # O la IP de tu servidor
+        'PORT': '3306',
     }
 }
 # 4) DB: MySQL via mysqlclient (usa variables del .env)
@@ -121,16 +125,22 @@ LOGIN_REDIRECT_URL = "core:dashboard"
 LOGOUT_REDIRECT_URL = "core:login_interno"
 
 # Configuración de Email
-if DEBUG:
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-else:
-    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = os.environ.get("EMAIL_HOST_USER", "noreply@granpirula.cl")
+
+if DEBUG:
+    # Si tenemos credenciales, usamos el backend inseguro para saltarnos SSL en desarrollo
+    if EMAIL_HOST_USER:
+        EMAIL_BACKEND = "core.emails_backend.smtpInseguroBackend"
+    else:
+        EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+DEFAULT_FROM_EMAIL = f"El Gran Pirula <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "noreply@granpirula.cl"
 
 # URL del sitio (para emails)
 SITE_URL = os.environ.get("SITE_URL", "http://127.0.0.1:8000")
