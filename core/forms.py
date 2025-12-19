@@ -31,7 +31,7 @@ class UsuarioCrearForm(forms.ModelForm):
         max_length=30,
         required=False,
     )
-
+ 
     class Meta:
         model = PerfilUsuario
         fields = ["rol", "telefono"]

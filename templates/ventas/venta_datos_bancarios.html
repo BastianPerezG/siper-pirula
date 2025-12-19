@@ -9,7 +9,8 @@
         <div>
             <h1 class="text-2xl font-bold text-pirula-dark">🏦 Datos para Transferencia Bancaria</h1>
             <p class="text-sm text-slate-500 mt-1">
-                Venta #{{ venta.id }} - Total: <span class="font-bold text-pirula-accent">${{ venta.monto_total|default:venta.total|floatformat:0 }}</span>
+                Venta #{{ venta.id }} - Total: <span class="font-bold text-pirula-accent">${{
+                    venta.monto_total|default:venta.total|floatformat:0 }}</span>
             </p>
         </div>
         <a href="{% url 'ventas:venta_detalle' venta.pk %}"
@@ -30,7 +31,8 @@
                 </div>
                 <div class="bg-white rounded-lg p-3 border border-pirula-beige/50">
                     <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">💰 Total a pagar</p>
-                    <p class="font-bold text-emerald-600 text-xl">${{ venta.monto_total|default:venta.total|floatformat:0 }}</p>
+                    <p class="font-bold text-emerald-600 text-xl">${{
+                        venta.monto_total|default:venta.total|floatformat:0 }}</p>
                 </div>
                 <div class="bg-white rounded-lg p-3 border border-pirula-beige/50">
                     <p class="text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">📅 Fecha</p>
@@ -126,7 +128,8 @@
                 <ul class="space-y-2 text-sm text-amber-700">
                     <li class="flex items-start gap-2">
                         <span>💰</span>
-                        Realiza la transferencia por el monto exacto: <strong class="text-amber-900">${{ venta.monto_total|default:venta.total|floatformat:0 }}</strong>
+                        Realiza la transferencia por el monto exacto: <strong class="text-amber-900">${{
+                            venta.monto_total|default:venta.total|floatformat:0 }}</strong>
                     </li>
                     <li class="flex items-start gap-2">
                         <span>✅</span>
@@ -146,6 +149,10 @@
 
         <!-- Botones de acción -->
         <div class="pt-4 border-t border-pirula-beige/30 flex flex-wrap gap-3">
+            <a href="{% url 'ventas:pago_confirmar' pago.pk %}"
+                class="inline-flex items-center px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition-colors shadow-md">
+                ✅ Confirmar Cobro
+            </a>
             <a href="{% url 'ventas:venta_nota_imprimir' venta.pk %}" target="_blank"
                 class="inline-flex items-center px-4 py-2 rounded-lg bg-pirula-dark hover:bg-pirula-medium text-white text-sm font-semibold transition-colors shadow-md">
                 🖨️ Imprimir nota de venta

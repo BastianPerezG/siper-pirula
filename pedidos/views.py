@@ -5,8 +5,7 @@ from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, DetailView
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.decorators import login_required
+from core.mixins import EmpleadoRequeridoMixin, empleado_requerido
 from django.db import transaction
 from django.db.models import Q
 from pedidos.emails import enviar_correo_cambio_estado
@@ -22,7 +21,7 @@ def _generar_codigo():
     return "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
 
-class PedidoListaView(LoginRequiredMixin, ListView):
+class PedidoListaView(EmpleadoRequeridoMixin, ListView):
     model = Pedido
     template_name = "pedidos/pedido_lista.html"
     context_object_name = "pedidos"
@@ -72,7 +71,7 @@ class PedidoListaView(LoginRequiredMixin, ListView):
         return context
 
 
-class PedidoDetalleView(LoginRequiredMixin, DetailView):
+class PedidoDetalleView(EmpleadoRequeridoMixin, DetailView):
     model = Pedido
     template_name = "pedidos/pedido_detalle.html"
     context_object_name = "pedido"
@@ -82,7 +81,7 @@ class PedidoDetalleView(LoginRequiredMixin, DetailView):
         return Pedido.objects.filter(negocio=negocio)
 
 
-@login_required
+@empleado_requerido
 def pedido_crear_view(request):
     """
     Crear pedidos internos (no web).
@@ -142,14 +141,16 @@ def pedido_crear_view(request):
     return render(request, "pedidos/pedido_form.html", context)
 
 
-@login_required
+@empleado_requerido
 def pedido_cambiar_estado_view(request, pk, nuevo_estado):
     """
     Cambia el estado de un pedido y dispara correo de notificación.
+    Actualiza tanto 'estado' como 'estado_preparacion' para mantener sincronización.
     """
     negocio = request.user.perfilusuario.negocio
     pedido = get_object_or_404(Pedido, pk=pk, negocio=negocio)
     estado_anterior = pedido.estado
+    estado_prep_anterior = pedido.estado_preparacion
     stock_liberado = False
     if request.method == "POST":
         comentario_usuario = request.POST.get('comentario_bitacora','').strip()
@@ -157,9 +158,10 @@ def pedido_cambiar_estado_view(request, pk, nuevo_estado):
         if nuevo_estado in ["CANCELADO", "NO_RETIRA"]:
             pedido.liberar_reservas_inventario()
             stock_liberado = True
-        # Cambiar estado
+        # Cambiar ambos campos de estado para mantener sincronización
         pedido.estado = nuevo_estado
-        pedido.save(update_fields=["estado"])
+        pedido.estado_preparacion = nuevo_estado  # Sincronizar con el campo nuevo
+        pedido.save(update_fields=["estado", "estado_preparacion"])
 
         #Capturar y registrar
         accion_descripcion = f"Cambio del estado del pedido#{pedido.pk}:{estado_anterior}->{nuevo_estado}"
@@ -216,7 +218,7 @@ def pedido_cambiar_estado_view(request, pk, nuevo_estado):
     )
 
 
-@login_required
+@empleado_requerido
 def pedidos_monitor_view(request):
     
     logger = logging.getLogger(__name__)
@@ -294,8 +296,9 @@ def pedidos_monitor_view(request):
             elif accion == "no_retira":
                 # Marcar como no retira (liberar stock)
                 pedido.estado_preparacion = Pedido.PREP_NO_RETIRA
+                pedido.estado = Pedido.EST_NO_RETIRA  # Actualizar también el campo antiguo para el reporte
                 pedido.liberar_reservas_inventario()
-                pedido.save(update_fields=["estado_preparacion"])
+                pedido.save(update_fields=["estado_preparacion", "estado"])
                 messages.warning(request, f"Pedido {pedido.codigo} marcado como No Retira")
                 
                 # Registrar en bitácora
@@ -393,7 +396,7 @@ def pedidos_monitor_view(request):
     return render(request, "pedidos/pedido_monitor.html", context)
 
 
-@login_required
+@empleado_requerido
 def pedido_convertir_en_venta_view(request, pk):
     """
     Convierte un pedido en una venta POS cerrada.

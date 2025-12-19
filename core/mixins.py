@@ -7,6 +7,28 @@ from functools import wraps
 def _get_perfil(user):
     return getattr(user, "perfilusuario", None)
 
+
+class EmpleadoRequeridoMixin(LoginRequiredMixin, UserPassesTestMixin):
+    """
+    Mixin para CBVs que requiere que el usuario sea un empleado interno
+    (tenga PerfilUsuario activo), sin importar el rol específico.
+    
+    Uso:
+        class MiVista(EmpleadoRequeridoMixin, ListView):
+            ...
+    """
+    def test_func(self):
+        user = self.request.user
+        perfil = _get_perfil(user)
+        if not user.is_authenticated or not perfil:
+            return False
+        return user.is_active and perfil.activo
+
+    def handle_no_permission(self):
+        """Renderiza el template 403 en lugar de lanzar excepción."""
+        return render(self.request, "403.html", status=403)
+
+
 class RolRequeridoMixin(LoginRequiredMixin, UserPassesTestMixin):
     """
     Mixin para CBVs. Define `roles_requeridos = ["ADMIN", "CAJERO"]`, etc.
@@ -27,6 +49,32 @@ class RolRequeridoMixin(LoginRequiredMixin, UserPassesTestMixin):
     def handle_no_permission(self):
         """Renderiza el template 403 en lugar de lanzar excepción."""
         return render(self.request, "403.html", status=403)
+
+
+def empleado_requerido(view_func):
+    """
+    Decorador para FBVs que requiere que el usuario sea un empleado interno
+    (tenga PerfilUsuario activo), sin importar el rol específico.
+    
+    Uso:
+        @empleado_requerido
+        def mi_vista(request):
+            ...
+    """
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        user = request.user
+        perfil = _get_perfil(user)
+        
+        if not user.is_authenticated:
+            from django.contrib.auth.views import redirect_to_login
+            return redirect_to_login(request.get_full_path())
+
+        if not perfil or not user.is_active or not perfil.activo:
+            return render(request, "403.html", status=403)
+
+        return view_func(request, *args, **kwargs)
+    return _wrapped
 
 
 def rol_requerido(*roles):

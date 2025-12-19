@@ -63,9 +63,15 @@
             <h2 class="text-lg font-semibold text-slate-700">Ítems</h2>
 
             <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <label class="text-sm text-slate-600 hidden sm:block">Escanear EAN</label>
-                <input type="text" id="ean-input" class="border rounded px-2 py-1.5 text-sm w-full sm:w-56" placeholder="Escanear código de barras..."
-                    autocomplete="off">
+                <label class="text-sm text-slate-600 hidden sm:block">Buscar producto</label>
+                <div class="relative">
+                    <input type="text" id="ean-input" class="border rounded px-2 py-1.5 text-sm w-full sm:w-64"
+                        placeholder="Nombre, SKU o EAN..." autocomplete="off">
+                    <!-- Dropdown de sugerencias -->
+                    <div id="sugerenciasBox"
+                        class="absolute left-0 right-0 top-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 hidden z-50 max-h-64 overflow-y-auto">
+                    </div>
+                </div>
                 <button type="button" id="btn-agregar"
                     class="inline-flex items-center justify-center px-3 py-1.5 rounded bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 whitespace-nowrap">
                     + Agregar ítem
@@ -101,7 +107,12 @@
                         </td>
                         <td class="px-2 sm:px-3 py-2 text-center">
                             {{ f.cantidad }}
-                            {{ f.cantidad.errors }}
+                            {% if f.cantidad.errors %}
+                            <div
+                                class="mt-1 px-2 py-1 bg-red-100 border border-red-300 rounded text-xs text-red-700 text-left">
+                                ⚠️ {{ f.cantidad.errors|striptags }}
+                            </div>
+                            {% endif %}
                         </td>
                         <td class="px-2 sm:px-3 py-2 text-center hidden md:table-cell">
                             {{ f.precio_unit }}
@@ -118,7 +129,8 @@
                             <span class="hidden">
                                 {{ f.DELETE }}
                             </span>
-                            <button type="button" class="btn-eliminar text-red-600 hover:text-red-800 font-semibold text-sm sm:text-base">
+                            <button type="button"
+                                class="btn-eliminar text-red-600 hover:text-red-800 font-semibold text-sm sm:text-base">
                                 ✕
                             </button>
                         </td>
@@ -177,6 +189,12 @@
         // Mapas enviados desde la vista (precios por id y productos por EAN)
         const PRODUCTOS_EAN = JSON.parse('{{ productos_ean_json|default:"{}"|escapejs }}');
         const PRECIOS = JSON.parse('{{ precios_json|default:"{}"|escapejs }}');
+        const BUSQUEDA_MAP = JSON.parse('{{ busqueda_map_json|default:"{}"|escapejs }}');
+        const PRODUCTOS_LISTA = JSON.parse('{{ productos_lista_json|default:"[]"|escapejs }}');
+
+        // Elementos del DOM para sugerencias
+        let sugerenciasBox = null;
+        let timeoutSugerencias = null;
 
         /**
          * Calcula y actualiza el subtotal de una fila (cantidad * precio).
@@ -425,6 +443,127 @@
             seleccionarProductoEnFila(row, prodId, false);
         }
 
+        /**
+         * Busca un producto por nombre, SKU o EAN usando el mapa de búsqueda.
+         * Primero busca coincidencia exacta, luego parcial.
+         */
+        function buscarProducto(termino) {
+            if (!termino) return null;
+
+            const terminoLower = termino.toLowerCase().trim();
+
+            // Búsqueda exacta primero
+            if (BUSQUEDA_MAP[terminoLower]) {
+                return BUSQUEDA_MAP[terminoLower];
+            }
+
+            // Búsqueda parcial
+            for (const [key, prodId] of Object.entries(BUSQUEDA_MAP)) {
+                if (key.includes(terminoLower) || terminoLower.includes(key)) {
+                    return prodId;
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * Busca productos que coincidan con el término y retorna array de resultados.
+         */
+        function buscarProductosSugerencias(termino, maxResultados = 8) {
+            if (!termino || termino.length < 2) return [];
+
+            const terminoLower = termino.toLowerCase().trim();
+            const resultados = [];
+
+            for (const prod of PRODUCTOS_LISTA) {
+                const coincideNombre = prod.nombre.toLowerCase().includes(terminoLower);
+                const coincideSku = prod.sku && prod.sku.toLowerCase().includes(terminoLower);
+                const coincideEan = prod.ean && prod.ean.includes(termino);
+
+                if (coincideNombre || coincideSku || coincideEan) {
+                    resultados.push(prod);
+                    if (resultados.length >= maxResultados) break;
+                }
+            }
+
+            return resultados;
+        }
+
+        /**
+         * Muestra las sugerencias en el dropdown.
+         */
+        function mostrarSugerencias(productos) {
+            if (!sugerenciasBox) return;
+
+            if (productos.length === 0) {
+                sugerenciasBox.classList.add("hidden");
+                sugerenciasBox.innerHTML = "";
+                return;
+            }
+
+            sugerenciasBox.innerHTML = "";
+            productos.forEach(prod => {
+                const div = document.createElement("div");
+                div.className = "px-3 py-2 text-sm hover:bg-slate-100 cursor-pointer border-b border-slate-100 last:border-b-0 flex justify-between items-center";
+
+                const infoDiv = document.createElement("div");
+                infoDiv.innerHTML = `
+                    <span class="font-medium text-slate-700">${prod.nombre}</span>
+                    ${prod.sku ? `<span class="text-xs text-slate-400 ml-2">${prod.sku}</span>` : ''}
+                `;
+
+                const precioSpan = document.createElement("span");
+                precioSpan.className = "text-sm font-semibold text-emerald-600";
+                precioSpan.textContent = `$${prod.precio.toLocaleString('es-CL')}`;
+
+                div.appendChild(infoDiv);
+                div.appendChild(precioSpan);
+
+                div.onclick = () => {
+                    seleccionarProductoDesdesugerencia(String(prod.id));
+                    sugerenciasBox.classList.add("hidden");
+                    sugerenciasBox.innerHTML = "";
+                };
+
+                sugerenciasBox.appendChild(div);
+            });
+            sugerenciasBox.classList.remove("hidden");
+        }
+
+        /**
+         * Oculta el dropdown de sugerencias.
+         */
+        function ocultarSugerencias() {
+            if (sugerenciasBox) {
+                sugerenciasBox.classList.add("hidden");
+                sugerenciasBox.innerHTML = "";
+            }
+        }
+
+        /**
+         * Selecciona un producto desde las sugerencias.
+         */
+        function seleccionarProductoDesdesugerencia(prodId) {
+            const eanInput = document.getElementById("ean-input");
+            if (eanInput) eanInput.value = "";
+
+            // Si ya hay una fila con este producto, solo incrementamos la cantidad
+            let row = filaConProducto(prodId);
+            if (row) {
+                seleccionarProductoEnFila(row, prodId, true);
+            } else {
+                // Si no existe, usamos una fila vacía o creamos una nueva
+                row = filaVaciaDisponible() || agregarFila();
+                if (row) {
+                    seleccionarProductoEnFila(row, prodId, false);
+                }
+            }
+
+            // Devolver foco al input
+            if (eanInput) eanInput.focus();
+        }
+
         // ------------------------------------------------------------------
         // Inicialización al cargar la página
         // ------------------------------------------------------------------
@@ -442,23 +581,83 @@
                 });
             }
 
-            // Campo para pistola de código de barras
+            // Campo para pistola de código de barras y búsqueda
             const eanInput = document.getElementById("ean-input");
+            sugerenciasBox = document.getElementById("sugerenciasBox");
+
             if (eanInput) {
                 // Foco inicial para facilitar el escaneo
                 eanInput.focus();
+
+                // Evento input para mostrar sugerencias mientras se escribe
+                eanInput.addEventListener("input", function () {
+                    const termino = this.value.trim();
+
+                    clearTimeout(timeoutSugerencias);
+
+                    if (termino.length < 2) {
+                        ocultarSugerencias();
+                        return;
+                    }
+
+                    // Debounce de 150ms para evitar muchas búsquedas
+                    timeoutSugerencias = setTimeout(() => {
+                        const sugerencias = buscarProductosSugerencias(termino);
+                        mostrarSugerencias(sugerencias);
+                    }, 150);
+                });
 
                 eanInput.addEventListener("keydown", function (e) {
                     if (e.key !== "Enter") return;
 
                     e.preventDefault();
-                    const ean = eanInput.value.trim();
+                    ocultarSugerencias();
+                    const termino = eanInput.value.trim();
                     eanInput.value = "";
 
-                    manejarScanEAN(ean);
+                    // 1) Intentar búsqueda por EAN exacto (para pistola)
+                    let prod = PRODUCTOS_EAN[termino];
+                    let prodId = prod ? String(prod.id) : null;
+
+                    // 2) Si no encuentra por EAN, buscar por nombre/SKU
+                    if (!prodId) {
+                        prodId = buscarProducto(termino);
+                    }
+
+                    if (!prodId) {
+                        alert("Producto no encontrado");
+                        eanInput.focus();
+                        return;
+                    }
+
+                    // Si ya hay una fila con este producto, solo incrementamos la cantidad
+                    let row = filaConProducto(prodId);
+                    if (row) {
+                        seleccionarProductoEnFila(row, prodId, true);
+                    } else {
+                        // Si no existe, usamos una fila vacía o creamos una nueva
+                        row = filaVaciaDisponible() || agregarFila();
+                        if (row) {
+                            seleccionarProductoEnFila(row, prodId, false);
+                        }
+                    }
 
                     // Devolvemos el foco para el siguiente escaneo
                     eanInput.focus();
+                });
+
+                // Cerrar sugerencias al hacer clic afuera
+                document.addEventListener("click", function (e) {
+                    if (!eanInput.contains(e.target) && !sugerenciasBox.contains(e.target)) {
+                        ocultarSugerencias();
+                    }
+                });
+
+                // Cerrar sugerencias al presionar Escape
+                eanInput.addEventListener("keydown", function (e) {
+                    if (e.key === "Escape") {
+                        ocultarSugerencias();
+                    }
                 });
             }
         });

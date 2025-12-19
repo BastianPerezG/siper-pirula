@@ -75,8 +75,8 @@
 </head>
 
 <body class="bg-pirula-cream min-h-screen">
-    {% if request.user.is_authenticated %}
-    <!-- Layout con Sidebar para usuarios autenticados -->
+    {% if request.user.is_authenticated and request.user.perfilusuario %}
+    {# Layout con Sidebar solo para usuarios INTERNOS (empleados con PerfilUsuario) #}
     <div class="flex min-h-screen">
 
         <!-- Sidebar Desktop -->
@@ -293,8 +293,7 @@
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-semibold text-white truncate">{{ request.user.get_full_name|default:request.user.username }}</p>
                         <p class="text-xs text-pirula-beige">
-                            {% if request.user.perfilusuario %}{{ request.user.perfilusuario.get_rol_display }}{% else
-                            %}Sin perfil{% endif %}
+                            {% if request.user.perfilusuario %}{{ request.user.perfilusuario.get_rol_display }}{% else %}Sin perfil{% endif %}
                         </p>
                     </div>
                 </div>

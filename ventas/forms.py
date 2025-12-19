@@ -338,10 +338,9 @@ class VentaCheckoutForm(forms.Form):
         
         # Configurar según método
         if metodo == PagoVenta.MET_TRANSFERENCIA:
-            # Para transferencias, el código de referencia es obligatorio
-            self.fields['codigo_referencia_transferencia'].required = True
+            # Para transferencias, el código de referencia es opcional
             self.fields['codigo_referencia_transferencia'].help_text = (
-                "Código obligatorio que el cliente debe usar como referencia"
+                "Código de referencia de la transferencia (opcional)"
             )
         elif metodo in [PagoVenta.MET_DEBITO, PagoVenta.MET_CREDITO]:
             # Para tarjetas, los campos son opcionales por ahora (se llenarán con pasarela)
@@ -401,12 +400,6 @@ class VentaCheckoutForm(forms.Form):
             if monto_pagado != total_neto:
                 raise forms.ValidationError(
                     f"El monto de transferencia debe ser exactamente ${total_neto}."
-                )
-            codigo_ref = cleaned.get("codigo_referencia_transferencia", "").strip()
-            if not codigo_ref:
-                self.add_error(
-                    "codigo_referencia_transferencia",
-                    "El código de referencia es obligatorio para transferencias."
                 )
             # Las transferencias quedan pendientes por defecto
             cleaned["vuelto"] = 0

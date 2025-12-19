@@ -144,6 +144,23 @@ def venta_crear_view(request):
         p.ean: {"id": p.id, "precio": int(p.precio)}
         for p in productos if p.ean
     }
+    
+    # Mapa de búsqueda extendida (nombre, SKU, EAN -> id)
+    busqueda_map = {}
+    productos_lista = []  # Lista de productos para sugerencias
+    for p in productos:
+        if p.ean:
+            busqueda_map[p.ean.lower()] = str(p.id)
+        if p.sku:
+            busqueda_map[p.sku.lower()] = str(p.id)
+        busqueda_map[p.nombre.lower()] = str(p.id)
+        productos_lista.append({
+            "id": p.id,
+            "nombre": p.nombre,
+            "sku": p.sku or "",
+            "ean": p.ean or "",
+            "precio": int(p.precio),
+        })
 
     if request.method == "POST":
         form = VentaForm(request.POST)
@@ -274,6 +291,8 @@ def venta_crear_view(request):
         "formset": formset,
         "precios_json": json.dumps(precios),
         "productos_ean_json": json.dumps(productos_ean),
+        "busqueda_map_json": json.dumps(busqueda_map),
+        "productos_lista_json": json.dumps(productos_lista),
     }
     return render(request, "ventas/venta_form.html", context)
 
@@ -323,6 +342,23 @@ def venta_editar_view(request, pk):
         for p in productos
         if p.ean
     }
+    
+    # Mapa de búsqueda extendida (nombre, SKU, EAN -> id)
+    busqueda_map = {}
+    productos_lista = []  # Lista de productos para sugerencias
+    for p in productos:
+        if p.ean:
+            busqueda_map[p.ean.lower()] = str(p.id)
+        if p.sku:
+            busqueda_map[p.sku.lower()] = str(p.id)
+        busqueda_map[p.nombre.lower()] = str(p.id)
+        productos_lista.append({
+            "id": p.id,
+            "nombre": p.nombre,
+            "sku": p.sku or "",
+            "ean": p.ean or "",
+            "precio": int(p.precio),
+        })
 
     if request.method == "POST":
         form = VentaForm(request.POST, instance=venta)
@@ -441,6 +477,8 @@ def venta_editar_view(request, pk):
         "formset": formset,
         "precios_json": json.dumps(precios),
         "productos_ean_json": json.dumps(productos_ean),
+        "busqueda_map_json": json.dumps(busqueda_map),
+        "productos_lista_json": json.dumps(productos_lista),
         "venta": venta,
         "modo_edicion": True,
     }
