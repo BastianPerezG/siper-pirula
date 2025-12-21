@@ -1,0 +1,73 @@
+{% extends "reportes/pdf/base_pdf.html" %}
+
+{% block report_title %}Reporte de Ventas{% endblock %}
+
+{% block content %}
+<div class="summary-box">
+    <h3>Resumen del Período</h3>
+    <table style="border: none;">
+        <tr>
+            <td style="border: none;"><strong>Ventas Totales:</strong> ${{ total_mes|floatformat:0 }}</td>
+            <td style="border: none;"><strong>Cantidad de Ventas:</strong> {{ ventas_mes.count }}</td>
+            <td style="border: none;"><strong>Ticket Promedio:</strong> ${{ ticket_promedio_mes|floatformat:0 }}</td>
+        </tr>
+    </table>
+</div>
+
+<div class="summary-box">
+    <h3>Comparativa Año Anterior (YoY)</h3>
+    <table style="border: none;">
+        <tr>
+            <td style="border: none;"><strong>{{ anio_actual }}:</strong> ${{ ventas_anio_actual|floatformat:0 }}</td>
+            <td style="border: none;"><strong>{{ anio_anterior }}:</strong> ${{ ventas_anio_anterior|floatformat:0 }}
+            </td>
+            <td style="border: none;">
+                <strong>Variación:</strong>
+                <span class="{% if ventas_yoy_pct >= 0 %}text-emerald{% else %}text-red{% endif %}">
+                    {{ ventas_yoy_pct|floatformat:1 }}%
+                </span>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<h3>Ventas por Medio de Pago</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Medio de Pago</th>
+            <th class="text-center">Cantidad</th>
+            <th class="text-right">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in pagos %}
+        <tr>
+            <td>{{ p.medio_pago_display|default:p.medio_pago }}</td>
+            <td class="text-center">{{ p.cantidad }}</td>
+            <td class="text-right">${{ p.total|floatformat:0 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h3>Top 10 Productos</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th class="text-center">Unidades</th>
+            <th class="text-right">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for prod in top_productos %}
+        <tr>
+            <td>{{ prod.producto__nombre }}</td>
+            <td class="text-center">{{ prod.unidades }}</td>
+            <td class="text-right">${{ prod.total|floatformat:0 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

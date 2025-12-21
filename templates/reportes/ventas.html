@@ -9,11 +9,13 @@
 <form method="get" class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-4">
     <div>
         <label class="block text-xs text-slate-500">Desde</label>
-        <input type="date" name="desde" class="border rounded px-2 py-1 w-full text-sm" value="{{ desde|date:'Y-m-d' }}" max="{{ hoy_sistema|date:'Y-m-d' }}" />
+        <input type="date" name="desde" class="border rounded px-2 py-1 w-full text-sm" value="{{ desde|date:'Y-m-d' }}"
+            max="{{ hoy_sistema|date:'Y-m-d' }}" />
     </div>
     <div>
         <label class="block text-xs text-slate-500">Hasta</label>
-        <input type="date" name="hasta" class="border rounded px-2 py-1 w-full text-sm" value="{{ hasta|date:'Y-m-d' }}" min="{{ desde|date:'Y-m-d' }}" max="{{ hoy_sistema|date:'Y-m-d' }}" />
+        <input type="date" name="hasta" class="border rounded px-2 py-1 w-full text-sm" value="{{ hasta|date:'Y-m-d' }}"
+            min="{{ desde|date:'Y-m-d' }}" max="{{ hoy_sistema|date:'Y-m-d' }}" />
     </div>
     <div>
         <label class="block text-xs text-slate-500">Medio de pago</label>
@@ -46,6 +48,10 @@
         <a href="?export=csv&desde={{ desde|date:'Y-m-d' }}&hasta={{ hasta|date:'Y-m-d' }}&medio={{ medio_seleccionado|default:'' }}&categoria={{ categoria_seleccionada|default:'' }}"
             class="px-4 py-2 bg-emerald-600 text-white text-sm rounded shadow">
             Exportar CSV
+        </a>
+        <a href="?export=pdf&desde={{ desde|date:'Y-m-d' }}&hasta={{ hasta|date:'Y-m-d' }}&medio={{ medio_seleccionado|default:'' }}&categoria={{ categoria_seleccionada|default:'' }}"
+            class="px-4 py-2 bg-red-600 text-white text-sm rounded shadow hover:bg-red-700 transition ms-2">
+            Exportar PDF
         </a>
     </div>
 </form>

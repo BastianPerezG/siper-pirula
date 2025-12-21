@@ -1140,8 +1140,8 @@ def promo_crear_view(request):
             registrar_bitacora_estructurada(
                 negocio=negocio,
                 usuario=request.user,
-                tipo_accion="CREACION_PROMO",
-                nombre_modelo="Promocion",
+                nombre_modelo='Promo',
+                tipo_accion='CREACION_PROMO',
                 accion=f"Creación de Promoción: {promo.id}",
                 entidad_id=promo.pk,
                 detalles=detalles_registro
@@ -1253,6 +1253,14 @@ def merma_crear(request):
             merma = form.save(commit=False)
             merma.tipo = MovimientoInventario.TIPO_MERMA
             merma.usuario = request.user
+            
+            # --- Lógica de Diferenciación Merma vs Quiebre ---
+            tipo_merma = form.cleaned_data.get('tipo_merma', 'PROVEEDOR')
+            etiqueta = "[PROVEEDOR]" if tipo_merma == "PROVEEDOR" else "[QUIEBRE]"
+            
+            # Prependemos la etiqueta al comentario para persistencia simple sin migración
+            comentario_original = merma.comentario or ""
+            merma.comentario = f"{etiqueta} {comentario_original}".strip()
             merma.save() # Guarda la merma (que es un MovimientoInventario)
             
             producto = merma.producto # Accede al producto afectado por la merma
@@ -1383,3 +1391,18 @@ def sugerencias_productos(request):
             })
 
     return JsonResponse({"resultados": resultados})
+
+
+@login_required
+def api_producto_detalle(request, pk):
+    """Retorna detalles de un producto (precio, stock, etc) en JSON."""
+    negocio = request.user.perfilusuario.negocio
+    producto = get_object_or_404(Producto, pk=pk, negocio=negocio)
+    
+    data = {
+        "id": producto.id,
+        "nombre": producto.nombre,
+        "precio": producto.precio,
+        "stock": producto.stock_actual,
+    }
+    return JsonResponse(data)

@@ -144,23 +144,6 @@ def venta_crear_view(request):
         p.ean: {"id": p.id, "precio": int(p.precio)}
         for p in productos if p.ean
     }
-    
-    # Mapa de búsqueda extendida (nombre, SKU, EAN -> id)
-    busqueda_map = {}
-    productos_lista = []  # Lista de productos para sugerencias
-    for p in productos:
-        if p.ean:
-            busqueda_map[p.ean.lower()] = str(p.id)
-        if p.sku:
-            busqueda_map[p.sku.lower()] = str(p.id)
-        busqueda_map[p.nombre.lower()] = str(p.id)
-        productos_lista.append({
-            "id": p.id,
-            "nombre": p.nombre,
-            "sku": p.sku or "",
-            "ean": p.ean or "",
-            "precio": int(p.precio),
-        })
 
     if request.method == "POST":
         form = VentaForm(request.POST)
@@ -174,13 +157,11 @@ def venta_crear_view(request):
             comentario_usuario = (form.cleaned_data.get("comentario") or "").strip()
 
             with transaction.atomic():
+                # 1. Guardar Venta (Cabecera)
                 venta = form.save(commit=False)
                 venta.negocio = negocio
 
                 # IMPORTANTE: Todas las ventas nuevas se crean como ABIERTA
-                # - "Enviar a espera" => ABIERTA (genera reservas, queda en espera)
-                # - "Cobrar y cerrar" => ABIERTA (genera reservas, luego va al checkout)
-                # El checkout es quien cierra la venta después de aplicar descuentos y registrar pagos
                 venta.estado = Venta.EST_ABIERTA
                 
                 # Generar número de documento automáticamente
@@ -188,96 +169,77 @@ def venta_crear_view(request):
                 
                 venta.save()
 
+                # 2. Guardar Items
                 items_validos = 0
+                items_para_bitacora = [] 
 
-                if form.is_valid() and formset.is_valid():
-                    comentario_usuario = (form.cleaned_data.get("comentario") or "").strip()
-            
-                    # 🚨 MODIFICACIÓN: Lista para almacenar los detalles de los ítems para la Bitácora
-                    items_para_bitacora = [] 
+                for item_form in formset:
+                    if not item_form.cleaned_data:
+                        continue
 
-                    with transaction.atomic():
-                        venta = form.save(commit=False)
-                        venta.negocio = negocio
+                    if item_form.cleaned_data.get("DELETE"):
+                        continue
 
-                        venta.estado = Venta.EST_ABIERTA
-                        venta.doc_num = venta.generar_numero_documento()
+                    item = item_form.save(commit=False)
+
+                    if not item.producto_id or not item.cantidad or item.cantidad <= 0:
+                        continue
+
+                    item.venta = venta
+                    item.precio_unit = item.producto.precio
+                    item.save()
+                    items_validos += 1
+                    
+                    # Capturar detalles del ítem guardado para bitacora
+                    items_para_bitacora.append({
+                        'producto_id': item.producto.pk,
+                        'nombre': item.producto.nombre,
+                        'cantidad': float(item.cantidad),
+                        'precio_unitario': str(item.precio_unit),
+                        'subtotal': str(item.subtotal),
+                    })
+
+                if items_validos == 0:
+                    transaction.set_rollback(True)
+                    form.add_error(
+                        None,
+                        "La venta debe tener al menos un producto válido."
+                    )
+                else:
+                    # 3. Actualizar totales y Bitácora
+                    venta.monto_total = venta.total 
+                    venta.save(update_fields=['monto_total','estado'])
+                    
+                    detalles_registro = {
+                        'items_vendidos_count': items_validos,
+                        'monto_total': str(venta.monto_total), 
+                        'id_venta': venta.pk,
+                        'productos_vendidos': items_para_bitacora,
+                    }
+                    if comentario_usuario:
+                        detalles_registro['comentario_usuario'] = comentario_usuario
                         
-                        venta.save()
+                    registrar_bitacora_estructurada(
+                        negocio=negocio,
+                        usuario=request.user,
+                        nombre_modelo='Venta',
+                        tipo_accion='CREACION_VENTA', 
+                        accion=f"POS #{venta.pk}",
+                        entidad_id=venta.pk,
+                        detalles=detalles_registro,
+                    )
 
-                        items_validos = 0
-
-                        for item_form in formset:
-                            if not item_form.cleaned_data:
-                                continue
-
-                            if item_form.cleaned_data.get("DELETE"):
-                                continue
-
-                            item = item_form.save(commit=False)
-
-                            if not item.producto_id or not item.cantidad or item.cantidad <= 0:
-                                continue
-
-                            item.venta = venta
-                            item.precio_unit = item.producto.precio
-                            item.save()
-                            items_validos += 1
-                            
-                            # 🚨 MODIFICACIÓN: Capturar detalles del ítem guardado
-                            items_para_bitacora.append({
-                                'producto_id': item.producto.pk,
-                                'nombre': item.producto.nombre,
-                                'cantidad': float(item.cantidad), # Usar float() para precisión
-                                'precio_unitario': str(item.precio_unit),
-                                'subtotal': str(item.subtotal),
-                            })
-                            # FIN MODIFICACIÓN 🚨
-
-                        if items_validos == 0:
-                            transaction.set_rollback(True)
-                            form.add_error(
-                                None,
-                                "La venta debe tener al menos un producto válido."
-                            )
-                        else:
-
-                            venta.monto_total = venta.total 
-                            venta.save(update_fields=['monto_total','estado'])
-                            
-                            # 🚨 MODIFICACIÓN: Incluir la lista de ítems en los detalles
-                            detalles_registro = {
-                                'items_vendidos_count': items_validos, # Renombré para evitar conflicto con la lista
-                                'monto_total': str(venta.monto_total), 
-                                'id_venta': venta.pk,
-                                'productos_vendidos': items_para_bitacora, # <-- ¡ESTO ES LO NUEVO!
-                            }
-                            if comentario_usuario:
-                                detalles_registro['comentario_usuario'] = comentario_usuario
-                                
-                            registrar_bitacora_estructurada(
-                                negocio=negocio,
-                                usuario=request.user,
-                                nombre_modelo='Venta',
-                                tipo_accion='CREACION_VENTA', 
-                                accion=f"POS #{venta.pk}",
-                                entidad_id=venta.pk,
-                                detalles=detalles_registro,
-                            )
+                    if accion == "espera":
+                        messages.success(
+                            request,
+                            f"Venta #{venta.pk} guardada en espera.",
+                        )
+                        return redirect("ventas:ventas_en_espera_lista")
+                    else:
+                        # "Cobrar y cerrar" -> ir al checkout
+                        return redirect("ventas:venta_checkout", pk=venta.pk)
         
-                            # ... (redirecciones omitidas) ...
-                            if accion == "espera":
-                                messages.success(
-                                    request,
-                                    f"Venta #{venta.pk} enviada a espera correctamente."
-                                )
-                                return redirect("ventas:ventas_en_espera_lista")
-                            else:
-                                messages.success(
-                                    request,
-                                    f"Venta #{venta.pk} creada. Continúa con el cobro."
-                                )
-                                return redirect("ventas:venta_checkout", pk=venta.pk)
+
 
     else:
         # ... (código GET omitido) ...
@@ -291,8 +253,6 @@ def venta_crear_view(request):
         "formset": formset,
         "precios_json": json.dumps(precios),
         "productos_ean_json": json.dumps(productos_ean),
-        "busqueda_map_json": json.dumps(busqueda_map),
-        "productos_lista_json": json.dumps(productos_lista),
     }
     return render(request, "ventas/venta_form.html", context)
 
@@ -342,23 +302,6 @@ def venta_editar_view(request, pk):
         for p in productos
         if p.ean
     }
-    
-    # Mapa de búsqueda extendida (nombre, SKU, EAN -> id)
-    busqueda_map = {}
-    productos_lista = []  # Lista de productos para sugerencias
-    for p in productos:
-        if p.ean:
-            busqueda_map[p.ean.lower()] = str(p.id)
-        if p.sku:
-            busqueda_map[p.sku.lower()] = str(p.id)
-        busqueda_map[p.nombre.lower()] = str(p.id)
-        productos_lista.append({
-            "id": p.id,
-            "nombre": p.nombre,
-            "sku": p.sku or "",
-            "ean": p.ean or "",
-            "precio": int(p.precio),
-        })
 
     if request.method == "POST":
         form = VentaForm(request.POST, instance=venta)
@@ -477,8 +420,6 @@ def venta_editar_view(request, pk):
         "formset": formset,
         "precios_json": json.dumps(precios),
         "productos_ean_json": json.dumps(productos_ean),
-        "busqueda_map_json": json.dumps(busqueda_map),
-        "productos_lista_json": json.dumps(productos_lista),
         "venta": venta,
         "modo_edicion": True,
     }
@@ -1436,16 +1377,14 @@ def pago_confirmar_view(request, pk):
                 registrar_bitacora_estructurada(
                     negocio=request.user.perfilusuario.negocio,
                     usuario=request.user,
-                    tipo_accion="PAGO_CONFIRMADO",
-                    nombre_modelo="Pago",
+                    nombre_modelo='PagoVenta',
+                    tipo_accion='CONFIRMACION_PAGO',
                     accion=f"Confirmación de pago #{pago.pk} - Venta #{pago.venta.pk}",
-                    entidad_id=pago.pk,
+                    entidad_id=pago.venta.pk,
                     detalles={
-                        "pago_id": pago.pk,
-                        "venta_id": pago.venta.pk,
-                        "metodo": pago.get_metodo_display(),
-                        "monto": str(pago.monto),
-                        "codigo_referencia": pago.codigo_referencia or "N/A",
+                        'metodo': pago.get_metodo_display(),
+                        'monto': str(pago.monto),
+                        'codigo_referencia': pago.codigo_referencia or 'N/A'
                     },
                 )
                 

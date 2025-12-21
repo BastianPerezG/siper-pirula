@@ -3,144 +3,170 @@
 {% block title %}Pagos Pendientes - SIPER Pirula{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
-    <!-- Header -->
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+<div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- Header & Actions -->
+    <div
+        class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl shadow-lg p-6 sm:p-8 text-white flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-            <h1 class="text-2xl font-bold text-pirula-dark">📋 Pagos Pendientes de Confirmación</h1>
-            <p class="text-sm text-slate-500 mt-1">
-                Pagos por transferencia u otros medios que requieren confirmación manual.
+            <h1 class="text-3xl font-bold tracking-tight">Pagos Pendientes</h1>
+            <p class="text-blue-100 mt-2 text-lg">
+                Revisa y confirma transferencias u otros pagos manuales.
             </p>
+        </div>
+        <div class="bg-white/10 backdrop-blur-md rounded-xl p-3 hidden md:block">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
         </div>
     </div>
 
-    <!-- Tabs de navegación -->
-    <div class="border-b border-pirula-beige">
-        <nav class="flex space-x-1" aria-label="Tabs">
+    <!-- Navigation Tabs -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-2 overflow-x-auto">
+        <nav class="flex space-x-2 min-w-max" aria-label="Tabs">
             <a href="{% url 'ventas:venta_lista' %}"
-                class="border-transparent text-slate-500 hover:text-pirula-dark hover:border-pirula-beige whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
-                📋 Todas las ventas
+                class="px-4 py-2 rounded-xl text-sm font-bold transition-all text-slate-500 hover:text-slate-700 hover:bg-slate-50">
+                Todas las ventas
             </a>
             <a href="{% url 'ventas:ventas_en_espera_lista' %}"
-                class="border-transparent text-slate-500 hover:text-pirula-dark hover:border-pirula-beige whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
-                ⏳ En espera
+                class="px-4 py-2 rounded-xl text-sm font-bold transition-all text-slate-500 hover:text-slate-700 hover:bg-slate-50">
+                En espera (sin pagar)
             </a>
             <a href="{% url 'ventas:pago_pendiente_lista' %}"
-                class="border-blue-500 text-blue-600 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
-                📋 Pagos pendientes
+                class="px-4 py-2 rounded-xl text-sm font-bold transition-all bg-blue-100 text-blue-800">
+                Pagos pendientes
             </a>
         </nav>
     </div>
 
     <!-- Filtros y búsqueda -->
-    <form method="get" class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Búsqueda -->
-            <div>
-                <label for="q" class="block text-xs font-bold text-pirula-dark mb-2 uppercase tracking-wide">
-                    🔍 Buscar
-                </label>
-                <input type="text" name="q" id="q" value="{{ q }}" placeholder="ID de venta o número de documento..."
-                    class="w-full px-3 py-2 border border-pirula-beige rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
-            </div>
-
-            <!-- Método de pago -->
-            <div>
-                <label for="metodo" class="block text-xs font-bold text-pirula-dark mb-2 uppercase tracking-wide">
-                    💳 Método de pago
-                </label>
-                <select name="metodo" id="metodo"
-                    class="w-full px-3 py-2 border border-pirula-beige rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
-                    <option value="">Todos</option>
-                    {% for codigo, nombre in metodos_pago %}
-                    <option value="{{ codigo }}" {% if metodo == codigo %}selected{% endif %}>{{ nombre }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+    <div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+            <svg class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <h2 class="font-bold text-slate-700 text-sm uppercase tracking-wide">Filtrar Pagos</h2>
         </div>
+        <div class="p-6">
+            <form method="get" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Búsqueda -->
+                    <div>
+                        <label for="q" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Buscar
+                        </label>
+                        <input type="text" name="q" id="q" value="{{ q }}"
+                            placeholder="ID de venta o número de documento..."
+                            class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm">
+                    </div>
 
-        <div class="flex flex-wrap gap-3 pt-4 mt-4 border-t border-pirula-beige/30">
-            <button type="submit"
-                class="inline-flex items-center px-4 py-2 rounded-lg bg-pirula-dark hover:bg-pirula-medium text-white text-sm font-semibold transition-colors">
-                🔍 Buscar
-            </button>
-            <a href="{% url 'ventas:pago_pendiente_lista' %}"
-                class="inline-flex items-center px-4 py-2 rounded-lg border border-pirula-beige text-pirula-dark text-sm hover:bg-pirula-cream transition-colors">
-                Limpiar filtros
-            </a>
+                    <!-- Método de pago -->
+                    <div>
+                        <label for="metodo"
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Método de pago
+                        </label>
+                        <select name="metodo" id="metodo"
+                            class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm bg-white">
+                            <option value="">Todos</option>
+                            {% for codigo, nombre in metodos_pago %}
+                            <option value="{{ codigo }}" {% if metodo == codigo %}selected{% endif %}>{{ nombre }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-3 pt-4 border-t border-slate-100 justify-end">
+                    <a href="{% url 'ventas:pago_pendiente_lista' %}"
+                        class="inline-flex items-center px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 text-sm font-bold hover:bg-slate-50 hover:text-slate-800 transition-colors">
+                        Limpiar
+                    </a>
+                    <button type="submit"
+                        class="inline-flex items-center px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold shadow-md shadow-blue-200 hover:bg-blue-700 hover:shadow-lg transition-all gap-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        Aplicar Filtros
+                    </button>
+                </div>
+            </form>
         </div>
-    </form>
+    </div>
 
+    <!-- Table -->
     {% if pagos_pendientes %}
-    <!-- Tabla de pagos pendientes -->
-    <div class="bg-white rounded-xl shadow-md border border-pirula-beige/30 overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
         <div class="overflow-x-auto">
-            <table class="min-w-full">
-                <thead class="bg-pirula-cream border-b border-pirula-beige">
+            <table class="min-w-full text-sm text-left">
+                <thead
+                    class="bg-slate-50 border-b border-slate-100 text-slate-500 uppercase tracking-wider text-xs font-bold">
                     <tr>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">Venta
-                        </th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">
-                            Método</th>
-                        <th class="px-4 py-3 text-right text-xs font-bold text-pirula-dark uppercase tracking-wide">
-                            Monto</th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">
-                            Referencia</th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">Banco
-                        </th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">
-                            Registrado por</th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">Fecha
-                        </th>
-                        <th class="px-4 py-3 text-center text-xs font-bold text-pirula-dark uppercase tracking-wide">
-                            Acciones</th>
+                        <th class="px-6 py-4">Venta</th>
+                        <th class="px-6 py-4">Método</th>
+                        <th class="px-6 py-4 text-right">Monto</th>
+                        <th class="px-6 py-4">Referencia</th>
+                        <th class="px-6 py-4">Banco</th>
+                        <th class="px-6 py-4">Registrado por</th>
+                        <th class="px-6 py-4">Fecha</th>
+                        <th class="px-6 py-4 text-center">Acciones</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-pirula-beige/30">
+                <tbody class="divide-y divide-slate-50">
                     {% for pago in pagos_pendientes %}
-                    <tr class="hover:bg-pirula-cream/50 transition-colors">
-                        <td class="px-4 py-3">
+                    <tr class="hover:bg-slate-50/80 transition-colors group">
+                        <td class="px-6 py-4">
                             <a href="{% url 'ventas:venta_detalle' pago.venta.pk %}"
-                                class="text-pirula-accent hover:text-pirula-dark font-medium">
+                                class="font-bold text-emerald-600 hover:text-emerald-700 hover:underline">
                                 #{{ pago.venta.pk }}
                             </a>
-                            <br>
-                            <span class="text-xs text-slate-500">
+                            <div class="text-xs text-slate-500 mt-1 font-medium">
                                 {{ pago.venta.doc_tipo }} {{ pago.venta.doc_num|default:"—" }}
-                            </span>
+                            </div>
                         </td>
-                        <td class="px-4 py-3 text-sm text-slate-700">
+                        <td class="px-6 py-4 text-slate-700 font-medium">
                             {{ pago.get_metodo_display }}
                         </td>
-                        <td class="px-4 py-3 text-right">
-                            <span class="font-bold text-pirula-dark">${{ pago.monto|floatformat:0 }}</span>
+                        <td class="px-6 py-4 text-right font-black text-slate-700">
+                            ${{ pago.monto|floatformat:0 }}
                         </td>
-                        <td class="px-4 py-3">
+                        <td class="px-6 py-4">
                             {% if pago.codigo_referencia %}
-                            <span class="font-mono text-xs bg-pirula-cream px-2 py-1 rounded">
+                            <span
+                                class="font-mono text-xs bg-slate-100 px-2 py-1 rounded border border-slate-200 text-slate-600">
                                 {{ pago.codigo_referencia }}
                             </span>
                             {% else %}
                             <span class="text-slate-400">—</span>
                             {% endif %}
                         </td>
-                        <td class="px-4 py-3 text-sm text-slate-600">
-                            {% if pago.banco %}
-                            {{ pago.banco }}
-                            {% else %}
-                            <span class="text-slate-400">—</span>
-                            {% endif %}
+                        <td class="px-6 py-4 text-slate-600">
+                            {{ pago.banco|default:"—" }}
                         </td>
-                        <td class="px-4 py-3 text-sm text-slate-600">
-                            {{ pago.usuario_registra.get_full_name|default:pago.usuario_registra.username }}
+                        <td class="px-6 py-4 text-slate-600">
+                            <div class="flex items-center gap-2">
+                                <div
+                                    class="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500">
+                                    {{ pago.usuario_registra.username|slice:":1"|upper }}
+                                </div>
+                                {{ pago.usuario_registra.get_full_name|default:pago.usuario_registra.username }}
+                            </div>
                         </td>
-                        <td class="px-4 py-3 text-sm text-slate-600">
+                        <td class="px-6 py-4 text-slate-600 text-xs">
                             {{ pago.fecha_hora|date:"d/m/Y H:i" }}
                         </td>
-                        <td class="px-4 py-3 text-center">
+                        <td class="px-6 py-4 text-center">
                             <a href="{% url 'ventas:pago_confirmar' pago.pk %}"
-                                class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
-                                ✅ Confirmar
+                                class="inline-flex items-center px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold hover:from-emerald-600 hover:to-teal-700 shadow-md shadow-emerald-200 hover:shadow-lg transition-all transform hover:-translate-y-0.5 gap-1 text-xs">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7" />
+                                </svg>
+                                Confirmar
                             </a>
                         </td>
                     </tr>
@@ -150,41 +176,49 @@
         </div>
 
         {% if is_paginated %}
-        <div class="px-4 py-3 border-t border-pirula-beige bg-pirula-cream/50">
-            <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div class="text-sm text-slate-600">
-                    Mostrando {{ page_obj.start_index }} a {{ page_obj.end_index }} de {{ paginator.count }} pagos
-                </div>
-                <nav class="inline-flex rounded-lg shadow-sm border border-pirula-beige overflow-hidden">
-                    {% if page_obj.has_previous %}
-                    <a href="?{% if q %}q={{ q }}&{% endif %}{% if metodo %}metodo={{ metodo }}&{% endif %}page={{ page_obj.previous_page_number }}"
-                        class="px-4 py-2 text-sm font-medium text-pirula-dark bg-white hover:bg-pirula-cream border-r border-pirula-beige transition-colors">
-                        ← Anterior
-                    </a>
-                    {% endif %}
+        <div
+            class="bg-white border-t border-slate-100 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="text-sm text-slate-600">
+                Mostrando <span class="font-bold text-slate-700">{{ page_obj.start_index }}</span> a <span
+                    class="font-bold text-slate-700">{{ page_obj.end_index }}</span> de <span
+                    class="font-bold text-slate-700">{{ paginator.count }}</span> pagos
+            </div>
+            <div class="flex gap-2">
+                {% if page_obj.has_previous %}
+                <a href="?{% if q %}q={{ q }}&{% endif %}{% if metodo %}metodo={{ metodo }}&{% endif %}page={{ page_obj.previous_page_number }}"
+                    class="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors">
+                    Anterior
+                </a>
+                {% endif %}
 
-                    <span class="px-4 py-2 text-sm font-bold text-pirula-dark bg-pirula-cream">
-                        {{ page_obj.number }} / {{ paginator.num_pages }}
-                    </span>
+                <span class="px-3 py-1.5 text-sm text-slate-600 font-medium bg-slate-50 rounded-lg">
+                    Página {{ page_obj.number }} de {{ paginator.num_pages }}
+                </span>
 
-                    {% if page_obj.has_next %}
-                    <a href="?{% if q %}q={{ q }}&{% endif %}{% if metodo %}metodo={{ metodo }}&{% endif %}page={{ page_obj.next_page_number }}"
-                        class="px-4 py-2 text-sm font-medium text-pirula-dark bg-white hover:bg-pirula-cream border-l border-pirula-beige transition-colors">
-                        Siguiente →
-                    </a>
-                    {% endif %}
-                </nav>
+                {% if page_obj.has_next %}
+                <a href="?{% if q %}q={{ q }}&{% endif %}{% if metodo %}metodo={{ metodo }}&{% endif %}page={{ page_obj.next_page_number }}"
+                    class="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors">
+                    Siguiente
+                </a>
+                {% endif %}
             </div>
         </div>
         {% endif %}
     </div>
     {% else %}
-    <!-- Estado vacío -->
-    <div class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-12 text-center">
-        <div class="text-4xl mb-3">✅</div>
-        <p class="text-lg text-slate-600">No hay pagos pendientes de confirmación.</p>
-        <p class="text-sm text-slate-500 mt-2">Todos los pagos han sido confirmados.</p>
+    <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-12 text-center">
+        <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </div>
+        <h3 class="text-lg font-bold text-slate-800 mb-2">No hay pagos pendientes</h3>
+        <p class="text-slate-500">
+            Todos los pagos han sido procesados correctamente.
+        </p>
     </div>
     {% endif %}
+
 </div>
 {% endblock %}

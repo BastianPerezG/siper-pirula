@@ -45,7 +45,7 @@
 
   <!-- Filtros (chips + buscador) -->
   {% if categorias %}
-  <form method="get" class="mb-5 flex flex-col sm:flex-row gap-3 sm:items-center">
+  <form method="get" action="{% url 'tienda:productos' %}" class="mb-5 flex flex-col sm:flex-row gap-3 sm:items-center">
     <select name="categoria"
       class="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm w-full sm:w-56 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-pirula-amber focus:ring-1 focus:ring-pirula-amber"
       onchange="this.form.submit()">
@@ -84,6 +84,15 @@
       <div class="h-48 w-full overflow-hidden relative">
         <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}"
           class="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500">
+
+        {% if producto.contiene_alcohol %}
+        <div class="absolute top-0 left-0 bg-black text-white p-1.5 max-w-[60%] z-20">
+          <p class="text-[10px] font-bold leading-none mb-0.5">ADVERTENCIA</p>
+          <p class="text-[7px] leading-tight font-medium">El consumo de alcohol en menores de 18 años se encuentra
+            prohibido.</p>
+        </div>
+        {% endif %}
+
         {% if producto.formato %}
         <div
           class="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase">

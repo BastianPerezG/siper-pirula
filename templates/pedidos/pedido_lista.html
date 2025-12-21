@@ -1,246 +1,106 @@
 {% extends "core/base.html" %}
 
-{% block title %}📋 Historial de Pedidos - SIPER Pirula{% endblock %}
+{% block title %}Pedidos - El Gran Pirula{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto space-y-6">
-
+<div class="space-y-6">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div
+        class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div>
-            <h1 class="text-2xl font-bold text-pirula-dark flex items-center gap-2">
-                📋 Historial de Pedidos
-            </h1>
-            <p class="text-pirula-medium text-sm">
-                Consulta y administra todos los pedidos del sistema
+            <h1 class="text-3xl font-bold text-slate-800 tracking-tight">📋 Pedidos</h1>
+            <p class="text-slate-500 mt-1">
+                Visualiza y gestiona los pedidos realizados.
             </p>
         </div>
-        <div class="flex items-center gap-3">
-            <a href="{% url 'pedidos:pedidos_monitor' %}"
-                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-pirula-cream border border-pirula-beige text-pirula-dark font-medium hover:bg-pirula-beige transition-colors">
-                📺 Monitor en vivo
-            </a>
+        <div>
             <a href="{% url 'pedidos:pedido_crear' %}"
-                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-pirula-accent text-white font-bold hover:bg-pirula-light transition-colors shadow-md">
-                ➕ Nuevo Pedido
+                class="inline-flex items-center px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg shadow-emerald-200 transition-all hover:-translate-y-0.5">
+                ➕ Nuevo pedido
             </a>
         </div>
     </div>
 
-    <!-- Filtros -->
-    <form method="get" class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+    <!-- Lista -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
 
-            <!-- Búsqueda -->
-            <div class="lg:col-span-2">
-                <label class="block text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">
-                    🔍 Buscar
-                </label>
-                <input type="text" name="q" value="{{ filtros.q|default:'' }}" placeholder="Código, nombre, correo..."
-                    class="w-full px-3 py-2 border border-pirula-beige rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pirula-accent">
-            </div>
-
-            <!-- Estado de Pago -->
-            <div>
-                <label class="block text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">
-                    💰 Pago
-                </label>
-                <select name="estado_pago"
-                    class="w-full px-3 py-2 border border-pirula-beige rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pirula-accent">
-                    <option value="">Todos</option>
-                    <option value="PENDIENTE" {% if filtros.estado_pago == 'PENDIENTE' %}selected{% endif %}>⏳ Pendiente
-                    </option>
-                    <option value="PAGADO" {% if filtros.estado_pago == 'PAGADO' %}selected{% endif %}>✅ Pagado</option>
-                    <option value="CANCELADO" {% if filtros.estado_pago == 'CANCELADO' %}selected{% endif %}>❌ Cancelado
-                    </option>
-                </select>
-            </div>
-
-            <!-- Estado de Preparación -->
-            <div>
-                <label class="block text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">
-                    📦 Preparación
-                </label>
-                <select name="estado_prep"
-                    class="w-full px-3 py-2 border border-pirula-beige rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pirula-accent">
-                    <option value="">Todos</option>
-                    <option value="RECIBIDO" {% if filtros.estado_prep == 'RECIBIDO' %}selected{% endif %}>🆕 Recibido
-                    </option>
-                    <option value="PREPARANDO" {% if filtros.estado_prep == 'PREPARANDO' %}selected{% endif %}>👨‍🍳
-                        Preparando</option>
-                    <option value="LISTO" {% if filtros.estado_prep == 'LISTO' %}selected{% endif %}>✨ Listo</option>
-                    <option value="RETIRADO" {% if filtros.estado_prep == 'RETIRADO' %}selected{% endif %}>✅ Retirado
-                    </option>
-                    <option value="CANCELADO" {% if filtros.estado_prep == 'CANCELADO' %}selected{% endif %}>❌ Cancelado
-                    </option>
-                </select>
-            </div>
-
-            <!-- Forma de Pago -->
-            <div>
-                <label class="block text-xs font-bold text-pirula-dark uppercase tracking-wide mb-1">
-                    💳 Forma
-                </label>
-                <select name="forma_pago"
-                    class="w-full px-3 py-2 border border-pirula-beige rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pirula-accent">
-                    <option value="">Todas</option>
-                    <option value="WEBPAY" {% if filtros.forma_pago == 'WEBPAY' %}selected{% endif %}>💳 Webpay</option>
-                    <option value="RETIRO" {% if filtros.forma_pago == 'RETIRO' %}selected{% endif %}>🏪 En tienda
-                    </option>
-                </select>
-            </div>
-
-            <!-- Botones -->
-            <div class="flex items-end gap-2">
-                <button type="submit"
-                    class="flex-1 px-4 py-2 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white font-bold text-sm transition-colors">
-                    Filtrar
-                </button>
-                <a href="{% url 'pedidos:pedido_lista' %}"
-                    class="px-4 py-2 rounded-lg border border-pirula-beige text-pirula-dark font-medium text-sm hover:bg-pirula-cream transition-colors">
-                    Limpiar
-                </a>
-            </div>
-        </div>
-    </form>
-
-    <!-- Tabla de pedidos -->
-    <div class="bg-white rounded-xl shadow-md border border-pirula-beige/30 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
-                <thead class="bg-pirula-cream/50 text-xs font-bold text-pirula-dark uppercase tracking-wide">
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full">
+                <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
-                        <th class="px-4 py-3 text-left">Código</th>
-                        <th class="px-4 py-3 text-left hidden md:table-cell">Fecha</th>
-                        <th class="px-4 py-3 text-left">Cliente</th>
-                        <th class="px-4 py-3 text-center hidden lg:table-cell">Pago</th>
-                        <th class="px-4 py-3 text-center hidden lg:table-cell">Preparación</th>
-                        <th class="px-4 py-3 text-center hidden sm:table-cell">Forma</th>
-                        <th class="px-4 py-3 text-right">Total</th>
-                        <th class="px-4 py-3 text-center">Acciones</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Código
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Fecha
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            Cliente</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            Estado</th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Total
+                        </th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            Acciones</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-pirula-beige/20">
+                <tbody class="divide-y divide-slate-100">
                     {% for pedido in pedidos %}
-                    <tr class="hover:bg-pirula-cream/30 transition-colors">
-                        <!-- Código -->
-                        <td class="px-4 py-3">
-                            <span class="font-mono font-bold text-pirula-dark">{{ pedido.codigo }}</span>
+                    <tr class="hover:bg-slate-50/80 transition-colors group">
+                        <td class="px-6 py-4">
+                            <span
+                                class="font-mono text-sm font-semibold text-slate-700 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200">
+                                {{ pedido.codigo }}
+                            </span>
                         </td>
-
-                        <!-- Fecha -->
-                        <td class="px-4 py-3 hidden md:table-cell text-pirula-medium">
-                            {{ pedido.fecha|date:"d/m/Y H:i" }}
+                        <td class="px-6 py-4 text-sm text-slate-600">
+                            {{ pedido.fecha|date:"d M Y, H:i" }}
                         </td>
-
-                        <!-- Cliente -->
-                        <td class="px-4 py-3">
-                            <div class="font-medium text-pirula-dark">
-                                {{ pedido.cliente.nombre|default:pedido.nombre|default:"Sin nombre"|truncatewords:3 }}
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-2">
+                                <div
+                                    class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-bold border border-slate-200">
+                                    👤
+                                </div>
+                                <span class="font-medium text-slate-800 text-sm">
+                                    {{ pedido.cliente.nombre|default:pedido.nombre|default:"Cliente General"|truncatewords:2 }}
+                                </span>
                             </div>
-                            {% if pedido.telefono %}
-                            <div class="text-xs text-pirula-medium">📞 {{ pedido.telefono }}</div>
-                            {% endif %}
                         </td>
-
-                        <!-- Estado Pago -->
-                        <td class="px-4 py-3 text-center hidden lg:table-cell">
-                            {% if pedido.estado_pago == 'PAGADO' %}
-                            <span
-                                class="inline-flex px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700">
-                                ✅ Pagado
+                        <td class="px-6 py-4 text-center">
+                            {% with estado=pedido.estado %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border
+                                {% if estado == 'pendiente' %} bg-amber-50 text-amber-600 border-amber-100
+                                {% elif estado == 'pagado' or estado == 'completado' %} bg-emerald-50 text-emerald-600 border-emerald-100
+                                {% elif estado == 'cancelado' %} bg-red-50 text-red-600 border-red-100
+                                {% else %} bg-slate-100 text-slate-600 border-slate-200 {% endif %}">
+                                {{ pedido.get_estado_display }}
                             </span>
-                            {% elif pedido.estado_pago == 'PENDIENTE' %}
-                            <span
-                                class="inline-flex px-2 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-700">
-                                ⏳ Pendiente
-                            </span>
-                            {% else %}
-                            <span class="inline-flex px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700">
-                                ❌ {{ pedido.get_estado_pago_display }}
-                            </span>
-                            {% endif %}
+                            {% endwith %}
                         </td>
-
-                        <!-- Estado Preparación -->
-                        <td class="px-4 py-3 text-center hidden lg:table-cell">
-                            {% if pedido.estado_preparacion == 'RECIBIDO' %}
-                            <span
-                                class="inline-flex px-2 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-700">
-                                🆕 Recibido
+                        <td class="px-6 py-4 text-right">
+                            <span class="font-bold text-slate-800 text-sm">
+                                ${{ pedido.total|default:pedido.total_monto|floatformat:0 }}
                             </span>
-                            {% elif pedido.estado_preparacion == 'PREPARANDO' %}
-                            <span
-                                class="inline-flex px-2 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-700">
-                                👨‍🍳 Preparando
-                            </span>
-                            {% elif pedido.estado_preparacion == 'LISTO' %}
-                            <span
-                                class="inline-flex px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700">
-                                ✨ Listo
-                            </span>
-                            {% elif pedido.estado_preparacion == 'RETIRADO' %}
-                            <span
-                                class="inline-flex px-2 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-700">
-                                ✅ Retirado
-                            </span>
-                            {% else %}
-                            <span class="inline-flex px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700">
-                                ❌ {{ pedido.get_estado_preparacion_display }}
-                            </span>
-                            {% endif %}
                         </td>
-
-                        <!-- Forma de Pago -->
-                        <td class="px-4 py-3 text-center hidden sm:table-cell">
-                            {% if pedido.forma_pago == 'WEBPAY' %}
-                            <span
-                                class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
-                                💳 Webpay
-                            </span>
-                            {% else %}
-                            <span
-                                class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-pirula-cream text-pirula-dark">
-                                🏪 Tienda
-                            </span>
-                            {% endif %}
-                        </td>
-
-                        <!-- Total -->
-                        <td class="px-4 py-3 text-right">
-                            <span class="font-bold text-pirula-dark">${{ pedido.total|default:pedido.total_monto|floatformat:0 }}</span>
-                        </td>
-
-                        <!-- Acciones -->
-                        <td class="px-4 py-3">
-                            <div class="flex items-center justify-center gap-2">
-                                <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
-                                    class="px-3 py-1.5 rounded-lg bg-pirula-cream text-pirula-dark text-xs font-medium hover:bg-pirula-beige transition-colors">
-                                    👁️ Ver
-                                </a>
-                                {% with venta=pedido.ventas.first %}
-                                {% if venta %}
-                                <a href="{% url 'ventas:venta_detalle' venta.pk %}"
-                                    class="px-3 py-1.5 rounded-lg bg-green-100 text-green-700 text-xs font-medium hover:bg-green-200 transition-colors">
-                                    📄 Venta
-                                </a>
-                                {% elif pedido.estado_pago == 'PENDIENTE' and pedido.forma_pago == 'RETIRO' %}
-                                <a href="{% url 'pedidos:pedido_convertir_venta' pedido.pk %}"
-                                    class="px-3 py-1.5 rounded-lg bg-pirula-accent text-white text-xs font-medium hover:bg-pirula-light transition-colors">
-                                    💳 Cobrar
-                                </a>
-                                {% endif %}
-                                {% endwith %}
-                            </div>
+                        <td class="px-6 py-4 text-center">
+                            <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
+                                class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
+                                title="Ver detalles">
+                                👁️
+                            </a>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="px-4 py-12 text-center">
-                            <div class="text-4xl mb-2">🔍</div>
-                            <p class="text-pirula-medium font-medium">No hay pedidos registrados</p>
-                            <p class="text-sm text-pirula-medium mt-1">Los pedidos aparecerán aquí cuando se creen desde
-                                la tienda online</p>
+                        <td colspan="6" class="px-6 py-16 text-center">
+                            <div class="flex flex-col items-center justify-center text-slate-400">
+                                <div
+                                    class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 text-3xl shadow-inner">
+                                    📋
+                                </div>
+                                <h3 class="text-lg font-semibold text-slate-600">No hay pedidos registrados</h3>
+                                <p class="text-sm mt-1">Comienza creando un nuevo pedido.</p>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -248,34 +108,52 @@
             </table>
         </div>
 
-        <!-- Paginación -->
-        {% if page_obj.has_other_pages %}
-        <div class="px-4 py-3 border-t border-pirula-beige/30 flex items-center justify-between bg-pirula-cream/30">
-            <div class="text-sm text-pirula-medium">
-                Mostrando {{ page_obj.start_index }} - {{ page_obj.end_index }} de {{ page_obj.paginator.count }}
-                pedidos
-            </div>
-            <div class="flex items-center gap-1">
-                {% if page_obj.has_previous %}
-                <a href="?page={{ page_obj.previous_page_number }}{% if filtros.q %}&q={{ filtros.q }}{% endif %}{% if filtros.estado_pago %}&estado_pago={{ filtros.estado_pago }}{% endif %}{% if filtros.estado_prep %}&estado_prep={{ filtros.estado_prep }}{% endif %}{% if filtros.forma_pago %}&forma_pago={{ filtros.forma_pago }}{% endif %}"
-                    class="px-3 py-1 rounded-lg border border-pirula-beige text-pirula-dark hover:bg-pirula-cream transition-colors">
-                    ←
-                </a>
-                {% endif %}
+        <!-- Mobile Cards -->
+        <div class="md:hidden divide-y divide-slate-100">
+            {% for pedido in pedidos %}
+            <div class="p-4 bg-white">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex flex-col">
+                        <span class="font-mono text-xs font-bold text-slate-500 mb-1">#{{ pedido.codigo }}</span>
+                        <span class="font-bold text-slate-800">{{
+                            pedido.cliente.nombre|default:pedido.nombre|default:"Cliente General" }}</span>
+                    </div>
+                    {% with estado=pedido.estado %}
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wide
+                        {% if estado == 'pendiente' %} bg-amber-50 text-amber-600 border-amber-100
+                        {% elif estado == 'pagado' or estado == 'completado' %} bg-emerald-50 text-emerald-600 border-emerald-100
+                        {% elif estado == 'cancelado' %} bg-red-50 text-red-600 border-red-100
+                        {% else %} bg-slate-100 text-slate-600 border-slate-200 {% endif %}">
+                        {{ pedido.get_estado_display }}
+                    </span>
+                    {% endwith %}
+                </div>
 
-                <span class="px-3 py-1 rounded-lg bg-pirula-accent text-white font-bold">
-                    {{ page_obj.number }}
-                </span>
+                <div class="flex items-center justify-between text-sm text-slate-500 mb-4">
+                    <div class="flex items-center gap-1.5">
+                        📅 {{ pedido.fecha|date:"d M, H:i" }}
+                    </div>
+                </div>
 
-                {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}{% if filtros.q %}&q={{ filtros.q }}{% endif %}{% if filtros.estado_pago %}&estado_pago={{ filtros.estado_pago }}{% endif %}{% if filtros.estado_prep %}&estado_prep={{ filtros.estado_prep }}{% endif %}{% if filtros.forma_pago %}&forma_pago={{ filtros.forma_pago }}{% endif %}"
-                    class="px-3 py-1 rounded-lg border border-pirula-beige text-pirula-dark hover:bg-pirula-cream transition-colors">
-                    →
-                </a>
-                {% endif %}
+                <div class="flex items-center justify-between pt-3 border-t border-slate-50">
+                    <span class="text-lg font-bold text-emerald-600">
+                        ${{ pedido.total|default:pedido.total_monto|floatformat:0 }}
+                    </span>
+                    <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
+                        class="inline-flex items-center px-3 py-1.5 rounded-lg bg-slate-50 text-slate-600 text-xs font-bold hover:bg-emerald-50 hover:text-emerald-700 transition-colors">
+                        Ver Detalles →
+                    </a>
+                </div>
             </div>
+            {% empty %}
+            <div class="p-12 text-center text-slate-400">
+                <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                    📋
+                </div>
+                <h3 class="text-lg font-semibold text-slate-600">Sin pedidos</h3>
+            </div>
+            {% endfor %}
         </div>
-        {% endif %}
     </div>
 </div>
 {% endblock %}

@@ -500,6 +500,15 @@ class Promo(models.Model):
         """
         return max(self.precio_normal - self.precio_combo, 0)
 
+    @property
+    def porcentaje_descuento(self) -> int:
+        """
+        Calcula el porcentaje de descuento redondeado.
+        """
+        if self.precio_normal > 0:
+            return int((self.ahorro / self.precio_normal) * 100)
+        return 0
+
     def tiene_stock(self, cantidad_packs: int = 1) -> bool:
         """
         Verifica si hay stock suficiente de todos los productos

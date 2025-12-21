@@ -55,4 +55,5 @@ urlpatterns = [
     path("mermas/<int:pk>/eliminar/", views.merma_eliminar, name="merma_eliminar"),
     # API
     path("api/sugerencias/", views.sugerencias_productos, name="sugerencias_productos"),
+    path("api/producto/<int:pk>/", views.api_producto_detalle, name="api_producto_detalle"),
 ]

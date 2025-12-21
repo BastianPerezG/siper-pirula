@@ -338,10 +338,8 @@ class VentaCheckoutForm(forms.Form):
         
         # Configurar según método
         if metodo == PagoVenta.MET_TRANSFERENCIA:
-            # Para transferencias, el código de referencia es opcional
-            self.fields['codigo_referencia_transferencia'].help_text = (
-                "Código de referencia de la transferencia (opcional)"
-            )
+            # Para transferencias, el código de referencia es OPCIONAL
+            self.fields['codigo_referencia_transferencia'].required = False
         elif metodo in [PagoVenta.MET_DEBITO, PagoVenta.MET_CREDITO]:
             # Para tarjetas, los campos son opcionales por ahora (se llenarán con pasarela)
             pass
@@ -368,12 +366,7 @@ class VentaCheckoutForm(forms.Form):
                 self.add_error("descuento_monto", "Ingresa un monto válido.")
             cleaned["descuento_pct"] = 0
 
-        # Motivo obligatorio si hay cualquier tipo de descuento
-        if (pct > 0 or monto > 0) and not motivo:
-            self.add_error(
-                "motivo_descuento",
-                "Debes ingresar un motivo para aplicar el descuento.",
-            )
+
 
         # Validar monto pagado y calcular vuelto
         total_bruto = self.total_bruto_val
@@ -401,6 +394,10 @@ class VentaCheckoutForm(forms.Form):
                 raise forms.ValidationError(
                     f"El monto de transferencia debe ser exactamente ${total_neto}."
                 )
+            codigo_ref = cleaned.get("codigo_referencia_transferencia", "").strip()
+            if not codigo_ref:
+                # Ya no es obligatorio
+                pass
             # Las transferencias quedan pendientes por defecto
             cleaned["vuelto"] = 0
         else:
@@ -421,6 +418,15 @@ class AperturaCajaForm(forms.ModelForm):
     class Meta:
         model = CajaTurno
         fields = ["monto_inicial"]
+
+    def clean_monto_inicial(self):
+        """
+        Valida que el monto inicial sea mayor a cero.
+        """
+        monto = self.cleaned_data.get("monto_inicial")
+        if monto is not None and monto <= 0:
+            raise forms.ValidationError("El monto inicial debe ser mayor a cero.")
+        return monto
 
 
 class ArqueoParcialForm(forms.ModelForm):
@@ -445,11 +451,23 @@ class ArqueoParcialForm(forms.ModelForm):
             ),
         }
 
+    def clean_monto_contado(self):
+        monto = self.cleaned_data.get("monto_contado")
+        if monto is not None and monto < 0:
+            raise forms.ValidationError("El monto contado no puede ser negativo.")
+        return monto
+
 
 class CierreCajaForm(forms.ModelForm):
     class Meta:
         model = CajaTurno
         fields = ["monto_contado_cierre", "observacion_cierre"]
+
+    def clean_monto_contado_cierre(self):
+        monto = self.cleaned_data.get("monto_contado_cierre")
+        if monto is not None and monto < 0:
+            raise forms.ValidationError("El monto de cierre no puede ser negativo.")
+        return monto
 
 
 class DescuentoReglaRolForm(forms.ModelForm):
