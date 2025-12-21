@@ -18,8 +18,7 @@
             <div class="bg-white/10 backdrop-blur-md rounded-xl p-3 hidden md:block">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
             </div>
         </div>
@@ -36,8 +35,7 @@
                 <div class="bg-slate-50 px-6 py-4 border-b border-slate-100">
                     <h2 class="font-bold text-slate-800 text-lg flex items-center gap-2">
                         <svg class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                         </svg>
                         Ítems de la Venta
                     </h2>
@@ -97,8 +95,7 @@
                 <div class="bg-slate-50 px-6 py-4 border-b border-slate-100">
                     <h2 class="font-bold text-slate-800 text-lg flex items-center gap-2">
                         <svg class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                         </svg>
                         Descuentos
                     </h2>
@@ -109,7 +106,7 @@
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tipo de
                                 Descuento</label>
-                            {{ form.tipo_descuento|add_class:"w-full rounded-xl border border-slate-300 bg-white text-sm focus:ring-emerald-500 focus:border-emerald-500" }}
+                            {{ form.tipo_descuento|add_class:"w-full h-14 text-lg rounded-xl border border-slate-300 bg-white focus:ring-emerald-500 focus:border-emerald-500" }}
                             {% for error in form.tipo_descuento.errors %}
                             <p class="text-xs text-red-500 mt-1">{{ error }}</p>
                             {% endfor %}
@@ -118,7 +115,7 @@
                             <label
                                 class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Porcentaje
                                 (%)</label>
-                            {{ form.descuento_pct|add_class:"w-full rounded-xl border border-slate-300 bg-white text-sm focus:ring-emerald-500 focus:border-emerald-500" }}
+                            {{ form.descuento_pct|add_class:"w-full h-14 text-lg rounded-xl border border-slate-300 bg-white focus:ring-emerald-500 focus:border-emerald-500" }}
                             {% for error in form.descuento_pct.errors %}
                             <p class="text-xs text-red-500 mt-1">{{ error }}</p>
                             {% endfor %}
@@ -126,26 +123,18 @@
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Monto
                                 Fijo ($)</label>
-                            {{ form.descuento_monto|add_class:"w-full rounded-xl border border-slate-300 bg-white text-sm focus:ring-emerald-500 focus:border-emerald-500" }}
+                            {{ form.descuento_monto|add_class:"w-full h-14 text-lg rounded-xl border border-slate-300 bg-white focus:ring-emerald-500 focus:border-emerald-500" }}
                             {% for error in form.descuento_monto.errors %}
                             <p class="text-xs text-red-500 mt-1">{{ error }}</p>
                             {% endfor %}
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="md:col-span-2">
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Motivo
-                                del Descuento</label>
-                            {{ form.motivo_descuento|add_class:"w-full rounded-xl border border-slate-300 bg-white text-sm focus:ring-emerald-500 focus:border-emerald-500" }}
-                            {% for error in form.motivo_descuento.errors %}
-                            <p class="text-xs text-red-500 mt-1">{{ error }}</p>
-                            {% endfor %}
-                        </div>
-                        <div class="md:col-span-2">
+                    <div class="grid grid-cols-1">
+                        <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Código
                                 de Autorización</label>
-                            {{ form.codigo_autorizacion|add_class:"w-full rounded-xl border border-slate-300 bg-white text-sm focus:ring-emerald-500 focus:border-emerald-500" }}
+                            {{ form.codigo_autorizacion|add_class:"w-full h-14 text-lg rounded-xl border border-slate-300 bg-white focus:ring-emerald-500 focus:border-emerald-500" }}
                             {% for error in form.codigo_autorizacion.errors %}
                             <p class="text-xs text-red-500 mt-1">{{ error }}</p>
                             {% endfor %}
@@ -171,12 +160,12 @@
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Total
                                 Bruto</label>
-                            {{ form.total_bruto|add_class:"w-full rounded-xl border border-slate-300 bg-slate-100 text-slate-500 text-sm cursor-not-allowed" }}
+                            {{ form.total_bruto|add_class:"w-full h-14 text-lg rounded-xl border border-slate-300 bg-slate-100 text-slate-500 cursor-not-allowed" }}
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Método
                                 de Pago</label>
-                            {{ form.metodo_pago|add_class:"w-full rounded-xl border border-slate-300 bg-white text-sm focus:ring-emerald-500 focus:border-emerald-500 cursor-pointer" }}
+                            {{ form.metodo_pago|add_class:"w-full h-14 text-lg rounded-xl border border-slate-300 bg-white focus:ring-emerald-500 focus:border-emerald-500 cursor-pointer" }}
                         </div>
                     </div>
 
@@ -186,8 +175,8 @@
                                 Pagado</label>
                             <div class="relative">
                                 <span
-                                    class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-semibold">$</span>
-                                {{ form.monto_pagado|add_class:"w-full rounded-xl border border-slate-300 bg-white pl-8 text-sm focus:ring-emerald-500 focus:border-emerald-500 font-bold text-slate-800" }}
+                                    class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-semibold text-lg">$</span>
+                                {{ form.monto_pagado|add_class:"w-full h-14 text-xl rounded-xl border border-slate-300 bg-white pl-8 focus:ring-emerald-500 focus:border-emerald-500 font-bold text-slate-800" }}
                             </div>
                             {% for error in form.monto_pagado.errors %}
                             <p class="text-xs text-red-500 mt-1">{{ error }}</p>
@@ -200,8 +189,8 @@
                                 class="block text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2">Vuelto</label>
                             <div class="relative">
                                 <span
-                                    class="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 font-bold">$</span>
-                                {{ form.vuelto|add_class:"w-full rounded-xl border border-emerald-200 bg-emerald-50 pl-8 text-sm text-emerald-700 font-bold" }}
+                                    class="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 font-bold text-lg">$</span>
+                                {{ form.vuelto|add_class:"w-full h-14 text-xl rounded-xl border border-emerald-200 bg-emerald-50 pl-8 text-emerald-700 font-bold" }}
                             </div>
                         </div>
                     </div>
@@ -209,7 +198,7 @@
                     <div>
                         <label
                             class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Observaciones</label>
-                        {{ form.observaciones_pago|add_class:"w-full rounded-xl border border-slate-300 bg-white text-sm focus:ring-emerald-500 focus:border-emerald-500" }}
+                        {{ form.observaciones_pago|add_class:"w-full h-24 text-lg rounded-xl border border-slate-300 bg-white focus:ring-emerald-500 focus:border-emerald-500" }}
                     </div>
                 </div>
             </section>
@@ -301,6 +290,34 @@
         // Constantes de métodos de pago
         const MET_EFECTIVO = 'EFECTIVO';
 
+        function toggleDescuentoInputs() {
+            const tipo = tipoDescuentoSelect.value;
+
+            // Reset states
+            descuentoPctInput.disabled = true;
+            descuentoMontoInput.disabled = true;
+            descuentoPctInput.classList.add('bg-slate-100', 'cursor-not-allowed');
+            descuentoMontoInput.classList.add('bg-slate-100', 'cursor-not-allowed');
+            descuentoPctInput.classList.remove('bg-white');
+            descuentoMontoInput.classList.remove('bg-white');
+
+            if (tipo === 'PORCENTAJE') {
+                descuentoPctInput.disabled = false;
+                descuentoPctInput.classList.remove('bg-slate-100', 'cursor-not-allowed');
+                descuentoPctInput.classList.add('bg-white');
+                descuentoMontoInput.value = ''; // Clear other
+            } else if (tipo === 'MONTO') {
+                descuentoMontoInput.disabled = false;
+                descuentoMontoInput.classList.remove('bg-slate-100', 'cursor-not-allowed');
+                descuentoMontoInput.classList.add('bg-white');
+                descuentoPctInput.value = ''; // Clear other
+            } else {
+                descuentoPctInput.value = '';
+                descuentoMontoInput.value = '';
+            }
+            calcularTotalNeto();
+        }
+
         function calcularTotalNeto() {
             const totalBruto = parseFloat(totalBrutoInput.value) || 0;
             const tipoDesc = tipoDescuentoSelect.value;
@@ -327,7 +344,7 @@
             if (descuento > 0) {
                 if (resumenDescuento) {
                     resumenDescuento.classList.remove('hidden');
-                    resumenDescuento.style.display = 'flex'; // Restore flex display
+                    resumenDescuento.style.display = 'flex';
                 }
                 if (resumenMontoDescuento) resumenMontoDescuento.textContent = '-$' + descuento;
             } else {
@@ -357,7 +374,7 @@
             campoVuelto.classList.add('hidden');
 
             if (metodo === MET_EFECTIVO) {
-                campoVuelto.classList.remove('hidden'); // Logic might hide it again if styled via calcVuelto, but primarily controlled there
+                campoVuelto.classList.remove('hidden');
                 calcularVuelto();
             } else {
                 const totalNeto = calcularTotalNeto();
@@ -368,11 +385,12 @@
         // Listeners
         if (metodoPagoSelect) metodoPagoSelect.addEventListener('change', actualizarCamposPorMetodo);
         if (montoPagadoInput) montoPagadoInput.addEventListener('input', calcularVuelto);
-        if (tipoDescuentoSelect) tipoDescuentoSelect.addEventListener('change', calcularVuelto);
+        if (tipoDescuentoSelect) tipoDescuentoSelect.addEventListener('change', toggleDescuentoInputs);
         if (descuentoPctInput) descuentoPctInput.addEventListener('input', calcularVuelto);
         if (descuentoMontoInput) descuentoMontoInput.addEventListener('input', calcularVuelto);
 
         // Init
+        if (tipoDescuentoSelect) toggleDescuentoInputs();
         if (metodoPagoSelect) actualizarCamposPorMetodo();
     })();
 </script>

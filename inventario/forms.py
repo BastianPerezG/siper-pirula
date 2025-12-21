@@ -252,9 +252,19 @@ PromoItemFormSet = inlineformset_factory(
 
 
 class MermaForm(forms.ModelForm):
+    tipo_merma = forms.ChoiceField(
+        choices=[
+            ("PROVEEDOR", "Merma por Proveedor (Vencimiento, Dañado)"),
+            ("QUIEBRE", "Quiebre de Stock (Rotura interna, Pérdida)"),
+        ],
+        label="Tipo de Merma",
+        initial="PROVEEDOR",
+        widget=forms.Select(attrs={"class": "w-full border-slate-300 rounded-lg"}),
+    )
+
     class Meta:
         model = MovimientoInventario
-        fields = ["producto", "cantidad", "comentario"]
+        fields = ["producto", "tipo_merma", "cantidad", "comentario"]
 
     def __init__(self, *args, **kwargs):
         negocio = kwargs.pop("negocio", None)

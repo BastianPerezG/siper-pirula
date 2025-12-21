@@ -35,9 +35,7 @@
                 <tbody>
                     {% for item in pedido.items.all %}
                         <tr class="border-t border-slate-100">
-                            <td class="px-4 py-2 text-slate-800">
-                                {{ item.producto.nombre }}
-                            </td>
+                            <td class="px-4 py-2 text-slate-800"> {{ item.producto.nombre }}</td>
                             <td class="px-4 py-2 text-right">{{ item.cantidad }}</td>
                             <td class="px-4 py-2 text-right">$ {{ item.precio|floatformat:0 }}</td>
                             <td class="px-4 py-2 text-right">$ {{ item.subtotal|floatformat:0 }}</td>

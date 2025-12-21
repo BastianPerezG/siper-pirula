@@ -129,8 +129,7 @@
                             <span>Productos</span>
                             {% if stock_critico_count %}
                             <span
-                                class="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{{stock_critico_count
-                                }}</span>
+                                class="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{{stock_critico_count }}</span>
                             {% endif %}
                         </a>
                         <a href="{% url 'inventario:scan_ean' %}"
@@ -173,7 +172,6 @@
 
                     </div>
                 </div>
-
                 {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
                 <!-- Sección: Operaciones -->
                 <!-- Sección: Operaciones -->
@@ -262,7 +260,6 @@
                         </a>
                     </div>
                 </div>
-
                 {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
                 <!-- Sección: Reportes -->
                 <!-- Sección: Reportes -->

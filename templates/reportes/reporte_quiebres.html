@@ -209,6 +209,7 @@
                         <th class="px-4 py-2 text-left">Producto</th>
                         <th class="px-4 py-2 text-left">Categoría</th>
                         <th class="px-4 py-2 text-left">Proveedor</th>
+                        <th class="px-4 py-2 text-left">Motivo / Comentario</th>
                         <th class="px-4 py-2 text-left">Fecha quiebre</th>
                         <th class="px-4 py-2 text-left">Fecha reposición</th>
                         <th class="px-4 py-2 text-right">Duración (días)</th>
@@ -230,6 +231,9 @@
                             {% else %}
                             <span class="text-gray-400 text-xs">Sin proveedor</span>
                             {% endif %}
+                        </td>
+                        <td class="px-4 py-2 text-xs italic text-gray-600">
+                            {{ q.motivo|default:"-" }}
                         </td>
                         <td class="px-4 py-2">
                             {{ q.fecha_quiebre|date:"d-m-Y" }}

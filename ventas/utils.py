@@ -49,10 +49,7 @@ def validar_y_auditar_descuento_ticket(
         return (True, "")
 
     if not motivo.strip():
-        msg = "Debes ingresar un motivo para el descuento."
-        if request:
-            messages.error(request, msg)
-        return (False, msg)
+        motivo = "Descuento en Caja"  # Default reason since field was removed
 
     # Normalizamos: si hay % calculamos monto; si hay monto calculamos %
     if pct > 0 and monto == 0:

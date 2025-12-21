@@ -366,12 +366,7 @@ class VentaCheckoutForm(forms.Form):
                 self.add_error("descuento_monto", "Ingresa un monto válido.")
             cleaned["descuento_pct"] = 0
 
-        # Motivo obligatorio si hay cualquier tipo de descuento
-        if (pct > 0 or monto > 0) and not motivo:
-            self.add_error(
-                "motivo_descuento",
-                "Debes ingresar un motivo para aplicar el descuento.",
-            )
+
 
         # Validar monto pagado y calcular vuelto
         total_bruto = self.total_bruto_val

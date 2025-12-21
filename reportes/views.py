@@ -139,6 +139,7 @@ class ReporteStockQuiebresView(LoginRequiredMixin, TemplateView):
                     "Producto",
                     "Categoría",
                     "Proveedor",
+                    "Motivo",
                     "Fecha quiebre",
                     "Fecha reposición",
                     "Duración (días)",
@@ -158,11 +159,13 @@ class ReporteStockQuiebresView(LoginRequiredMixin, TemplateView):
                     fecha_reposicion = item.get("fecha_reposicion")
                     duracion = item.get("duracion")
                     total_quiebres = item.get("total_quiebres_producto", 0)
+                    motivo = item.get("motivo", "")
 
                     writer.writerow([
                         producto.nombre,
                         categoria,
                         proveedor,
+                        motivo,
                         fecha_quiebre.strftime("%d-%m-%Y"),
                         fecha_reposicion.strftime(
                             "%d-%m-%Y") if fecha_reposicion else "Sin reposición registrada",
@@ -329,6 +332,7 @@ class ReporteStockQuiebresView(LoginRequiredMixin, TemplateView):
                 "fecha_quiebre": fecha_quiebre,
                 "fecha_reposicion": fecha_reposicion,
                 "duracion": duracion,
+                "motivo": m.comentario,
             })
 
             quiebres_por_producto[producto.id] = (
@@ -379,7 +383,7 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
 
     def _get_ventas_filtradas(self, request):
         negocio = request.user.perfilusuario.negocio
-        hoy_sistema = timezone.now().date()  # fecha real de hoy
+        hoy_sistema = timezone.localtime(timezone.now()).date()  # fecha real de hoy (Local)
 
         ventas = Venta.objects.filter(
             negocio=negocio,
@@ -535,7 +539,7 @@ class ReporteVentasView(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         request = self.request
 
-        hoy_sistema = timezone.now().date()  
+        hoy_sistema = timezone.localtime(timezone.now()).date()  
 
         ventas_filtradas, desde, hasta, medio, categoria_id, negocio, dia_ref = \
             self._get_ventas_filtradas(request)
@@ -1006,7 +1010,8 @@ class ReporteMermasProveedorView(LoginRequiredMixin, TemplateView):
             mermas_qs = mermas_qs.filter(
                 producto__categoria_id=filtros["categoria_id"])
 
-        mermas_qs = mermas_qs.exclude(comentario__iexact="quiebre")
+        # Excluir quiebres/roturas internas (que van al reporte de stock crítico/quiebres)
+        mermas_qs = mermas_qs.exclude(comentario__iregex=r"(quieb|sin stock|agotad)")
         
         return compras_qs, mermas_qs
 
