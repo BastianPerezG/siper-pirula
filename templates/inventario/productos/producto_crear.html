@@ -73,7 +73,16 @@
                     <p class="text-red-600 text-xs mt-1">{{ form.categoria.errors|striptags }}</p>
                     {% endif %}
                 </div>
-
+                <div>
+                    <label for="{{ form.categoria.id_for_label }}"
+                        class="block text-sm font-semibold text-pirula-dark mb-2">
+                        Marca *
+                    </label>
+                    {{ form.marca }}
+                    {% if form.marca.errors %}
+                    <p class="text-red-600 text-xs mt-1">{{ form.marca.errors|striptags }}</p>
+                    {% endif %}
+                </div>
                 <div>
                     <label for="{{ form.proveedor.id_for_label }}"
                         class="block text-sm font-semibold text-pirula-dark mb-2">

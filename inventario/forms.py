@@ -25,6 +25,7 @@ class ProductoCrearForm(forms.ModelForm):
             "proveedor",
             "nombre",
             "categoria",
+            "marca",
             "precio",
             "costo",
             "unidad_de_venta",
