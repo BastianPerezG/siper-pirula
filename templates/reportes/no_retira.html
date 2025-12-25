@@ -10,11 +10,13 @@
     <form method="get" class="bg-white rounded-xl shadow p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
             <label class="block text-xs text-slate-500">Desde</label>
-            <input type="date" id="desde" name="desde" value="{{ desde_str }}" max="{{ hoy_sistema|date:'Y-m-d' }}" class="border rounded px-2 py-1 w-full text-sm">
+            <input type="date" id="desde" name="desde" value="{{ desde_str }}" max="{{ hoy_sistema|date:'Y-m-d' }}"
+                class="border rounded px-2 py-1 w-full text-sm">
         </div>
         <div>
             <label class="block text-xs text-slate-500">Hasta</label>
-            <input type="date" id="hasta" name="hasta" value="{{ hasta_str }}" max="{{ hoy_sistema|date:'Y-m-d' }}" class="border rounded px-2 py-1 w-full text-sm">
+            <input type="date" id="hasta" name="hasta" value="{{ hasta_str }}" max="{{ hoy_sistema|date:'Y-m-d' }}"
+                class="border rounded px-2 py-1 w-full text-sm">
         </div>
         <div>
             <label class="block text-xs text-slate-500">Canal</label>
@@ -39,6 +41,10 @@
             <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}export=csv"
                 class="inline-flex items-center px-3 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">
                 Exportar CSV
+            </a>
+            <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}export=pdf"
+                class="inline-flex items-center px-3 py-2 rounded-md bg-red-600 text-white text-sm font-medium hover:bg-red-700 ms-2">
+                Exportar PDF
             </a>
         </div>
     </form>

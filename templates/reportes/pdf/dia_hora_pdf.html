@@ -1,0 +1,81 @@
+{% extends "reportes/pdf/base_pdf.html" %}
+
+{% block report_title %}Reporte Día y Hora{% endblock %}
+
+{% block content %}
+<div class="summary-box">
+    <h3>Resumen General</h3>
+    <table style="border: none;">
+        <tr>
+            <td style="border: none;"><strong>Total Pedidos:</strong> {{ total_pedidos }}</td>
+            <td style="border: none;"><strong>Monto Total:</strong> ${{ total_monto|floatformat:0 }}</td>
+        </tr>
+    </table>
+</div>
+
+<h3>Horarios de Mayor Venta (Top 3)</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Día</th>
+            <th>Hora</th>
+            <th class="text-center">Pedidos</th>
+            <th class="text-right">Monto</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in top3 %}
+        <tr>
+            <td>{{ item.dia_label }}</td>
+            <td>{{ item.hora_label }}</td>
+            <td class="text-center font-bold">{{ item.cantidad }}</td>
+            <td class="text-right">${{ item.total|floatformat:0 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h3>Horarios de Menor Venta (Bottom 3)</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Día</th>
+            <th>Hora</th>
+            <th class="text-center">Pedidos</th>
+            <th class="text-right">Monto</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in bottom3 %}
+        <tr>
+            <td>{{ item.dia_label }}</td>
+            <td>{{ item.hora_label }}</td>
+            <td class="text-center">{{ item.cantidad }}</td>
+            <td class="text-right">${{ item.total|floatformat:0 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h3>Detalle por Día y Hora</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Día</th>
+            <th>Hora</th>
+            <th class="text-center">Pedidos</th>
+            <th class="text-right">Monto</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in dia_hora_list %}
+        <tr>
+            <td>{{ item.dia_label }}</td>
+            <td>{{ item.hora_label }}</td>
+            <td class="text-center">{{ item.cantidad }}</td>
+            <td class="text-right">${{ item.total|floatformat:0 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

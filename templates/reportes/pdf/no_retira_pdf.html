@@ -1,0 +1,59 @@
+{% extends "reportes/pdf/base_pdf.html" %}
+
+{% block report_title %}Reporte No Retira / Cancelados{% endblock %}
+
+{% block content %}
+<div class="summary-box">
+    <h3>Métricas Clave</h3>
+    <table style="border: none;">
+        <tr>
+            <td style="border: none;"><strong>Total Pedidos (período):</strong> {{ total_pedidos }}</td>
+            <td style="border: none;"><strong>No Retirados/Cancelados:</strong> {{ total_no_retirados }}</td>
+        </tr>
+        <tr>
+            <td style="border: none;"><strong>Tasa de No Retiro:</strong> {{ tasa_no_retira|floatformat:1 }}%</td>
+            <td style="border: none;"><strong>Monto Perdido:</strong> ${{ monto_no_retirado|floatformat:0 }}</td>
+        </tr>
+    </table>
+</div>
+
+<h3>Detalle de Pedidos</h3>
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Canal</th>
+            <th class="text-right">Monto</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for pedido in detalle_no_retirados %}
+        <tr>
+            <td>#{{ pedido.id }}</td>
+            <td>{{ pedido.fecha|date:"d/m/Y H:i" }}</td>
+            <td>
+                {% if pedido.cliente %}
+                {{ pedido.cliente }}
+                {% else %}
+                {{ pedido.nombre|default:"-" }}
+                {% endif %}
+            </td>
+            <td>
+                {% if pedido.canal %}
+                {{ pedido.canal }}
+                {% else %}
+                {{ pedido.get_forma_pago_display }}
+                {% endif %}
+            </td>
+            <td class="text-right">${{ pedido.total_monto|default:pedido.total|floatformat:0 }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5" class="text-center">No hay pedidos no retirados en este período.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

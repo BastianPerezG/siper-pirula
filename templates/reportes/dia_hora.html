@@ -19,13 +19,13 @@
         <input type="date" id="desde" name="desde" value="{{ desde_str }}" max="{{ hoy_sistema|date:'Y-m-d' }}"
           class="border rounded-md px-2 py-1 text-sm">
       </div>
-    
+
       <div>
         <label class="block text-xs font-medium text-slate-500 mb-1">Hasta</label>
         <input type="date" id="hasta" name="hasta" value="{{ hasta_str }}" max="{{ hoy_sistema|date:'Y-m-d' }}"
           class="border rounded-md px-2 py-1 text-sm">
       </div>
-    
+
       <button type="submit"
         class="inline-flex items-center px-3 py-2 rounded-md bg-sky-600 text-white text-sm font-medium hover:bg-sky-700">
         Aplicar filtros
@@ -54,16 +54,20 @@
     <div class="bg-white rounded-xl shadow-sm px-4 py-3">
       <p class="text-xs text-slate-500 uppercase">Exportar</p>
       <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}export=csv"
-         class="mt-1 inline-flex items-center px-3 py-2 rounded-md bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600">
+        class="mt-1 inline-flex items-center px-3 py-2 rounded-md bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600">
         Exportar tabla Día x Hora (CSV)
+      </a>
+      <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}export=pdf"
+        class="mt-1 inline-flex items-center px-3 py-2 rounded-md bg-red-600 text-white text-sm font-medium hover:bg-red-700 ms-2">
+        Exportar PDF
       </a>
     </div>
   </div>
 
   {% if total_pedidos == 0 %}
-    <div class="bg-white rounded-xl shadow-sm px-4 py-6 text-center text-slate-500">
-      No se encontraron pedidos para los filtros seleccionados. 🎉
-    </div>
+  <div class="bg-white rounded-xl shadow-sm px-4 py-6 text-center text-slate-500">
+    No se encontraron pedidos para los filtros seleccionados. 🎉
+  </div>
   {% else %}
 
   <!-- Gráfico: pedidos por franja horaria -->
@@ -83,14 +87,14 @@
       <h3 class="text-sm font-semibold text-slate-700 mb-2">Top 3 horarios con más pedidos</h3>
       <ul class="text-sm text-slate-600 space-y-1">
         {% for row in top3 %}
-          <li>
-            <span class="font-medium">{{ row.dia_label }}</span>,
-            {{ row.hora_label }} —
-            {{ row.cantidad }} pedido(s) ·
-            $ {{ row.total|floatformat:0 }}
-          </li>
+        <li>
+          <span class="font-medium">{{ row.dia_label }}</span>,
+          {{ row.hora_label }} —
+          {{ row.cantidad }} pedido(s) ·
+          $ {{ row.total|floatformat:0 }}
+        </li>
         {% empty %}
-          <li class="text-slate-400 text-xs">No hay datos suficientes.</li>
+        <li class="text-slate-400 text-xs">No hay datos suficientes.</li>
         {% endfor %}
       </ul>
     </div>
@@ -99,14 +103,14 @@
       <h3 class="text-sm font-semibold text-slate-700 mb-2">Top 3 horarios con menos pedidos</h3>
       <ul class="text-sm text-slate-600 space-y-1">
         {% for row in bottom3 %}
-          <li>
-            <span class="font-medium">{{ row.dia_label }}</span>,
-            {{ row.hora_label }} —
-            {{ row.cantidad }} pedido(s) ·
-            $ {{ row.total|floatformat:0 }}
-          </li>
+        <li>
+          <span class="font-medium">{{ row.dia_label }}</span>,
+          {{ row.hora_label }} —
+          {{ row.cantidad }} pedido(s) ·
+          $ {{ row.total|floatformat:0 }}
+        </li>
         {% empty %}
-          <li class="text-slate-400 text-xs">No hay datos suficientes.</li>
+        <li class="text-slate-400 text-xs">No hay datos suficientes.</li>
         {% endfor %}
       </ul>
     </div>
@@ -133,18 +137,18 @@
         </thead>
         <tbody class="divide-y divide-slate-100">
           {% for row in dia_hora_list %}
-            <tr class="hover:bg-slate-50">
-              <td class="px-3 py-2">{{ row.dia_label }}</td>
-              <td class="px-3 py-2">{{ row.hora_label }}</td>
-              <td class="px-3 py-2 text-right">{{ row.cantidad }}</td>
-              <td class="px-3 py-2 text-right">$ {{ row.total|floatformat:0 }}</td>
-            </tr>
+          <tr class="hover:bg-slate-50">
+            <td class="px-3 py-2">{{ row.dia_label }}</td>
+            <td class="px-3 py-2">{{ row.hora_label }}</td>
+            <td class="px-3 py-2 text-right">{{ row.cantidad }}</td>
+            <td class="px-3 py-2 text-right">$ {{ row.total|floatformat:0 }}</td>
+          </tr>
           {% empty %}
-            <tr>
-              <td colspan="4" class="px-3 py-4 text-center text-slate-400 text-sm">
-                No hay datos para mostrar en la tabla.
-              </td>
-            </tr>
+          <tr>
+            <td colspan="4" class="px-3 py-4 text-center text-slate-400 text-sm">
+              No hay datos para mostrar en la tabla.
+            </td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>
@@ -158,7 +162,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   const horasLabels = JSON.parse('{{ chart_horas_labels_json|escapejs }}');
-  const horasData   = JSON.parse('{{ chart_horas_data_json|escapejs }}');
+  const horasData = JSON.parse('{{ chart_horas_data_json|escapejs }}');
 
   const ctxHoras = document.getElementById('chartHoras').getContext('2d');
   new Chart(ctxHoras, {
@@ -183,7 +187,7 @@
   });
 
   const diasLabels = JSON.parse('{{ chart_dias_labels_json|escapejs }}');
-  const diasData   = JSON.parse('{{ chart_dias_data_json|escapejs }}');
+  const diasData = JSON.parse('{{ chart_dias_data_json|escapejs }}');
 
   const ctxDias = document.getElementById('chartDias').getContext('2d');
   new Chart(ctxDias, {
@@ -211,25 +215,25 @@
   const inputDesde = document.getElementById('desde');
   const inputHasta = document.getElementById('hasta');
 
-function normalizarFechas() {
-      let d = inputDesde.value;
-      let h = inputHasta.value;
+  function normalizarFechas() {
+    let d = inputDesde.value;
+    let h = inputHasta.value;
 
-      // Ajustar a hoy si se pasan al futuro
-      if (d && d > hoySistemaStr) {
-        inputDesde.value = hoySistemaStr;
-        d = hoySistemaStr;
-      }
-      if (h && h > hoySistemaStr) {
-        inputHasta.value = hoySistemaStr;
-        h = hoySistemaStr;
-      }
-
-      // Si hasta < desde, forzamos hasta = desde
-      if (d && h && h < d) {
-        inputHasta.value = d;
-      }
+    // Ajustar a hoy si se pasan al futuro
+    if (d && d > hoySistemaStr) {
+      inputDesde.value = hoySistemaStr;
+      d = hoySistemaStr;
     }
+    if (h && h > hoySistemaStr) {
+      inputHasta.value = hoySistemaStr;
+      h = hoySistemaStr;
+    }
+
+    // Si hasta < desde, forzamos hasta = desde
+    if (d && h && h < d) {
+      inputHasta.value = d;
+    }
+  }
 
   if (inputDesde) inputDesde.addEventListener('change', normalizarFechas);
   if (inputHasta) inputHasta.addEventListener('change', normalizarFechas);

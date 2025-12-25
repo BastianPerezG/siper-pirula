@@ -3,194 +3,228 @@
 {% block title %}Ventas - SIPER Pirula{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
-    <!-- Header -->
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+<div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- Header & Actions -->
+    <div
+        class="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-2xl shadow-lg p-6 sm:p-8 text-white flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-            <h1 class="text-2xl font-bold text-pirula-dark">💵 Historial de Ventas</h1>
-            <p class="text-sm text-slate-500 mt-1">
-                Consulta y gestiona todas las ventas realizadas en el negocio.
+            <h1 class="text-3xl font-bold tracking-tight">Ventas</h1>
+            <p class="text-emerald-100 mt-2 text-lg">
+                Gestiona y consulta el historial de ventas.
             </p>
         </div>
         <a href="{% url 'ventas:venta_crear' %}"
-            class="inline-flex items-center px-4 py-2 rounded-lg bg-pirula-accent hover:bg-pirula-light text-white text-sm font-semibold transition-colors shadow-md">
-            ➕ Registrar nueva venta
+            class="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-white text-emerald-700 font-bold shadow-md hover:bg-emerald-50 transform hover:-translate-y-0.5 transition-all gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Registrar Nueva Venta
         </a>
     </div>
 
-    <!-- Tabs de navegación -->
-    <div class="border-b border-pirula-beige">
-        <nav class="flex space-x-1" aria-label="Tabs">
+    <!-- Navigation Tabs -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-2 overflow-x-auto">
+        <nav class="flex space-x-2 min-w-max" aria-label="Tabs">
             <a href="{% url 'ventas:venta_lista' %}"
-                class="{% if not request.GET.filtro %}border-pirula-accent text-pirula-dark{% else %}border-transparent text-slate-500 hover:text-pirula-dark hover:border-pirula-beige{% endif %} whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
-                📋 Todas las ventas
+                class="px-4 py-2 rounded-xl text-sm font-bold transition-all {% if not request.GET.filtro and request.resolver_match.url_name == 'venta_lista' %}bg-emerald-100 text-emerald-800{% else %}text-slate-500 hover:text-slate-700 hover:bg-slate-50{% endif %}">
+                Todas las ventas
             </a>
             <a href="{% url 'ventas:ventas_en_espera_lista' %}"
-                class="{% if request.resolver_match.url_name == 'ventas_en_espera_lista' %}border-amber-500 text-amber-600{% else %}border-transparent text-slate-500 hover:text-pirula-dark hover:border-pirula-beige{% endif %} whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
-                ⏳ En espera
+                class="px-4 py-2 rounded-xl text-sm font-bold transition-all {% if request.resolver_match.url_name == 'ventas_en_espera_lista' %}bg-amber-100 text-amber-800{% else %}text-slate-500 hover:text-slate-700 hover:bg-slate-50{% endif %}">
+                En espera (sin pagar)
             </a>
             {% if user.perfilusuario.rol == "ADMIN" %}
             <a href="{% url 'ventas:pago_pendiente_lista' %}"
-                class="{% if request.resolver_match.url_name == 'pago_pendiente_lista' %}border-blue-500 text-blue-600{% else %}border-transparent text-slate-500 hover:text-pirula-dark hover:border-pirula-beige{% endif %} whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">
-                📋 Pagos pendientes
+                class="px-4 py-2 rounded-xl text-sm font-bold transition-all {% if request.resolver_match.url_name == 'pago_pendiente_lista' %}bg-blue-100 text-blue-800{% else %}text-slate-500 hover:text-slate-700 hover:bg-slate-50{% endif %}">
+                Pagos pendientes
             </a>
             {% endif %}
         </nav>
     </div>
 
-    <!-- Formulario de filtros y búsqueda -->
-    <form method="get" class="bg-white rounded-xl shadow-md border border-pirula-beige/30 p-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <!-- Búsqueda -->
-            <div>
-                <label for="{{ filtro_form.q.id_for_label }}"
-                    class="block text-xs font-bold text-pirula-dark mb-2 uppercase tracking-wide">
-                    🔍 {{ filtro_form.q.label }}
-                </label>
-                {{ filtro_form.q }}
-            </div>
-
-            <!-- Estado -->
-            <div>
-                <label for="{{ filtro_form.estado.id_for_label }}"
-                    class="block text-xs font-bold text-pirula-dark mb-2 uppercase tracking-wide">
-                    ⚡ {{ filtro_form.estado.label }}
-                </label>
-                {{ filtro_form.estado }}
-            </div>
-
-            <!-- Método de pago -->
-            <div>
-                <label for="{{ filtro_form.metodo_pago.id_for_label }}"
-                    class="block text-xs font-bold text-pirula-dark mb-2 uppercase tracking-wide">
-                    💳 {{ filtro_form.metodo_pago.label }}
-                </label>
-                {{ filtro_form.metodo_pago }}
-            </div>
-
-            <!-- Tipo de documento -->
-            <div>
-                <label for="{{ filtro_form.doc_tipo.id_for_label }}"
-                    class="block text-xs font-bold text-pirula-dark mb-2 uppercase tracking-wide">
-                    📄 {{ filtro_form.doc_tipo.label }}
-                </label>
-                {{ filtro_form.doc_tipo }}
-            </div>
+    <!-- Filters -->
+    <div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+            <svg class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            <h2 class="font-bold text-slate-700 text-sm uppercase tracking-wide">Filtros de Búsqueda</h2>
         </div>
+        <div class="p-6">
+            <form method="get" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Búsqueda -->
+                    <div>
+                        <label for="{{ filtro_form.q.id_for_label }}"
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            {{ filtro_form.q.label }}
+                        </label>
+                        {{ filtro_form.q }}
+                        <!-- Assumed to be styled via widget or we can wrap if needed, ideally widget has class form-input -->
+                    </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <!-- Fecha desde -->
-            <div>
-                <label for="{{ filtro_form.fecha_desde.id_for_label }}"
-                    class="block text-xs font-bold text-pirula-dark mb-2 uppercase tracking-wide">
-                    📅 {{ filtro_form.fecha_desde.label }}
-                </label>
-                {{ filtro_form.fecha_desde }}
-            </div>
+                    <!-- Estado -->
+                    <div>
+                        <label for="{{ filtro_form.estado.id_for_label }}"
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            {{ filtro_form.estado.label }}
+                        </label>
+                        {{ filtro_form.estado }}
+                    </div>
 
-            <!-- Fecha hasta -->
-            <div>
-                <label for="{{ filtro_form.fecha_hasta.id_for_label }}"
-                    class="block text-xs font-bold text-pirula-dark mb-2 uppercase tracking-wide">
-                    📅 {{ filtro_form.fecha_hasta.label }}
-                </label>
-                {{ filtro_form.fecha_hasta }}
-            </div>
+                    <!-- Método de pago -->
+                    <div>
+                        <label for="{{ filtro_form.metodo_pago.id_for_label }}"
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            {{ filtro_form.metodo_pago.label }}
+                        </label>
+                        {{ filtro_form.metodo_pago }}
+                    </div>
+
+                    <!-- Tipo de documento -->
+                    <div>
+                        <label for="{{ filtro_form.doc_tipo.id_for_label }}"
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            {{ filtro_form.doc_tipo.label }}
+                        </label>
+                        {{ filtro_form.doc_tipo }}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Fecha desde -->
+                    <div>
+                        <label for="{{ filtro_form.fecha_desde.id_for_label }}"
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            {{ filtro_form.fecha_desde.label }}
+                        </label>
+                        {{ filtro_form.fecha_desde }}
+                    </div>
+
+                    <!-- Fecha hasta -->
+                    <div>
+                        <label for="{{ filtro_form.fecha_hasta.id_for_label }}"
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            {{ filtro_form.fecha_hasta.label }}
+                        </label>
+                        {{ filtro_form.fecha_hasta }}
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-3 pt-4 border-t border-slate-100 justify-end">
+                    <a href="{% url 'ventas:venta_lista' %}"
+                        class="inline-flex items-center px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 text-sm font-bold hover:bg-slate-50 hover:text-slate-800 transition-colors">
+                        Limpiar
+                    </a>
+                    <button type="submit"
+                        class="inline-flex items-center px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold shadow-md shadow-emerald-200 hover:bg-emerald-700 hover:shadow-lg transition-all gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        Aplicar Filtros
+                    </button>
+                </div>
+            </form>
         </div>
+    </div>
 
-        <div class="flex flex-wrap gap-3 pt-4 mt-4 border-t border-pirula-beige/30">
-            <button type="submit"
-                class="inline-flex items-center px-4 py-2 rounded-lg bg-pirula-dark hover:bg-pirula-medium text-white text-sm font-semibold transition-colors">
-                🔍 Buscar
-            </button>
-            <a href="{% url 'ventas:venta_lista' %}"
-                class="inline-flex items-center px-4 py-2 rounded-lg border border-pirula-beige text-pirula-dark text-sm hover:bg-pirula-cream transition-colors">
-                Limpiar filtros
-            </a>
-        </div>
-    </form>
-
-    <!-- Tabla de ventas -->
-    <div class="bg-white rounded-xl shadow-md border border-pirula-beige/30 overflow-hidden">
+    <!-- Sales Table -->
+    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
         <div class="overflow-x-auto">
-            <table class="min-w-full">
-                <thead class="bg-pirula-cream border-b border-pirula-beige">
+            <table class="min-w-full text-sm text-left">
+                <thead
+                    class="bg-slate-50 border-b border-slate-100 text-slate-500 uppercase tracking-wider text-xs font-bold">
                     <tr>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">ID
-                        </th>
-                        <th
-                            class="px-4 py-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide hidden md:table-cell">
-                            Fecha</th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">
-                            Documento</th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide">
-                            Estado</th>
-                        <th
-                            class="px-4 py-3 text-left text-xs font-bold text-pirula-dark uppercase tracking-wide hidden lg:table-cell">
-                            Medio de pago</th>
-                        <th class="px-4 py-3 text-right text-xs font-bold text-pirula-dark uppercase tracking-wide">
-                            Total</th>
-                        <th class="px-4 py-3 text-center text-xs font-bold text-pirula-dark uppercase tracking-wide">
-                            Acciones</th>
+                        <th class="px-6 py-4">ID</th>
+                        <th class="px-6 py-4 hidden md:table-cell">Fecha</th>
+                        <th class="px-6 py-4">Documento</th>
+                        <th class="px-6 py-4">Estado</th>
+                        <th class="px-6 py-4 hidden lg:table-cell">Medio de pago</th>
+                        <th class="px-6 py-4 text-right">Total</th>
+                        <th class="px-6 py-4 text-center">Acciones</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-pirula-beige/30">
+                <tbody class="divide-y divide-slate-50">
                     {% for venta in ventas %}
-                    <tr class="hover:bg-pirula-cream/50 transition-colors">
-                        <td class="px-4 py-3">
+                    <tr class="hover:bg-slate-50/80 transition-colors group">
+                        <td class="px-6 py-4">
                             <a href="{% url 'ventas:venta_detalle' venta.pk %}"
-                                class="text-pirula-accent hover:text-pirula-dark font-medium">
+                                class="font-bold text-emerald-600 hover:text-emerald-700 hover:underline">
                                 #{{ venta.id }}
                             </a>
                         </td>
-                        <td class="px-4 py-3 hidden md:table-cell text-sm text-slate-600">{{ venta.fecha|date:"d/m/Y H:i" }}</td>
-                        <td class="px-4 py-3 text-sm">
-                            <span class="md:hidden">{{ venta.doc_tipo }} {{ venta.doc_num }}</span>
-                            <span class="hidden md:inline">{{ venta.doc_tipo }} {{ venta.doc_num }}</span>
+                        <td class="px-6 py-4 hidden md:table-cell text-slate-600 font-medium">
+                            {{ venta.fecha|date:"d/m/Y H:i" }}
                         </td>
-                        <td class="px-4 py-3">
+                        <td class="px-6 py-4 text-slate-700 font-semibold">
+                            <div class="flex items-center gap-2">
+                                <span class="bg-slate-100 px-2 py-1 rounded text-xs border border-slate-200">{{ venta.doc_tipo }}</span>
+                                <span>{{ venta.doc_num }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
                             {% if venta.estado == "ABIERTA" %}
                             <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                ⏳ En espera
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>
+                                En espera
                             </span>
                             {% elif venta.estado == "ANULADA" %}
                             <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                                ❌ Anulada
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5"></span>
+                                Anulada
                             </span>
                             {% else %}
                             <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                                ✅ Cerrada
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                                Cerrada
                             </span>
                             {% endif %}
                         </td>
-                        <td class="px-4 py-3 hidden lg:table-cell text-sm text-slate-600">{{ venta.get_medio_pago_display|default:venta.medio_pago }}</td>
-                        <td class="px-4 py-3 text-right">
-                            <span class="font-bold text-pirula-dark">${{ venta.monto_total|default:venta.total|floatformat:0 }}</span>
+                        <td class="px-6 py-4 hidden lg:table-cell text-slate-600 capitalize">
+                            {{ venta.get_medio_pago_display|default:venta.medio_pago }}
                         </td>
-                        <td class="px-4 py-3">
-                            <div class="flex items-center justify-center gap-2">
+                        <td class="px-6 py-4 text-right font-black text-slate-700">
+                            ${{ venta.monto_total|default:venta.total|floatformat:0 }}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div
+                                class="flex items-center justify-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                 <a href="{% url 'ventas:venta_detalle' venta.pk %}"
-                                    class="text-pirula-accent hover:text-pirula-dark font-medium text-sm transition-colors"
-                                    title="Ver detalle">
-                                    👁️
+                                    class="p-2 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                    title="Ver Detalle">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
                                 </a>
 
                                 {% if venta.estado == "ABIERTA" %}
                                 <a href="{% url 'ventas:venta_cobrar' venta.pk %}"
-                                    class="text-amber-600 hover:text-amber-800 font-medium text-sm transition-colors"
-                                    title="Cobrar">
-                                    💰
+                                    class="p-2 rounded-lg text-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                                    title="Cobrar Venta">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
                                 </a>
                                 {% endif %}
 
                                 {% if venta.estado == "CERRADA" %}
                                 <a href="{% url 'ventas:venta_anular' venta.pk %}"
-                                    class="text-red-500 hover:text-red-700 font-medium text-sm transition-colors"
-                                    title="Anular">
-                                    🚫
+                                    class="p-2 rounded-lg text-red-300 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                    title="Anular Venta">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
                                 </a>
                                 {% endif %}
                             </div>
@@ -198,16 +232,15 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="px-4 py-12 text-center">
-                            <div class="text-slate-400">
-                                <div class="text-4xl mb-2">💵</div>
-                                <p>
-                                    {% if request.GET %}
-                                    No se encontraron ventas con los filtros aplicados.
-                                    {% else %}
-                                    No hay ventas registradas.
-                                    {% endif %}
-                                </p>
+                        <td colspan="7" class="px-6 py-12 text-center text-slate-500">
+                            <div class="flex flex-col items-center justify-center gap-3">
+                                <svg class="w-12 h-12 text-slate-300" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <p class="text-lg font-medium text-slate-600">No se encontraron ventas</p>
+                                <p class="text-sm">Prueba ajustando los filtros de búsqueda.</p>
                             </div>
                         </td>
                     </tr>
@@ -215,31 +248,32 @@
                 </tbody>
             </table>
         </div>
-    </div>
 
-    <!-- Paginación -->
-    {% if is_paginated %}
-    <div class="flex justify-center">
-        <nav class="inline-flex rounded-lg shadow-sm border border-pirula-beige overflow-hidden">
-            {% if page_obj.has_previous %}
-            <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}"
-                class="px-4 py-2 text-sm font-medium text-pirula-dark bg-white hover:bg-pirula-cream border-r border-pirula-beige transition-colors">
-                ← Anterior
-            </a>
-            {% endif %}
-
-            <span class="px-4 py-2 text-sm font-bold text-pirula-dark bg-pirula-cream">
-                {{ page_obj.number }} / {{ paginator.num_pages }}
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="bg-white border-t border-slate-100 px-6 py-4 flex items-center justify-between">
+            <span class="text-sm text-slate-500">
+                Mostrando <span class="font-bold text-slate-700">{{ page_obj.start_index }}</span> a <span
+                    class="font-bold text-slate-700">{{ page_obj.end_index }}</span> de <span
+                    class="font-bold text-slate-700">{{ paginator.count }}</span> resultados
             </span>
+            <div class="flex gap-2">
+                {% if page_obj.has_previous %}
+                <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}"
+                    class="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors">
+                    Anterior
+                </a>
+                {% endif %}
 
-            {% if page_obj.has_next %}
-            <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}"
-                class="px-4 py-2 text-sm font-medium text-pirula-dark bg-white hover:bg-pirula-cream border-l border-pirula-beige transition-colors">
-                Siguiente →
-            </a>
-            {% endif %}
-        </nav>
+                {% if page_obj.has_next %}
+                <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}"
+                    class="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors">
+                    Siguiente
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 {% endblock %}

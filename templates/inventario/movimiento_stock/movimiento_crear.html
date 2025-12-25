@@ -3,43 +3,137 @@
 {% block title %}Registrar movimiento - SIPER Pirula{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-6">
+<div class="max-w-4xl mx-auto space-y-8">
 
-    <div>
-        <h1 class="text-2xl font-bold text-slate-800">
-            Registrar movimiento de inventario
-        </h1>
+    <!-- Header Section -->
+    <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl shadow-lg p-6 text-white mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight">Registrar Movimiento</h1>
+                <p class="text-blue-100 mt-1 text-lg">Ajuste manual de inventario</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+            </div>
+        </div>
     </div>
 
-    <!-- Info del producto -->
-    <div class="bg-white rounded-lg shadow-sm p-4 text-sm text-slate-700">
-        <p><span class="font-semibold">Producto:</span> {{ producto.nombre }}</p>
-        <p><span class="font-semibold">EAN:</span> {{ producto.ean }}</p>
-        <p><span class="font-semibold">Stock actual:</span>
-            <span class="text-emerald-600 font-semibold">{{ producto.stock_actual }}</span>
-        </p>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Info del producto (Left Column) -->
+        <div class="md:col-span-1 space-y-4">
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
+                <div class="bg-slate-50 px-6 py-4 border-b border-slate-100">
+                    <h3 class="font-bold text-slate-800">Detalles del Producto</h3>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Nombre</p>
+                        <p class="text-lg font-bold text-slate-800">{{ producto.nombre }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Código EAN</p>
+                        <p class="text-slate-600 font-mono text-sm bg-slate-100 px-2 py-1 rounded inline-block mt-1">{{ producto.ean }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Stock Actual</p>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span
+                                class="text-3xl font-bold {% if producto.stock_actual <= producto.stock_min %}text-red-500{% else %}text-emerald-600{% endif %}">
+                                {{ producto.stock_actual }}
+                            </span>
+                            <span
+                                class="text-xs font-semibold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">unidades</span>
+                        </div>
+                    </div>
+                    {% if producto.stock_min %}
+                    <div class="pt-2 border-t border-slate-100">
+                        <p class="text-xs text-slate-400">Stock Mínimo: <span class="font-medium text-slate-600">{{ producto.stock_min }}</span></p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulario (Right Column) -->
+        <div class="md:col-span-2">
+            <form method="post" class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+                {% csrf_token %}
+
+                <div class="p-6 md:p-8 space-y-6">
+
+                    {% if form.errors %}
+                    <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm" role="alert">
+                        <p class="font-bold mb-1">Por favor corrige los siguientes errores:</p>
+                        {{ form.errors }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Tipo de Movimiento -->
+                    <div class="space-y-2">
+                        <label for="{{ form.tipo.id_for_label }}" class="block text-sm font-bold text-slate-700">
+                            Tipo de Movimiento <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            {{ form.tipo }}
+                            <!-- Note: Standard Django Select widget usually needs consistent styling via class -->
+                            <script>
+                                document.getElementById('{{ form.tipo.id_for_label }}').className += " w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-medium text-slate-700 bg-white";
+                            </script>
+                        </div>
+                        <p class="text-xs text-slate-500">Selecciona si estás agregando (Entrada) o quitando (Salida)
+                            stock.</p>
+                    </div>
+
+                    <!-- Cantidad -->
+                    <div class="space-y-2">
+                        <label for="{{ form.cantidad.id_for_label }}" class="block text-sm font-bold text-slate-700">
+                            Cantidad <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.cantidad }}
+                        <script>
+                            document.getElementById('{{ form.cantidad.id_for_label }}').className += " w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-bold text-lg text-slate-700";
+                            document.getElementById('{{ form.cantidad.id_for_label }}').placeholder = "0";
+                        </script>
+                    </div>
+
+                    <!-- Comentario -->
+                    <div class="space-y-2">
+                        <label for="{{ form.comentario.id_for_label }}" class="block text-sm font-bold text-slate-700">
+                            Comentario / Motivo
+                        </label>
+                        {{ form.comentario }}
+                        <script>
+                            var commentInput = document.getElementById('{{ form.comentario.id_for_label }}');
+                            if (commentInput) {
+                                commentInput.className += " w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-slate-700";
+                                commentInput.rows = 3;
+                            }
+                        </script>
+                        <p class="text-xs text-slate-500">Explica brevemente la razón de este ajuste.</p>
+                    </div>
+
+                </div>
+
+                <!-- Footer Actions -->
+                <div
+                    class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3">
+                    <a href="{% url 'inventario:producto_detalle' producto.pk %}"
+                        class="w-full sm:w-auto py-3 px-6 bg-white border-2 border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 hover:text-slate-800 text-center transition-colors">
+                        Cancelar
+                    </a>
+                    <button type="submit"
+                        class="w-full sm:w-auto py-3 px-8 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-200 transition-all transform hover:-translate-y-0.5">
+                        Guardar Movimiento
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
-
-    <!-- Formulario -->
-    <form method="post" class="bg-white rounded-lg shadow-sm p-6 space-y-4">
-        {% csrf_token %}
-
-        <div class="space-y-3 text-sm">
-            {{ form.as_p }}
-        </div>
-
-        <div class="flex flex-wrap gap-3 pt-4">
-            <button type="submit"
-                    class="px-4 py-2 bg-emerald-600 text-white rounded text-sm font-medium hover:bg-emerald-700">
-                Guardar movimiento
-            </button>
-
-            <a href="{% url 'inventario:producto_detalle' producto.pk %}"
-               class="px-4 py-2 border border-slate-300 rounded text-sm hover:bg-slate-50">
-                Volver a la ficha
-            </a>
-        </div>
-    </form>
 
 </div>
 {% endblock %}

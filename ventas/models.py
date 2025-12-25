@@ -604,12 +604,30 @@ class CajaTurno(models.Model):
     # --- Helpers de negocio --- #
     def ventas_del_turno(self):
         """
-        Ventas cerradas dentro del rango de este turno (excluye anuladas).
+        Ventas cerradas dentro del rango de este turno.
+        Busca desde el cierre de la caja anterior para incluir ventas 'huérfanas' 
+        realizadas entre turnos (ej. si se olvidó abrir caja).
+        Solo incluye ventas CERRADA (pagadas).
         """
+        start_time = self.fecha_apertura
+        
+        # Buscar la última caja cerrada antes de esta apertura
+        last_caja = CajaTurno.objects.filter(
+            negocio=self.negocio,
+            estado=self.EST_CERRADA,
+            fecha_cierre__lt=self.fecha_apertura
+        ).order_by('-fecha_cierre').first()
+        
+        if last_caja:
+            start_time = last_caja.fecha_cierre
+            
+        # Filtramos ventas desde ese momento
+        # Usamos gt (greater than) para no solapar milisegundos exactos
         qs = Venta.objects.filter(
             negocio=self.negocio,
-            fecha__gte=self.fecha_apertura,
-        ).exclude(estado=Venta.EST_ANULADA)
+            fecha__gt=start_time,
+            estado=Venta.EST_CERRADA  # Solo ventas completadas/pagadas
+        )
 
         if self.fecha_cierre:
             qs = qs.filter(fecha__lte=self.fecha_cierre)

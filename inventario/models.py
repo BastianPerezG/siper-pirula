@@ -7,11 +7,11 @@ from django.conf import settings
 from django.contrib.auth  import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-
+from django.db.models.functions import Cast
 # =======
 from django.utils.text import slugify
 from django.utils import timezone
-
+#hi
 
 # Modelo Inventario.
 
@@ -146,7 +146,7 @@ class Producto(models.Model):
                             MovimientoInventario.TIPO_RESERVA,
                             MovimientoInventario.TIPO_VENTA, 
                         ],
-                        then=-F("cantidad")
+                        then=Cast(F('cantidad'), output_field=IntegerField()) * -1
                     ),
                     default=0,
                     output_field=IntegerField(),
@@ -499,6 +499,15 @@ class Promo(models.Model):
         Diferencia entre precio normal y precio combo.
         """
         return max(self.precio_normal - self.precio_combo, 0)
+
+    @property
+    def porcentaje_descuento(self) -> int:
+        """
+        Calcula el porcentaje de descuento redondeado.
+        """
+        if self.precio_normal > 0:
+            return int((self.ahorro / self.precio_normal) * 100)
+        return 0
 
     def tiene_stock(self, cantidad_packs: int = 1) -> bool:
         """
