@@ -1,0 +1,293 @@
+{% extends "core/base.html" %}
+
+{% block title %}Movimientos de Inventario - SIPER Pirula{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-pirula-dark flex items-center gap-2">
+                <span>📋</span> Movimientos de Inventario
+            </h1>
+            <p class="text-sm text-slate-500 mt-1">
+                Historial completo de entradas, salidas y ajustes de stock
+            </p>
+        </div>
+        <a href="{% url 'inventario:producto_lista' %}"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-pirula-beige text-pirula-dark text-sm font-medium hover:bg-pirula-cream transition-colors">
+            ← Volver a Productos
+        </a>
+    </div>
+
+    <!-- Panel de Filtros -->
+    <section class="bg-white rounded-xl shadow-md border border-pirula-beige/30 overflow-hidden"
+        x-data="{ open: true }">
+        <button @click="open = !open"
+            class="w-full flex items-center justify-between px-6 py-4 bg-slate-50 border-b border-slate-100 hover:bg-slate-100 transition-colors">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <span class="font-semibold text-slate-700">Filtros</span>
+                {% if filtros.producto or filtros.categoria or filtros.marca or filtros.tipo or filtros.desde or filtros.hasta %}
+                <span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Activos</span>
+                {% endif %}
+            </div>
+            <svg class="w-5 h-5 text-slate-400 transform transition-transform duration-200"
+                :class="{'rotate-180': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </button>
+
+        <div x-show="open" x-transition class="p-6">
+            <form method="get" class="space-y-4">
+                <!-- Primera fila: Filtros principales -->
+                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <!-- Categoría -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Categoría</label>
+                        <select name="categoria" id="filtro-categoria"
+                            class="w-full border border-pirula-beige rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
+                            <option value="">Todas las categorías</option>
+                            {% for cat in categorias %}
+                            <option value="{{ cat.id }}" {% if filtros.categoria == cat.id|stringformat:"s" %}selected{% endif %}>
+                                {{ cat.nombre }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Marca -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Marca</label>
+                        <select name="marca" id="filtro-marca"
+                            class="w-full border border-pirula-beige rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
+                            <option value="">Todas las marcas</option>
+                            {% for m in marcas %}
+                            <option value="{{ m.id }}" {% if filtros.marca == m.id|stringformat:"s" %}selected{% endif %}>
+                                {{ m.nombre }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Producto específico -->
+                    <div class="lg:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">
+                            Producto específico
+                        </label>
+                        <select name="producto" id="filtro-producto"
+                            class="w-full border border-pirula-beige rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
+                            <option value="">-- Todos los productos --</option>
+                            {% for p in productos %}
+                            <option value="{{ p.id }}" data-categoria="{{ p.categoria_id|default:'' }}"
+                                data-marca="{{ p.marca_id|default:'' }}" {% if filtros.producto == p.id|stringformat:"s" %}selected{% endif %}>
+                                {{ p.nombre }}{% if p.formato %} - {{ p.formato }}{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Segunda fila: Tipo y fechas -->
+                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <!-- Tipo -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Tipo de movimiento</label>
+                        <select name="tipo"
+                            class="w-full border border-pirula-beige rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
+                            <option value="">Todos los tipos</option>
+                            {% for val, label in tipos_movimiento %}
+                            <option value="{{ val }}" {% if filtros.tipo == val %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Fecha desde -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Desde</label>
+                        <input type="date" name="desde" value="{{ filtros.desde }}"
+                            class="w-full border border-pirula-beige rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
+                    </div>
+
+                    <!-- Fecha hasta -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Hasta</label>
+                        <input type="date" name="hasta" value="{{ filtros.hasta }}"
+                            class="w-full border border-pirula-beige rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="flex items-end gap-2">
+                        <button type="submit"
+                            class="flex-1 px-5 py-2 bg-pirula-accent hover:bg-pirula-light text-white text-sm font-semibold rounded-lg shadow-md transition-colors">
+                            🔍 Filtrar
+                        </button>
+                        <a href="{% url 'inventario:movimiento_global_lista' %}"
+                            class="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+                            Limpiar
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <!-- Contador de resultados -->
+    <div class="flex items-center justify-between">
+        <p class="text-sm text-slate-500">
+            Mostrando <span class="font-semibold text-slate-700">{{ movimientos|length }}</span> movimiento{{ movimientos|length|pluralize:"s" }}
+            {% if is_paginated %}de {{ page_obj.paginator.count }}{% endif %}
+        </p>
+    </div>
+
+    <!-- Tabla de Movimientos -->
+    <div class="bg-white rounded-xl shadow-md border border-pirula-beige/30 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-pirula-cream/50 border-b border-pirula-beige">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-semibold text-pirula-dark">Fecha</th>
+                        <th class="px-4 py-3 text-left font-semibold text-pirula-dark">Producto</th>
+                        <th class="px-4 py-3 text-left font-semibold text-pirula-dark hidden md:table-cell">Categoría
+                        </th>
+                        <th class="px-4 py-3 text-left font-semibold text-pirula-dark">Tipo</th>
+                        <th class="px-4 py-3 text-right font-semibold text-pirula-dark">Cantidad</th>
+                        <th class="px-4 py-3 text-left font-semibold text-pirula-dark hidden lg:table-cell">Comentario
+                        </th>
+                        <th class="px-4 py-3 text-left font-semibold text-pirula-dark hidden lg:table-cell">Usuario</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for m in movimientos %}
+                    <tr class="hover:bg-pirula-cream/30 transition-colors">
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <span class="text-slate-600">{{ m.fecha|date:"d/m/Y" }}</span>
+                            <span class="text-slate-400 text-xs">{{ m.fecha|time:"H:i" }}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <a href="{% url 'inventario:producto_detalle' m.producto.pk %}"
+                                class="text-pirula-accent hover:underline font-medium">
+                                {{ m.producto.nombre }}
+                            </a>
+                            {% if m.producto.ean %}
+                            <p class="text-xs text-slate-400">{{ m.producto.ean }}</p>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 hidden md:table-cell">
+                            {% if m.producto.categoria %}
+                            <span class="text-slate-600">{{ m.producto.categoria.nombre }}</span>
+                            {% else %}
+                            <span class="text-slate-400">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if m.tipo == 'ENTRADA' %}
+                            <span
+                                class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                                ↑ Entrada
+                            </span>
+                            {% elif m.tipo == 'SALIDA' %}
+                            <span
+                                class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                ↓ Salida
+                            </span>
+                            {% elif m.tipo == 'AJUSTE' %}
+                            <span
+                                class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                ⟳ Ajuste
+                            </span>
+                            {% elif m.tipo == 'MERMA' %}
+                            <span
+                                class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                                ⚠ Merma
+                            </span>
+                            {% elif m.tipo == 'RESERVA' %}
+                            <span
+                                class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                                🔒 Reserva
+                            </span>
+                            {% elif m.tipo == 'VENTA' %}
+                            <span
+                                class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-sky-100 text-sky-700">
+                                💵 Venta
+                            </span>
+                            {% else %}
+                            <span class="text-slate-500">{{ m.get_tipo_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td
+                            class="px-4 py-3 text-right font-semibold tabular-nums
+                            {% if m.tipo == 'ENTRADA' %}text-emerald-600{% elif m.tipo == 'SALIDA' or m.tipo == 'VENTA' or m.tipo == 'MERMA' %}text-red-600{% else %}text-slate-700{% endif %}">
+                            {% if m.tipo == 'ENTRADA' %}+{% elif m.tipo == 'SALIDA' or m.tipo == 'VENTA' or m.tipo == 'MERMA' %}-{% endif %}{{ m.cantidad }}
+                        </td>
+                        <td class="px-4 py-3 hidden lg:table-cell">
+                            <span class="text-slate-500 text-sm line-clamp-2">{{ m.comentario|default:"—" }}</span>
+                        </td>
+                        <td class="px-4 py-3 hidden lg:table-cell">
+                            {% if m.usuario %}
+                            <span class="text-slate-600">{{ m.usuario.get_full_name|default:m.usuario.username }}</span>
+                            {% else %}
+                            <span class="text-slate-400">Sistema</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-4 py-12 text-center">
+                            <div class="flex flex-col items-center gap-3">
+                                <span class="text-5xl">📦</span>
+                                <p class="text-slate-500 font-medium">No hay movimientos registrados</p>
+                                <p class="text-slate-400 text-sm">Los movimientos aparecerán aquí cuando se registren
+                                    compras, ventas o ajustes</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Paginación -->
+    {% if is_paginated %}
+    <nav class="flex justify-center">
+        <ul class="inline-flex items-center gap-1">
+            {% if page_obj.has_previous %}
+            <li>
+                <a href="?page=1{% if filtros.producto %}&producto={{ filtros.producto }}{% endif %}{% if filtros.categoria %}&categoria={{ filtros.categoria }}{% endif %}{% if filtros.marca %}&marca={{ filtros.marca }}{% endif %}{% if filtros.tipo %}&tipo={{ filtros.tipo }}{% endif %}{% if filtros.desde %}&desde={{ filtros.desde }}{% endif %}{% if filtros.hasta %}&hasta={{ filtros.hasta }}{% endif %}"
+                    class="px-3 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-50">«</a>
+            </li>
+            <li>
+                <a href="?page={{ page_obj.previous_page_number }}{% if filtros.producto %}&producto={{ filtros.producto }}{% endif %}{% if filtros.categoria %}&categoria={{ filtros.categoria }}{% endif %}{% if filtros.marca %}&marca={{ filtros.marca }}{% endif %}{% if filtros.tipo %}&tipo={{ filtros.tipo }}{% endif %}{% if filtros.desde %}&desde={{ filtros.desde }}{% endif %}{% if filtros.hasta %}&hasta={{ filtros.hasta }}{% endif %}"
+                    class="px-3 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-50">‹</a>
+            </li>
+            {% endif %}
+
+            <li>
+                <span class="px-4 py-2 bg-pirula-accent text-white text-sm font-medium rounded-lg">
+                    {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                </span>
+            </li>
+
+            {% if page_obj.has_next %}
+            <li>
+                <a href="?page={{ page_obj.next_page_number }}{% if filtros.producto %}&producto={{ filtros.producto }}{% endif %}{% if filtros.categoria %}&categoria={{ filtros.categoria }}{% endif %}{% if filtros.marca %}&marca={{ filtros.marca }}{% endif %}{% if filtros.tipo %}&tipo={{ filtros.tipo }}{% endif %}{% if filtros.desde %}&desde={{ filtros.desde }}{% endif %}{% if filtros.hasta %}&hasta={{ filtros.hasta }}{% endif %}"
+                    class="px-3 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-50">›</a>
+            </li>
+            <li>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if filtros.producto %}&producto={{ filtros.producto }}{% endif %}{% if filtros.categoria %}&categoria={{ filtros.categoria }}{% endif %}{% if filtros.marca %}&marca={{ filtros.marca }}{% endif %}{% if filtros.tipo %}&tipo={{ filtros.tipo }}{% endif %}{% if filtros.desde %}&desde={{ filtros.desde }}{% endif %}{% if filtros.hasta %}&hasta={{ filtros.hasta }}{% endif %}"
+                    class="px-3 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-50">»</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+</div>
+{% endblock %}

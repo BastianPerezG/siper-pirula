@@ -176,11 +176,10 @@
             </div>
             <div class="item-details">
                 {{ item.cantidad }} x ${{ item.precio_unit|floatformat:0 }}
+                {% if item.cantidad > 1 %}
+                <span style="font-size: 9px; margin-left: 5px;">= ${{ item.subtotal|floatformat:0 }}</span>
+                {% endif %}
             </div>
-        </div>
-        <div class="item-row" style="font-size: 10px; margin-left: 10px;">
-            <span>Subtotal:</span>
-            <span>${{ item.subtotal|floatformat:0 }}</span>
         </div>
         {% endfor %}
     </div>
@@ -214,6 +213,21 @@
             <span>TOTAL:</span>
             <span>${{ venta.monto_total|default:venta.total|floatformat:0 }}</span>
         </div>
+        <div class="item-row" style="font-size: 9px; color: #666; margin-top: 3px;">
+            <span>(IVA incluido:</span>
+            <span id="iva-calc">$0)</span>
+        </div>
+        <script>
+            // Calcular IVA incluido (19%)
+            (function () {
+                const total = parseFloat('{{ venta.monto_total|default:venta.total|floatformat:0 }}'.replace(/\./g, '').replace(/,/g, '')) || 0;
+                const iva = Math.round(total - (total / 1.19));
+                const ivaEl = document.getElementById('iva-calc');
+                if (ivaEl) {
+                    ivaEl.textContent = '$' + iva.toLocaleString('es-CL') + ')';
+                }
+            })();
+        </script>
     </div>
 
     <div class="divider"></div>

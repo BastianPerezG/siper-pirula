@@ -31,7 +31,10 @@
             data-item-key="{{ item.key }}" data-precio-unit="{{ item.precio_unit }}">
             <td class="p-4 align-middle">
               <div class="flex items-center gap-4">
-                {% if item.producto.imagen %}
+                {% if item.tipo == "PROMO" and item.promo.imagen %}
+                <img src="{{ item.promo.imagen.url }}" alt="{{ item.nombre }}"
+                  class="w-16 h-16 object-cover rounded-lg border border-slate-200 dark:border-slate-600">
+                {% elif item.tipo == "PROD" and item.producto.imagen %}
                 <img src="{{ item.producto.imagen.url }}" alt="{{ item.producto.nombre }}"
                   class="w-16 h-16 object-cover rounded-lg border border-slate-200 dark:border-slate-600">
                 {% else %}
@@ -89,7 +92,10 @@
         <div class="flex gap-4">
           {# Imagen #}
           <div class="flex-shrink-0">
-            {% if item.producto.imagen %}
+            {% if item.tipo == "PROMO" and item.promo.imagen %}
+            <img src="{{ item.promo.imagen.url }}" alt="{{ item.nombre }}"
+              class="w-20 h-20 object-cover rounded-lg border border-slate-200 dark:border-slate-600">
+            {% elif item.tipo == "PROD" and item.producto.imagen %}
             <img src="{{ item.producto.imagen.url }}" alt="{{ item.producto.nombre }}"
               class="w-20 h-20 object-cover rounded-lg border border-slate-200 dark:border-slate-600">
             {% else %}
@@ -310,6 +316,17 @@
           const totalEl = document.getElementById("total-general");
           if (totalEl) {
             totalEl.textContent = "$ " + Math.round(data.total).toLocaleString('es-CL');
+          }
+
+          // Sincronizar con localStorage
+          if (window.carritoLocalStorage) {
+            fetch("{% url 'tienda:carrito_obtener' %}")
+              .then(r => r.json())
+              .then(d => {
+                if (d.success && d.carrito) {
+                  window.carritoLocalStorage.guardar(d.carrito);
+                }
+              });
           }
         }
       })

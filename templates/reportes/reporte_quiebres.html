@@ -195,11 +195,11 @@
     {% if quiebres %}
     <section class="space-y-3">
         <h2 class="text-lg font-semibold flex items-center gap-2">
-            ⏱️ Historial de quiebres
+            ⏱️ Historial de quiebres de stock
         </h2>
         <p class="text-xs text-gray-500">
             Registro de productos que llegaron a stock 0 en el período seleccionado, indicando fecha de quiebre, fecha
-            de reposición y duración estimada.
+            de reposición y duración estimada sin stock.
         </p>
 
         <div class="overflow-x-auto bg-white rounded-lg shadow-sm border">
@@ -209,8 +209,7 @@
                         <th class="px-4 py-2 text-left">Producto</th>
                         <th class="px-4 py-2 text-left">Categoría</th>
                         <th class="px-4 py-2 text-left">Proveedor</th>
-                        <th class="px-4 py-2 text-left">Motivo / Comentario</th>
-                        <th class="px-4 py-2 text-left">Fecha quiebre</th>
+                        <th class="px-4 py-2 text-left">Fecha sin stock</th>
                         <th class="px-4 py-2 text-left">Fecha reposición</th>
                         <th class="px-4 py-2 text-right">Duración (días)</th>
                         <th class="px-4 py-2 text-right"># quiebres en período</th>
@@ -232,9 +231,6 @@
                             <span class="text-gray-400 text-xs">Sin proveedor</span>
                             {% endif %}
                         </td>
-                        <td class="px-4 py-2 text-xs italic text-gray-600">
-                            {{ q.motivo|default:"-" }}
-                        </td>
                         <td class="px-4 py-2">
                             {{ q.fecha_quiebre|date:"d-m-Y" }}
                         </td>
@@ -242,14 +238,14 @@
                             {% if q.fecha_reposicion %}
                             {{ q.fecha_reposicion|date:"d-m-Y" }}
                             {% else %}
-                            <span class="text-gray-400 text-xs">Sin reposición registrada</span>
+                            <span class="text-red-500 text-xs font-semibold">⚠️ Sin reponer aún</span>
                             {% endif %}
                         </td>
                         <td class="px-4 py-2 text-right">
                             {% if q.duracion is not None %}
                             {{ q.duracion }}
                             {% else %}
-                            -
+                            <span class="text-red-500">-</span>
                             {% endif %}
                         </td>
                         <td class="px-4 py-2 text-right">

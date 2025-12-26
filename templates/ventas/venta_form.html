@@ -100,6 +100,29 @@
                 <h2 class="font-bold text-slate-800 text-lg">Productos de la Venta</h2>
 
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <!-- Filtro por categoría -->
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            </svg>
+                        </div>
+                        <select id="filtro-categoria"
+                            class="pl-10 pr-8 py-2 border-2 border-slate-200 rounded-xl text-sm w-full sm:w-52 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all bg-white appearance-none cursor-pointer">
+                            <option value="">Todas las categorías</option>
+                            {% for cat in categorias %}
+                            <option value="{{ cat.id }}">{{ cat.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <svg class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -248,6 +271,59 @@
         // Mapas enviados desde la vista (precios por id y productos por EAN)
         const PRODUCTOS_EAN = JSON.parse('{{ productos_ean_json|default:"{}"|escapejs }}');
         const PRECIOS = JSON.parse('{{ precios_json|default:"{}"|escapejs }}');
+
+        // Mapeo de producto a categoría para el filtro
+        const PRODUCTO_CATEGORIA = JSON.parse('{{ producto_categoria_json|default:"{}"|escapejs }}');
+
+        // Variable para almacenar la categoría seleccionada
+        let categoriaFiltro = "";
+
+        /**
+         * Filtra las opciones de un select de productos según la categoría seleccionada.
+         */
+        function filtrarOpcionesProducto(selectElement) {
+            if (!selectElement) return;
+
+            const opciones = selectElement.querySelectorAll("option");
+            const valorActual = selectElement.value;
+
+            opciones.forEach(opt => {
+                if (!opt.value) {
+                    // La opción vacía siempre visible
+                    opt.style.display = "";
+                    return;
+                }
+
+                if (!categoriaFiltro) {
+                    // Sin filtro: mostrar todas
+                    opt.style.display = "";
+                } else {
+                    // Con filtro: mostrar solo las de la categoría
+                    const catProducto = PRODUCTO_CATEGORIA[opt.value];
+                    opt.style.display = (catProducto === categoriaFiltro) ? "" : "none";
+                }
+            });
+
+            // Si el producto actualmente seleccionado quedó oculto, limpiar selección
+            if (valorActual) {
+                const opcionActual = selectElement.querySelector(`option[value="${valorActual}"]`);
+                if (opcionActual && opcionActual.style.display === "none") {
+                    selectElement.value = "";
+                }
+            }
+        }
+
+        /**
+         * Filtra todos los selects de productos en todas las filas.
+         */
+        function filtrarTodosLosSelectsProducto() {
+            document.querySelectorAll("#items-table tbody tr.item-row select[name$='-producto']").forEach(select => {
+                filtrarOpcionesProducto(select);
+            });
+            // También filtrar el empty_form template
+            const emptySelect = document.querySelector("#empty-form-row select[name$='-producto']");
+            if (emptySelect) filtrarOpcionesProducto(emptySelect);
+        }
 
         /**
          * Calcula y actualiza el subtotal de una fila (cantidad * precio).
@@ -517,12 +593,26 @@
             document.querySelectorAll("#items-table tbody tr.item-row").forEach(attachRowEvents);
             recalcularTotal();
 
+            // Filtro por categoría
+            const filtroCat = document.getElementById("filtro-categoria");
+            if (filtroCat) {
+                filtroCat.addEventListener("change", function () {
+                    categoriaFiltro = this.value;
+                    filtrarTodosLosSelectsProducto();
+                });
+            }
+
             // Botón "+ Agregar ítem"
             const btnAgregar = document.getElementById("btn-agregar");
             if (btnAgregar) {
                 btnAgregar.addEventListener("click", function (e) {
                     e.preventDefault();
-                    agregarFila();
+                    const newRow = agregarFila();
+                    // Aplicar filtro también a la nueva fila
+                    if (newRow) {
+                        const select = newRow.querySelector("select[name$='-producto']");
+                        if (select) filtrarOpcionesProducto(select);
+                    }
                 });
             }
 

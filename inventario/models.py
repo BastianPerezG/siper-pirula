@@ -100,7 +100,13 @@ class Producto(models.Model):
         db_table = "producto"
 
     def __str__(self):
-        return f"{self.nombre} ({self.ean})"
+        # Mostrar nombre + formato + unidad para mejor identificación
+        partes = [self.nombre]
+        if self.formato:
+            partes.append(self.formato)
+        if self.unidad_de_venta:
+            partes.append(self.unidad_de_venta)
+        return " - ".join(partes)
     
     def save(self, *args, **kwargs):
         creando = self.pk is None
@@ -124,6 +130,10 @@ class Producto(models.Model):
             errors["precio"] = "El precio de venta debe ser mayor que 0"
         if self.costo is not None and self.costo <= 0:
             errors["costo"] = "El costo unitario debe ser mayor que 0"
+        # Validar que el precio no sea menor al costo
+        if self.precio is not None and self.costo is not None:
+            if self.precio < self.costo:
+                errors["precio"] = f"El precio de venta (${self.precio:,}) no puede ser menor al costo (${self.costo:,})"
         if errors:
             raise ValidationError(errors)
 
@@ -208,6 +218,14 @@ class MovimientoInventario(models.Model):
     tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
     cantidad = models.PositiveIntegerField()
     comentario = models.CharField(max_length=200, blank=True, null=True)
+    
+    # Campo para marcar si la merma es un quiebre (producto roto, quebrado)
+    es_quiebre = models.BooleanField(
+        default=False,
+        verbose_name="¿Es quiebre?",
+        help_text="Marcar si el producto se quebró o rompió físicamente"
+    )
+    
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,

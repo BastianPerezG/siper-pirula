@@ -152,6 +152,17 @@
                         </div>
                     </a>
                     {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
+                    <a href="{% url 'inventario:compra_crear' %}?producto_id={{ producto.pk }}{% if producto.proveedor %}&proveedor_id={{ producto.proveedor.pk }}{% endif %}"
+                        class="flex items-center gap-3 p-4 rounded-lg {% if producto.stock_actual < producto.stock_min %}bg-amber-50 border-2 border-amber-400{% else %}bg-emerald-50 border border-emerald-200{% endif %} hover:bg-amber-100 text-amber-700 font-semibold transition-colors">
+                        <span class="text-2xl">📦</span>
+                        <div>
+                            <p class="font-bold">Reabastecer</p>
+                            <p
+                                class="text-xs {% if producto.stock_actual < producto.stock_min %}text-amber-600{% else %}text-emerald-600{% endif %}">
+                                Registrar compra{% if producto.proveedor %} ({{ producto.proveedor.nombre|truncatechars:15 }}){% endif %}
+                            </p>
+                        </div>
+                    </a>
                     <form method="post" action="{% url 'inventario:producto_toggle_activo' producto.pk %}"
                         class="contents">
                         {% csrf_token %}

@@ -1,11 +1,30 @@
+# Variables de entorno (diferente en local vs producción)
 .env
 
 # Python cache
 __pycache__/
 *.pyc
-media/gi
-#db.sqlite3
+*.pyo
+
+# Base de datos SQLite (solo para desarrollo local)
 *.sqlite3
+
+# Archivos de medios subidos por usuarios
+media/
+
+# Archivos estáticos recolectados (se generan con collectstatic)
+staticfiles/
 
 # Backups (no subir al repositorio)
 /backups/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Scripts de debug temporales
+inspect_*.py
+verify_*.py
+reproduce_*.py

@@ -108,8 +108,14 @@
 
                 <!-- Sección: Inventario -->
                 <!-- Sección: Inventario -->
-                <div class="mt-4" x-data="{ open: true }">
-                    <button @click="open = !open"
+                <div class="mt-4" x-data="{ 
+                    open: localStorage.getItem('sidebar_inventario') !== 'false',
+                    toggle() { 
+                        this.open = !this.open; 
+                        localStorage.setItem('sidebar_inventario', this.open); 
+                    }
+                }">
+                    <button @click="toggle()"
                         class="w-full flex items-center justify-between px-4 text-xs font-bold text-pirula-light uppercase tracking-wider mb-2 hover:text-white transition-colors cursor-pointer focus:outline-none">
                         <span>Inventario</span>
                         <svg class="w-4 h-4 transform transition-transform duration-200" :class="{'rotate-180': open}"
@@ -136,6 +142,11 @@
                             class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
                             <span>📷</span>
                             <span>Escanear</span>
+                        </a>
+                        <a href="{% url 'inventario:movimiento_global_lista' %}"
+                            class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
+                            <span>📋</span>
+                            <span>Movimientos</span>
                         </a>
                         {% if request.user.perfilusuario.rol == 'ADMIN' %}
                         <a href="{% url 'inventario:categoria_lista' %}"
@@ -175,8 +186,14 @@
                 {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
                 <!-- Sección: Operaciones -->
                 <!-- Sección: Operaciones -->
-                <div class="mt-4" x-data="{ open: true }">
-                    <button @click="open = !open"
+                <div class="mt-4" x-data="{ 
+                    open: localStorage.getItem('sidebar_operaciones') !== 'false',
+                    toggle() { 
+                        this.open = !this.open; 
+                        localStorage.setItem('sidebar_operaciones', this.open); 
+                    }
+                }">
+                    <button @click="toggle()"
                         class="w-full flex items-center justify-between px-4 text-xs font-bold text-pirula-light uppercase tracking-wider mb-2 hover:text-white transition-colors cursor-pointer focus:outline-none">
                         <span>Operaciones</span>
                         <svg class="w-4 h-4 transform transition-transform duration-200" :class="{'rotate-180': open}"
@@ -233,8 +250,14 @@
 
                 <!-- Sección: Pedidos -->
                 <!-- Sección: Pedidos -->
-                <div class="mt-4" x-data="{ open: true }">
-                    <button @click="open = !open"
+                <div class="mt-4" x-data="{ 
+                    open: localStorage.getItem('sidebar_pedidos') !== 'false',
+                    toggle() { 
+                        this.open = !this.open; 
+                        localStorage.setItem('sidebar_pedidos', this.open); 
+                    }
+                }">
+                    <button @click="toggle()"
                         class="w-full flex items-center justify-between px-4 text-xs font-bold text-pirula-light uppercase tracking-wider mb-2 hover:text-white transition-colors cursor-pointer focus:outline-none">
                         <span>Pedidos Online</span>
                         <svg class="w-4 h-4 transform transition-transform duration-200" :class="{'rotate-180': open}"
@@ -256,15 +279,21 @@
                         <a href="{% url 'pedidos:pedidos_monitor' %}"
                             class="sidebar-link flex items-center gap-3 px-4 py-2 text-sm text-pirula-beige hover:text-white">
                             <span>📡</span>
-                            <span>Monitor Cocina</span>
+                            <span>Monitor Pedidos</span>
                         </a>
                     </div>
                 </div>
                 {% if request.user.perfilusuario.rol == 'ADMIN' or request.user.perfilusuario.rol == 'CAJERO' %}
                 <!-- Sección: Reportes -->
                 <!-- Sección: Reportes -->
-                <div class="mt-4" x-data="{ open: true }">
-                    <button @click="open = !open"
+                <div class="mt-4" x-data="{ 
+                    open: localStorage.getItem('sidebar_reportes') !== 'false',
+                    toggle() { 
+                        this.open = !this.open; 
+                        localStorage.setItem('sidebar_reportes', this.open); 
+                    }
+                }">
+                    <button @click="toggle()"
                         class="w-full flex items-center justify-between px-4 text-xs font-bold text-pirula-light uppercase tracking-wider mb-2 hover:text-white transition-colors cursor-pointer focus:outline-none">
                         <span>Reportes</span>
                         <svg class="w-4 h-4 transform transition-transform duration-200" :class="{'rotate-180': open}"
@@ -309,8 +338,14 @@
 
                 {% if request.user.perfilusuario.rol == 'ADMIN' %}
                 <!-- Sección: Administración -->
-                <div class="mt-4" x-data="{ open: true }">
-                    <button @click="open = !open"
+                <div class="mt-4" x-data="{ 
+                    open: localStorage.getItem('sidebar_admin') !== 'false',
+                    toggle() { 
+                        this.open = !this.open; 
+                        localStorage.setItem('sidebar_admin', this.open); 
+                    }
+                }">
+                    <button @click="toggle()"
                         class="w-full flex items-center justify-between px-4 text-xs font-bold text-pirula-light uppercase tracking-wider mb-2 hover:text-white transition-colors cursor-pointer focus:outline-none">
                         <span>Administración</span>
                         <svg class="w-4 h-4 transform transition-transform duration-200" :class="{'rotate-180': open}"
@@ -376,8 +411,7 @@
                         <p class="text-sm font-semibold text-white truncate">{{ full_name }}</p>
                         {% endwith %}
                         <p class="text-xs text-pirula-beige">
-                            {% if request.user.perfilusuario %}{{ request.user.perfilusuario.get_rol_display }}{% else
-                            %}Sin perfil{% endif %}
+                            {% if request.user.perfilusuario %}{{ request.user.perfilusuario.get_rol_display }}{% else %}Sin perfil{% endif %}
                         </p>
                     </div>
                 </div>

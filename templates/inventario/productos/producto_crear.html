@@ -101,7 +101,7 @@
             <h2 class="text-lg font-bold text-pirula-dark mb-4 flex items-center gap-2">
                 <span class="text-xl">💵</span> Venta y costos
             </h2>
-            <div class="grid gap-5 md:grid-cols-3">
+            <div class="grid gap-5 md:grid-cols-2">
                 <div>
                     <label for="{{ form.precio.id_for_label }}"
                         class="block text-sm font-semibold text-pirula-dark mb-2">
@@ -135,14 +135,15 @@
                     <p class="text-red-600 text-xs mt-1">{{ form.costo.errors|striptags }}</p>
                     {% endif %}
                 </div>
+            </div>
 
-                <div class="flex items-end">
-                    <label
-                        class="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-pirula-cream/50 border border-pirula-beige w-full h-[46px]">
-                        {{ form.contiene_alcohol }}
-                        <span class="text-sm font-medium text-pirula-dark">🍺 Contiene alcohol</span>
-                    </label>
-                </div>
+            <!-- Checkbox de alcohol -->
+            <div class="mt-5">
+                <label
+                    class="inline-flex items-center gap-3 cursor-pointer px-4 py-3 rounded-lg bg-pirula-cream/50 border border-pirula-beige hover:bg-pirula-cream transition-colors">
+                    {{ form.contiene_alcohol }}
+                    <span class="text-sm font-medium text-pirula-dark">🍺 Contiene alcohol</span>
+                </label>
             </div>
 
             <div class="grid gap-5 md:grid-cols-2 mt-5">
@@ -181,7 +182,7 @@
             <h2 class="text-lg font-bold text-pirula-dark mb-4 flex items-center gap-2">
                 <span class="text-xl">📊</span> Stock y bodega
             </h2>
-            <div class="grid gap-5 md:grid-cols-3">
+            <div class="grid gap-5 md:grid-cols-2">
                 <div>
                     <label for="{{ form.stock_min.id_for_label }}"
                         class="block text-sm font-semibold text-pirula-dark mb-2">
@@ -210,14 +211,16 @@
                     <p class="text-red-600 text-xs mt-1">{{ form.ubicacion.errors|striptags }}</p>
                     {% endif %}
                 </div>
+            </div>
 
-                <div class="flex items-end">
-                    <label
-                        class="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-emerald-50 border border-emerald-200 w-full h-[46px]">
-                        {{ form.activo }}
-                        <span class="text-sm font-medium text-emerald-700">✅ Producto activo</span>
-                    </label>
-                </div>
+            <!-- Estado del producto -->
+            <div class="mt-5">
+                <label
+                    class="inline-flex items-center gap-3 cursor-pointer px-4 py-3 rounded-lg bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors">
+                    {{ form.activo }}
+                    <span class="text-sm font-medium text-emerald-700">✅ Producto activo</span>
+                    <span class="text-xs text-slate-500 ml-2">(Desmarcar para ocultar en ventas)</span>
+                </label>
             </div>
 
             <!-- Imagen -->

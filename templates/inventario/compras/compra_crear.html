@@ -515,9 +515,36 @@ Pirula{% endblock %}
         // Calcular total inicial
         recalcularTotalCompra();
 
+        // === PRESELECCIÓN DESDE URL (?producto_id=X) ===
+        // Si venimos desde detalle de producto con bajo stock
+        const urlParams = new URLSearchParams(window.location.search);
+        const productoPreseleccionado = urlParams.get('producto_id');
+
+        if (productoPreseleccionado) {
+            // Esperar a que se filtre el proveedor primero
+            setTimeout(() => {
+                let row = filaVaciaDisponible();
+                if (!row) {
+                    row = agregarFila();
+                }
+                if (row) {
+                    const selectProd = row.querySelector("select[name$='-producto']");
+                    const qtyInput = row.querySelector("input[name$='-cantidad']");
+                    if (selectProd) {
+                        selectProd.value = productoPreseleccionado;
+                        selectProd.dispatchEvent(new Event('change'));
+                    }
+                    if (qtyInput && !qtyInput.value) {
+                        qtyInput.value = 1;
+                        qtyInput.focus();
+                        qtyInput.select();
+                    }
+                }
+            }, 100);
+        }
+
         // === INTEGRACIÓN CON PLANTILLA DE PROVEEDOR ===
         // Si venimos de la plantilla, pre-cargar los productos
-        const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('from_plantilla') === '1') {
             const plantillaData = sessionStorage.getItem('plantilla_compra_data');
             if (plantillaData) {

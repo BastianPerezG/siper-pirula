@@ -45,7 +45,7 @@
           class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
           <option value="">Todas las categorías</option>
           {% for c in categorias %}
-          <option value="{{ c.id }}" {% if filtros.categoria == c.id|stringformat:"s" %}selected{% endif %}>
+          <option value="{{ c.id }}" {% if filtros.categoria==c.id|stringformat:"s" %}selected{% endif %}>
             {{ c.nombre }}
           </option>
           {% endfor %}
@@ -76,6 +76,7 @@
             <th class="px-4 py-3 text-left font-bold text-pirula-dark">Fecha</th>
             <th class="px-4 py-3 text-left font-bold text-pirula-dark">Producto</th>
             <th class="px-4 py-3 text-center font-bold text-pirula-dark">Cantidad</th>
+            <th class="px-4 py-3 text-center font-bold text-pirula-dark">Tipo</th>
             <th class="px-4 py-3 text-left font-bold text-pirula-dark">Comentario</th>
             <th class="px-4 py-3 text-center font-bold text-pirula-dark">Acciones</th>
           </tr>
@@ -91,6 +92,19 @@
               <span class="px-3 py-1 rounded-full bg-red-100 text-red-700 font-bold text-sm">
                 -{{ m.cantidad }}
               </span>
+            </td>
+            <td class="px-4 py-3 text-center">
+              {% if m.es_quiebre %}
+              <span
+                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-100 text-red-700 font-semibold text-xs whitespace-nowrap">
+                <span>⚠️</span> Quiebre
+              </span>
+              {% else %}
+              <span
+                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 font-semibold text-xs whitespace-nowrap">
+                <span>📦</span> Proveedor
+              </span>
+              {% endif %}
             </td>
             <td class="px-4 py-3 text-slate-500">{{ m.comentario|default:"—" }}</td>
             <td class="px-4 py-3 text-center">
@@ -119,6 +133,17 @@
           <div>
             <p class="font-bold text-pirula-dark">{{ m.producto.nombre }}</p>
             <p class="text-xs text-slate-500">{{ m.fecha|date:"d/m/Y H:i" }}</p>
+            {% if m.es_quiebre %}
+            <span
+              class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold text-xs">
+              <span>⚠️</span> Quiebre
+            </span>
+            {% else %}
+            <span
+              class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold text-xs">
+              <span>📦</span> Proveedor
+            </span>
+            {% endif %}
           </div>
           <span class="px-2 py-1 rounded-full bg-red-100 text-red-700 font-bold text-sm">
             -{{ m.cantidad }}

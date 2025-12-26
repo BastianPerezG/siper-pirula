@@ -22,6 +22,8 @@ urlpatterns = [
     path("carrito/actualizar-item/", views.carrito_actualizar_item, name="carrito_actualizar_item"),
     path("carrito/eliminar/<str:item_id>/", views.carrito_eliminar_view, name="carrito_eliminar"),
     path("carrito/vaciar/", views.carrito_vaciar, name="carrito_vaciar"),
+    path("carrito/sincronizar/", views.carrito_sincronizar_localstorage, name="carrito_sincronizar"),
+    path("carrito/obtener/", views.carrito_obtener_json, name="carrito_obtener"),
     # checkout
     path("checkout/", views.checkout_view, name="checkout"),
     path("checkout/exito/<int:pedido_id>/", views.checkout_exito_view, name="checkout_exito"),

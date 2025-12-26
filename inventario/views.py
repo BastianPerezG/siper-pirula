@@ -422,6 +422,85 @@ class MovimientoListaView(RolRequeridoMixin, ListView):
         return context
 
 
+class MovimientoGlobalListaView(RolRequeridoMixin, ListView):
+    """
+    Vista global de todos los movimientos de inventario del negocio.
+    Permite filtrar por producto, categoría, marca, tipo y fechas.
+    """
+    roles_requeridos = ["MESON", "CAJERO", "ADMIN"]
+    model = MovimientoInventario
+    template_name = "inventario/movimiento_stock/movimiento_global_lista.html"
+    context_object_name = "movimientos"
+    paginate_by = 30
+
+    def get_queryset(self):
+        negocio = self.request.user.perfilusuario.negocio
+        qs = MovimientoInventario.objects.filter(
+            producto__negocio=negocio
+        ).select_related("producto", "producto__categoria", "producto__marca", "usuario")
+
+        # Filtro por producto específico
+        producto_id = self.request.GET.get("producto")
+        if producto_id:
+            qs = qs.filter(producto_id=producto_id)
+
+        # Filtro por categoría
+        categoria_id = self.request.GET.get("categoria")
+        if categoria_id:
+            qs = qs.filter(producto__categoria_id=categoria_id)
+
+        # Filtro por marca
+        marca_id = self.request.GET.get("marca")
+        if marca_id:
+            qs = qs.filter(producto__marca_id=marca_id)
+
+        # Filtro por tipo de movimiento
+        tipo = self.request.GET.get("tipo")
+        if tipo:
+            qs = qs.filter(tipo=tipo)
+
+        # Filtro por fecha desde
+        fecha_desde = self.request.GET.get("desde")
+        if fecha_desde:
+            qs = qs.filter(fecha__date__gte=fecha_desde)
+
+        # Filtro por fecha hasta
+        fecha_hasta = self.request.GET.get("hasta")
+        if fecha_hasta:
+            qs = qs.filter(fecha__date__lte=fecha_hasta)
+
+        return qs.order_by("-fecha")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        negocio = self.request.user.perfilusuario.negocio
+
+        context["categorias"] = Categoria.objects.filter(
+            negocio=negocio, activo=True
+        ).order_by("nombre")
+
+        context["marcas"] = Marca.objects.filter(
+            negocio=negocio, activo=True
+        ).order_by("nombre")
+
+        context["productos"] = Producto.objects.filter(
+            negocio=negocio, activo=True
+        ).select_related("categoria", "marca").order_by("nombre")
+
+        context["tipos_movimiento"] = MovimientoInventario.TIPO_CHOICES
+
+        context["filtros"] = {
+            "producto": self.request.GET.get("producto", ""),
+            "categoria": self.request.GET.get("categoria", ""),
+            "marca": self.request.GET.get("marca", ""),
+            "tipo": self.request.GET.get("tipo", ""),
+            "desde": self.request.GET.get("desde", ""),
+            "hasta": self.request.GET.get("hasta", ""),
+        }
+
+        return context
+
+
 class ProductoStockCriticoView(RolRequeridoMixin, ListView):
     roles_requeridos = ["MESON", "CAJERO", "ADMIN"]
     model = Producto
@@ -530,6 +609,19 @@ def compra_crear_view(request):
         # Agregar nombre (primeras palabras)
         busqueda_map[p.nombre.lower()] = str(p.id)
 
+    # Preselección de producto y proveedor (desde detalle de producto)
+    producto_preseleccionado = request.GET.get("producto_id", "")
+    proveedor_preseleccionado = request.GET.get("proveedor_id", "")
+    
+    # Si viene un producto_id, obtener también el proveedor del producto
+    if producto_preseleccionado and not proveedor_preseleccionado:
+        try:
+            prod = Producto.objects.get(pk=producto_preseleccionado, negocio=negocio)
+            if prod.proveedor_id:
+                proveedor_preseleccionado = str(prod.proveedor_id)
+        except Producto.DoesNotExist:
+            pass
+
     if request.method == "POST":
         form = CompraForm(request.POST, request.FILES, negocio=negocio)
         formset = CompraItemFormSet(
@@ -550,7 +642,11 @@ def compra_crear_view(request):
             messages.success(request, "Compra registrada correctamente.")
             return redirect("inventario:compra_detalle", pk=compra.pk)
     else:
-        form = CompraForm(negocio=negocio)
+        # Preseleccionar proveedor en el formulario si viene por GET
+        initial_form = {}
+        if proveedor_preseleccionado:
+            initial_form['proveedor'] = proveedor_preseleccionado
+        form = CompraForm(negocio=negocio, initial=initial_form)
         formset = CompraItemFormSet(form_kwargs={"negocio": negocio})
 
     context = {
@@ -560,6 +656,8 @@ def compra_crear_view(request):
         "ean_map_json": json.dumps(ean_map),
         "productos_por_proveedor_json": json.dumps(productos_por_proveedor),
         "busqueda_map_json": json.dumps(busqueda_map),
+        "producto_preseleccionado": producto_preseleccionado,
+        "proveedor_preseleccionado": proveedor_preseleccionado,
     }
     return render(request, "inventario/compras/compra_crear.html", context)
 
@@ -1256,11 +1354,10 @@ def merma_crear(request):
             
             # --- Lógica de Diferenciación Merma vs Quiebre ---
             tipo_merma = form.cleaned_data.get('tipo_merma', 'PROVEEDOR')
-            etiqueta = "[PROVEEDOR]" if tipo_merma == "PROVEEDOR" else "[QUIEBRE]"
             
-            # Prependemos la etiqueta al comentario para persistencia simple sin migración
-            comentario_original = merma.comentario or ""
-            merma.comentario = f"{etiqueta} {comentario_original}".strip()
+            # Marcar el campo booleano es_quiebre según la selección
+            merma.es_quiebre = (tipo_merma == "QUIEBRE")
+            
             merma.save() # Guarda la merma (que es un MovimientoInventario)
             
             producto = merma.producto # Accede al producto afectado por la merma

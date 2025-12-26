@@ -313,10 +313,17 @@
                             ❌
                         </button>
                         {% elif pedido.estado_preparacion == 'LISTO' %}
+                        {% if pedido.estado_pago == 'PAGADO' %}
                         <button name="accion" value="next" type="submit"
                             class="flex-1 px-4 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold shadow-sm shadow-green-200 transition-all active:scale-95 flex items-center justify-center gap-2">
                             <span>🎉</span> Entregar
                         </button>
+                        {% else %}
+                        <div
+                            class="flex-1 px-4 py-2.5 rounded-lg bg-amber-100 border border-amber-300 text-amber-700 text-sm font-bold flex items-center justify-center gap-2">
+                            <span>💰</span> Pendiente de pago
+                        </div>
+                        {% endif %}
                         <button name="accion" value="no_retira" type="submit"
                             class="px-3 py-2.5 rounded-lg bg-white border border-orange-200 text-orange-600 hover:bg-orange-50 hover:border-orange-300 text-sm font-bold transition-all"
                             title="No Retira">
@@ -360,6 +367,72 @@
         </div>
         {% endfor %}
     </div>
+
+    <!-- Paginación -->
+    {% if pedidos.has_other_pages %}
+    <nav class="mt-8 flex items-center justify-center gap-2">
+        <!-- Anterior -->
+        {% if pedidos.has_previous %}
+        <a href="?page={{ pedidos.previous_page_number }}{% if estado %}&estado={{ estado }}{% endif %}{% if q %}&q={{ q }}{% endif %}{% if dias %}&dias={{ dias }}{% endif %}{% if mostrar_finalizados %}&finalizados=si{% endif %}"
+            class="px-4 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            Anterior
+        </a>
+        {% else %}
+        <span class="px-4 py-2 rounded-lg bg-slate-100 text-slate-400 font-semibold cursor-not-allowed">
+            Anterior
+        </span>
+        {% endif %}
+
+        <!-- Páginas -->
+        <div class="hidden sm:flex items-center gap-1">
+            {% for page_num in pedidos.paginator.page_range %}
+            {% if page_num == pedidos.number %}
+            <span class="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold shadow">
+                {{ page_num }}
+            </span>
+            {% elif page_num == 1 or page_num == pedidos.paginator.num_pages or page_num >= pedidos.number|add:"-2" and
+            page_num <= pedidos.number|add:"2" %} <a
+                href="?page={{ page_num }}{% if estado %}&estado={{ estado }}{% endif %}{% if q %}&q={{ q }}{% endif %}{% if dias %}&dias={{ dias }}{% endif %}{% if mostrar_finalizados %}&finalizados=si{% endif %}"
+                class="px-4 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition-colors">
+                {{ page_num }}
+                </a>
+                {% elif page_num == 2 and pedidos.number > 4 or page_num == pedidos.paginator.num_pages|add:"-1" and
+                pedidos.number < pedidos.paginator.num_pages|add:"-3" %} <span class="px-2 text-slate-400">...</span>
+                    {% endif %}
+                    {% endfor %}
+        </div>
+
+        <!-- Indicador móvil -->
+        <div class="sm:hidden">
+            <span class="px-4 py-2 rounded-lg bg-slate-100 text-slate-600 font-semibold">
+                {{ pedidos.number }} / {{ pedidos.paginator.num_pages }}
+            </span>
+        </div>
+
+        <!-- Siguiente -->
+        {% if pedidos.has_next %}
+        <a href="?page={{ pedidos.next_page_number }}{% if estado %}&estado={{ estado }}{% endif %}{% if q %}&q={{ q }}{% endif %}{% if dias %}&dias={{ dias }}{% endif %}{% if mostrar_finalizados %}&finalizados=si{% endif %}"
+            class="px-4 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
+            Siguiente
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+        </a>
+        {% else %}
+        <span class="px-4 py-2 rounded-lg bg-slate-100 text-slate-400 font-semibold cursor-not-allowed">
+            Siguiente
+        </span>
+        {% endif %}
+    </nav>
+
+    <!-- Info de paginación -->
+    <p class="text-center text-sm text-slate-500 mt-4">
+        Mostrando {{ pedidos.start_index }} - {{ pedidos.end_index }} de {{ pedidos.paginator.count }} pedidos
+    </p>
+    {% endif %}
 </div>
 
 <!-- Notyf Integration -->

@@ -380,12 +380,24 @@ def pedidos_monitor_view(request):
         'listos': pedidos.filter(estado_preparacion=Pedido.PREP_LISTO).count(),
     }
 
-    # Ahora sí, limitar y ordenar
-    pedidos = pedidos.order_by("-fecha")[:60]
+    # Ordenar por fecha descendente
+    pedidos = pedidos.order_by("-fecha")
+    
+    # Paginación
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+    paginator = Paginator(pedidos, 12)  # 12 pedidos por página (4x3 en grid)
+    page = request.GET.get("page", 1)
+    
+    try:
+        pedidos_page = paginator.page(page)
+    except PageNotAnInteger:
+        pedidos_page = paginator.page(1)
+    except EmptyPage:
+        pedidos_page = paginator.page(paginator.num_pages)
 
     context = {
         "negocio": negocio,
-        "pedidos": pedidos,
+        "pedidos": pedidos_page,
         "estado": estado_prep,
         "q": q,
         "dias": dias,

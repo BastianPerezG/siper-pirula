@@ -417,6 +417,100 @@
         if (themeToggleBtnMobile) themeToggleBtnMobile.addEventListener('click', toggleTheme);
     </script>
 
+    <!-- Sistema de persistencia del carrito con localStorage -->
+    <script>
+        const CART_STORAGE_KEY = 'siper_pirula_carrito';
+
+        // Función para guardar el carrito en localStorage
+        function guardarCarritoEnLocalStorage(carrito) {
+            try {
+                localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(carrito));
+            } catch (e) {
+                console.warn('No se pudo guardar el carrito en localStorage:', e);
+            }
+        }
+
+        // Función para obtener el carrito de localStorage
+        function obtenerCarritoDeLocalStorage() {
+            try {
+                const data = localStorage.getItem(CART_STORAGE_KEY);
+                return data ? JSON.parse(data) : null;
+            } catch (e) {
+                console.warn('No se pudo leer el carrito de localStorage:', e);
+                return null;
+            }
+        }
+
+        // Función para limpiar el carrito de localStorage
+        function limpiarCarritoDeLocalStorage() {
+            try {
+                localStorage.removeItem(CART_STORAGE_KEY);
+            } catch (e) {
+                console.warn('No se pudo limpiar el carrito de localStorage:', e);
+            }
+        }
+
+        // Al cargar la página, sincronizar localStorage con el servidor
+        document.addEventListener('DOMContentLoaded', function () {
+            const carritoLocal = obtenerCarritoDeLocalStorage();
+
+            // Si hay carrito en localStorage, intentar sincronizar con el servidor
+            if (carritoLocal && Object.keys(carritoLocal).length > 0) {
+                fetch("{% url 'tienda:carrito_sincronizar' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ carrito: carritoLocal })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Si se sincronizó, recargar la página para mostrar el carrito actualizado
+                            if (data.items_count && data.items_count > 0) {
+                                // Solo recargar si estamos en una página de la tienda y hay items nuevos
+                                const currentItems = {{ request.session.carrito| length |default: 0
+                            }
+                        };
+                        if (currentItems === 0 && data.items_count > 0) {
+                            window.location.reload();
+                        }
+                    }
+                    }
+
+            // Si la sesión tiene carrito, actualizar localStorage con lo del servidor
+            if (data.action === 'use_session') {
+                fetch("{% url 'tienda:carrito_obtener' %}")
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.success && d.carrito) {
+                            guardarCarritoEnLocalStorage(d.carrito);
+                        }
+                    });
+            }
+        })
+            .catch(err => console.warn('Error al sincronizar carrito:', err));
+            } else {
+            // Si no hay carrito en localStorage, obtener el de la sesión y guardarlo
+            fetch("{% url 'tienda:carrito_obtener' %}")
+                .then(r => r.json())
+                .then(d => {
+                    if (d.success && d.carrito && Object.keys(d.carrito).length > 0) {
+                        guardarCarritoEnLocalStorage(d.carrito);
+                    }
+                })
+                .catch(err => console.warn('Error al obtener carrito:', err));
+        }
+        });
+
+        // Exponer funciones para uso en otras páginas
+        window.carritoLocalStorage = {
+            guardar: guardarCarritoEnLocalStorage,
+            obtener: obtenerCarritoDeLocalStorage,
+            limpiar: limpiarCarritoDeLocalStorage
+        };
+    </script>
+
     <!-- Mobile Sticky Bottom Navigation -->
     <div
         class="fixed bottom-0 left-0 z-50 w-full h-16 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 md:hidden">

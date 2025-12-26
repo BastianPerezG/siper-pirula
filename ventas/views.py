@@ -248,11 +248,20 @@ def venta_crear_view(request):
             form_kwargs={"negocio": negocio, "usuario": request.user}
         )
 
+    # Categorías para el filtro en el frontend
+    from inventario.models import Categoria
+    categorias = Categoria.objects.filter(negocio=negocio, activo=True).order_by("nombre")
+    categorias_json = {str(c.id): c.nombre for c in categorias}
+    producto_categoria_json = {str(p.id): str(p.categoria_id) for p in productos}
+
     context = {
         "form": form,
         "formset": formset,
         "precios_json": json.dumps(precios),
         "productos_ean_json": json.dumps(productos_ean),
+        "categorias": categorias,
+        "categorias_json": json.dumps(categorias_json),
+        "producto_categoria_json": json.dumps(producto_categoria_json),
     }
     return render(request, "ventas/venta_form.html", context)
 
@@ -415,6 +424,12 @@ def venta_editar_view(request, pk):
             form_kwargs={"negocio": negocio, "usuario": request.user},
         )
 
+    # Categorías para el filtro en el frontend
+    from inventario.models import Categoria
+    categorias = Categoria.objects.filter(negocio=negocio, activo=True).order_by("nombre")
+    categorias_json = {str(c.id): c.nombre for c in categorias}
+    producto_categoria_json = {str(p.id): str(p.categoria_id) for p in productos}
+
     context = {
         "form": form,
         "formset": formset,
@@ -422,6 +437,9 @@ def venta_editar_view(request, pk):
         "productos_ean_json": json.dumps(productos_ean),
         "venta": venta,
         "modo_edicion": True,
+        "categorias": categorias,
+        "categorias_json": json.dumps(categorias_json),
+        "producto_categoria_json": json.dumps(producto_categoria_json),
     }
     return render(request, "ventas/venta_form.html", context)
 

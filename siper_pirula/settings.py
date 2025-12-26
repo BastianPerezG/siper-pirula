@@ -70,34 +70,33 @@ TEMPLATES = [{
 WSGI_APPLICATION = "siper_pirula.wsgi.application"
 
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.mysql",
-        'NAME': 'new connection', # La base de datos que creaste en MySQL
-        'USER': 'root',           # Por defecto es 'root'
-        'PASSWORD': 'Hola.123!',
-        'HOST': '127.0.0.1',            # O 'localhost'
-        'PORT': '3306',
+# 4) Base de datos: SQLite para desarrollo local, MySQL para producción
+# Si existe DB_HOST en el .env, usa MySQL; si no, usa SQLite
+if os.environ.get("DB_HOST"):
+    # PRODUCCIÓN: MySQL (PythonAnywhere)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.mysql",
+            "NAME": env("DB_NAME"),
+            "USER": env("DB_USER"),
+            "PASSWORD": env("DB_PASSWORD"),
+            "HOST": env("DB_HOST"),
+            "PORT": env("DB_PORT", default="3306"),
+            "OPTIONS": {
+                "charset": "utf8mb4",
+                "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+            },
+            "CONN_MAX_AGE": 60,
+        }
     }
-}
-# 4) DB: MySQL via mysqlclient (usa variables del .env)
-#DATABASES = {
-    #"default": {
-        #"ENGINE": "django.db.backends.mysql",
-        #"NAME": env("DB_NAME"),
-        #"USER": env("DB_USER"),
-        #"PASSWORD": env("DB_PASSWORD"),
-        #"HOST": env("DB_HOST", default="127.0.0.1"),
-        #"PORT": env("DB_PORT", default="3306"),
-        #"OPTIONS": {
-                #"charset": "utf8mb4",
-                # en Windows a veces ayuda:
-                # "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-            #},
-            #"CONN_MAX_AGE": 60,   # pooling básico (60 s)
-        #}
-        
-#}
+else:
+    # DESARROLLO LOCAL: SQLite
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # 5) Static/Media (útil para despliegue)
 STATIC_URL = "/static/"
@@ -125,21 +124,18 @@ LOGIN_URL = "core:login_interno"
 LOGIN_REDIRECT_URL = "core:dashboard"
 LOGOUT_REDIRECT_URL = "core:login_interno"
 
-# Configuración de Email
-if DEBUG:
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-else:
-    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
+# Configuración de Email (Brevo SMTP - antes Sendinblue)
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp-relay.brevo.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = os.environ.get("EMAIL_HOST_USER", "noreply@granpirula.cl")
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+# El remitente visible en los emails (diferente del login SMTP)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="El Gran Pirula <noreply@granpirula.cl>")
 
 # URL del sitio (para emails)
-SITE_URL = os.environ.get("SITE_URL", "http://127.0.0.1:8000")
-RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+SITE_URL = env("SITE_URL", default="http://127.0.0.1:8000")
 
 
 # Configuración de Backup Automático

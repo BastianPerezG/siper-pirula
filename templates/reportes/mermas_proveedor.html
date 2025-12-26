@@ -5,7 +5,7 @@
 <div class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
     <h1 class="text-2xl font-semibold text-slate-800">
-        📉 Mermas por proveedor
+        📉 Reporte de Mermas y Quiebres
     </h1>
 
     <!-- Filtros -->
@@ -139,7 +139,54 @@
         </div>
         {% else %}
         <p class="text-sm text-slate-500">
-            No hay registros de merma en el período seleccionado.
+            No hay registros de merma por proveedor en el período seleccionado.
+        </p>
+        {% endif %}
+    </div>
+
+    <!-- Sección de Quiebres Internos -->
+    <div class="bg-white shadow-sm rounded-lg p-4">
+        <h2 class="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+            <span class="text-red-500">⚠️</span> Quiebres internos (rotura, pérdida)
+            {% if total_monto_quiebres %}
+            <span class="ml-auto text-red-600 font-bold">
+                Total: $ {{ total_monto_quiebres|floatformat:0 }}
+            </span>
+            {% endif %}
+        </h2>
+
+        {% if detalle_quiebres %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-xs">
+                <thead>
+                    <tr class="border-b bg-red-50 text-slate-500 uppercase">
+                        <th class="text-left py-2 px-2">Fecha</th>
+                        <th class="text-left py-2 px-2">Producto</th>
+                        <th class="text-left py-2 px-2">Categoría</th>
+                        <th class="text-right py-2 px-2">Cantidad</th>
+                        <th class="text-left py-2 px-2">Motivo</th>
+                        <th class="text-right py-2 px-2">Costo unit.</th>
+                        <th class="text-right py-2 px-2">Monto pérdida</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in detalle_quiebres %}
+                    <tr class="border-b last:border-0 hover:bg-red-50">
+                        <td class="py-2 px-2">{{ d.fecha | date:"d-m-Y H:i" }}</td>
+                        <td class="py-2 px-2">{{ d.producto }}</td>
+                        <td class="py-2 px-2">{{ d.categoria }}</td>
+                        <td class="py-2 px-2 text-right text-red-600 font-semibold">-{{ d.cantidad }}</td>
+                        <td class="py-2 px-2">{{ d.motivo }}</td>
+                        <td class="py-2 px-2 text-right">${{ d.costo_unit }}</td>
+                        <td class="py-2 px-2 text-right text-red-600 font-semibold">${{ d.monto_merma }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-sm text-slate-500">
+            No hay registros de quiebres internos en el período seleccionado.
         </p>
         {% endif %}
     </div>

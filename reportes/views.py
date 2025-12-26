@@ -279,65 +279,101 @@ class ReporteStockQuiebresView(LoginRequiredMixin, TemplateView):
             key=lambda x: (0 if x["sin_stock"] else 1, -x["diferencia"])
         )
 
-        # --- Historial de quiebres ---
+        # --- Historial de quiebres de stock (cuando el stock llega a 0) ---
         desde = filtros["desde"]
         hasta = filtros["hasta"]
 
-        # Tomamos solo mermas que sean realmente quiebres segun el comentario que reciba
-        movimientos = (
-            MovimientoInventario.objects
-            .filter(
-                producto__in=productos_qs,
-                fecha__date__gte=desde,
-                fecha__date__lte=hasta,
-                tipo=MovimientoInventario.TIPO_MERMA,
-                # cualquier cosa que tenga "quieb" o "sin stock" o "agotad"
-                comentario__iregex=r"(quieb|sin stock|agotad)",
-            )
-            .select_related("producto")
-            .order_by("producto_id", "fecha", "id")
-        )
-
+        # Para calcular quiebres de stock, necesitamos analizar los movimientos
+        # y detectar cuándo el stock resultante de un producto llegó a 0
         quiebres = []
         quiebres_por_producto = {}
 
-        for m in movimientos:
-            producto = m.producto
-            fecha_quiebre = m.fecha.date()
+        for producto in productos_qs:
+            # Obtener stock actual del producto
+            stock_actual = getattr(producto, "stock_actual", None)
+            if stock_actual is None:
+                stock_actual = getattr(producto, "stock", 0) or 0
 
-            # Buscar la siguiente entrada como reposición
-            siguiente_mov = (
+            # Obtener todos los movimientos del producto en el período, ordenados por fecha
+            movimientos = (
                 MovimientoInventario.objects
                 .filter(
                     producto=producto,
-                    fecha__gt=m.fecha,
-                    tipo__in=[
-                        MovimientoInventario.TIPO_ENTRADA,
-                        MovimientoInventario.TIPO_AJUSTE,
-                    ],
+                    fecha__date__gte=desde,
+                    fecha__date__lte=hasta,
                 )
-                .order_by("fecha")
-                .first()
+                .order_by("fecha", "id")
             )
 
-            if siguiente_mov:
-                fecha_reposicion = siguiente_mov.fecha.date()
-                duracion = (fecha_reposicion - fecha_quiebre).days
-            else:
-                fecha_reposicion = None
-                duracion = None
+            # Calcular el stock al inicio del período (stock actual - cambios del período hasta ahora)
+            # Suma de entradas y ajustes positivos, resta de salidas y mermas
+            for mov in movimientos:
+                if mov.tipo in [MovimientoInventario.TIPO_ENTRADA]:
+                    stock_actual -= mov.cantidad  # Revertimos para calcular stock inicial
+                elif mov.tipo in [MovimientoInventario.TIPO_SALIDA, MovimientoInventario.TIPO_MERMA]:
+                    stock_actual += mov.cantidad  # Revertimos
+                elif mov.tipo == MovimientoInventario.TIPO_AJUSTE:
+                    # Los ajustes pueden ser positivos o negativos
+                    # Asumimos que cantidad es el valor absoluto del ajuste
+                    pass  # Esto es más complejo, por ahora simplificamos
 
-            quiebres.append({
-                "producto": producto,
-                "fecha_quiebre": fecha_quiebre,
-                "fecha_reposicion": fecha_reposicion,
-                "duracion": duracion,
-                "motivo": m.comentario,
-            })
+            stock_corriente = stock_actual
 
-            quiebres_por_producto[producto.id] = (
-                quiebres_por_producto.get(producto.id, 0) + 1
-            )
+            # Ahora recorremos los movimientos y detectamos quiebres
+            for mov in movimientos:
+                # Aplicar el movimiento
+                if mov.tipo == MovimientoInventario.TIPO_ENTRADA:
+                    stock_corriente += mov.cantidad
+                elif mov.tipo in [MovimientoInventario.TIPO_SALIDA, MovimientoInventario.TIPO_MERMA]:
+                    stock_corriente -= mov.cantidad
+                elif mov.tipo == MovimientoInventario.TIPO_AJUSTE:
+                    # Para ajustes, asumimos que el stock se establece o ajusta
+                    pass
+
+                # Si el stock llega a 0 o menos después de este movimiento, es un quiebre
+                if stock_corriente <= 0:
+                    fecha_quiebre = mov.fecha.date()
+
+                    # Buscar la siguiente entrada como reposición
+                    siguiente_mov = (
+                        MovimientoInventario.objects
+                        .filter(
+                            producto=producto,
+                            fecha__gt=mov.fecha,
+                            tipo=MovimientoInventario.TIPO_ENTRADA,
+                        )
+                        .order_by("fecha")
+                        .first()
+                    )
+
+                    if siguiente_mov:
+                        fecha_reposicion = siguiente_mov.fecha.date()
+                        duracion = (fecha_reposicion - fecha_quiebre).days
+                    else:
+                        fecha_reposicion = None
+                        duracion = None
+
+                    # Solo agregar si no hay ya un quiebre muy reciente del mismo producto
+                    ya_registrado = any(
+                        q["producto"].id == producto.id and q["fecha_quiebre"] == fecha_quiebre
+                        for q in quiebres
+                    )
+
+                    if not ya_registrado:
+                        quiebres.append({
+                            "producto": producto,
+                            "fecha_quiebre": fecha_quiebre,
+                            "fecha_reposicion": fecha_reposicion,
+                            "duracion": duracion,
+                            "motivo": f"Stock llegó a 0 después de {mov.get_tipo_display()}",
+                        })
+
+                        quiebres_por_producto[producto.id] = (
+                            quiebres_por_producto.get(producto.id, 0) + 1
+                        )
+
+        # Ordenar quiebres por fecha descendente
+        quiebres.sort(key=lambda x: x["fecha_quiebre"], reverse=True)
 
         # Anotar cantidad de quiebres por producto
         for q in quiebres:
@@ -1010,18 +1046,19 @@ class ReporteMermasProveedorView(LoginRequiredMixin, TemplateView):
             mermas_qs = mermas_qs.filter(
                 producto__categoria_id=filtros["categoria_id"])
 
-        # Excluir quiebres/roturas internas (que van al reporte de stock crítico/quiebres)
-        mermas_qs = mermas_qs.exclude(comentario__iregex=r"(quieb|sin stock|agotad)")
+        # Separar mermas de proveedor (es_quiebre=False) de quiebres internos (es_quiebre=True)
+        mermas_proveedor_qs = mermas_qs.filter(es_quiebre=False)
+        quiebres_qs = mermas_qs.filter(es_quiebre=True)
         
-        return compras_qs, mermas_qs
+        return compras_qs, mermas_proveedor_qs, quiebres_qs
 
     # --------- 3) Armar estructuras para el template y CSV ---------
     def _build_data(self):
         filtros = self._get_filtros()
-        compras_qs, mermas_qs = self._get_qs(filtros)
+        compras_qs, mermas_proveedor_qs, quiebres_qs = self._get_qs(filtros)
         negocio = self.request.user.perfilusuario.negocio
 
-        # --- 3.1 Resumen por proveedor ---
+        # --- 3.1 Resumen por proveedor (mermas de proveedor) ---
 
         # Total comprado por proveedor en el período
         compras_agg = compras_qs.values(
@@ -1036,7 +1073,7 @@ class ReporteMermasProveedorView(LoginRequiredMixin, TemplateView):
         }
 
         # Total de merma por proveedor (usamos costo del producto)
-        mermas_agg = mermas_qs.values(
+        mermas_agg = mermas_proveedor_qs.values(
             "producto__proveedor_id",
             "producto__proveedor__nombre",
         ).annotate(
@@ -1082,11 +1119,10 @@ class ReporteMermasProveedorView(LoginRequiredMixin, TemplateView):
         # Ordenar de mayor a menor porcentaje de merma
         resumen.sort(key=lambda r: (r["porcentaje_merma"] or 0), reverse=True)
 
-        # --- 3.2 Detalle de mermas ---
-        # --- 3.2 Detalle de mermas ---
+        # --- 3.2 Detalle de mermas de proveedor ---
         detalle = []
 
-        for m in mermas_qs.select_related(
+        for m in mermas_proveedor_qs.select_related(
             "producto",
             "producto__proveedor",
             "producto__categoria",
@@ -1112,8 +1148,37 @@ class ReporteMermasProveedorView(LoginRequiredMixin, TemplateView):
                 "monto_merma": monto_merma,
             })
 
+        # --- 3.3 Detalle de quiebres internos ---
+        detalle_quiebres = []
+        total_monto_quiebres = 0
 
-        # --- 3.3 Catálogos para filtros ---
+        for m in quiebres_qs.select_related(
+            "producto",
+            "producto__proveedor",
+            "producto__categoria",
+        ).order_by("-fecha"):
+
+            producto = m.producto
+            proveedor = getattr(producto, "proveedor", None)
+            categoria = getattr(producto, "categoria", None)
+
+            costo_unit = (getattr(producto, "costo", 0) or 0)
+            monto_merma = m.cantidad * costo_unit
+            total_monto_quiebres += monto_merma
+
+            detalle_quiebres.append({
+                "fecha": m.fecha,
+                "proveedor": proveedor.nombre if proveedor else "Sin proveedor",
+                "producto": producto.nombre if producto else "",
+                "categoria": categoria.nombre if categoria else "",
+                "cantidad": m.cantidad,
+                "unidad": getattr(producto, "unidad_de_venta", "") or "",
+                "motivo": m.comentario or "",
+                "costo_unit": costo_unit,
+                "monto_merma": monto_merma,
+            })
+
+        # --- 3.4 Catálogos para filtros ---
         proveedores = Proveedor.objects.filter(
             negocio=negocio, activo=True
         ).order_by("nombre")
@@ -1125,6 +1190,8 @@ class ReporteMermasProveedorView(LoginRequiredMixin, TemplateView):
         return {
             "resumen_proveedores": resumen,
             "detalle_mermas": detalle,
+            "detalle_quiebres": detalle_quiebres,
+            "total_monto_quiebres": total_monto_quiebres,
             "proveedores": proveedores,
             "categorias": categorias,
             "filtros": filtros,

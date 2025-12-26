@@ -236,6 +236,88 @@ def limpiar_carrito_en_session(request):
         request.session.modified = True
 
 
+@csrf_exempt
+def carrito_sincronizar_localstorage(request):
+    """
+    Sincroniza el carrito desde localStorage al servidor.
+    Se usa cuando el usuario vuelve después de cerrar el navegador
+    y tiene un carrito guardado en localStorage pero no en la sesión.
+    """
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Método no permitido"}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        carrito_local = data.get("carrito", {})
+        
+        if not carrito_local:
+            return JsonResponse({"success": True, "message": "Carrito vacío"})
+        
+        # Obtener carrito actual de la sesión
+        carrito_sesion = _get_cart(request)
+        
+        # Si la sesión ya tiene carrito, no sobrescribir (sesión es prioritaria)
+        if carrito_sesion:
+            return JsonResponse({
+                "success": True, 
+                "message": "Sesión tiene carrito, no se sincroniza",
+                "action": "use_session"
+            })
+        
+        # Validar y reconstruir el carrito desde localStorage
+        carrito_validado = {}
+        for key, data in carrito_local.items():
+            # Validar formato de la key (PROD-N o PROMO-N)
+            try:
+                tipo, raw_id = key.split("-", 1)
+                item_id = int(raw_id)
+            except (ValueError, AttributeError):
+                continue
+            
+            cantidad = int(data.get("cantidad", 0) or 0)
+            if cantidad <= 0:
+                continue
+            
+            # Verificar que el producto/promo existe y está activo
+            if tipo == "PROD":
+                if not Producto.objects.filter(pk=item_id, activo=True).exists():
+                    continue
+            elif tipo == "PROMO":
+                if not Promo.objects.filter(pk=item_id, activo=True).exists():
+                    continue
+            else:
+                continue
+            
+            carrito_validado[key] = {"cantidad": cantidad}
+        
+        # Guardar en sesión
+        _save_cart(request, carrito_validado)
+        
+        return JsonResponse({
+            "success": True, 
+            "message": f"Carrito sincronizado con {len(carrito_validado)} items",
+            "items_count": len(carrito_validado)
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "JSON inválido"}, status=400)
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+def carrito_obtener_json(request):
+    """
+    Retorna el carrito actual de la sesión como JSON.
+    Usado para sincronizar al localStorage después de cambios.
+    """
+    carrito = _get_cart(request)
+    return JsonResponse({
+        "success": True,
+        "carrito": carrito,
+        "items_count": len(carrito)
+    })
+
+
 # ------------------------------------------------------------------
 # Vistas de la tienda pública
 # ------------------------------------------------------------------
@@ -718,19 +800,41 @@ def checkout_view(request):
                         'precio_total': str(item["precio_unit"]), # Precio total de la promo
                         'productos_internos': [],
                     }
-                    for promo_item in promo.items.select_related("producto"):
+                    
+                    # Calcular precio proporcional para cada producto del pack
+                    # Sumamos el "valor original" de todos los productos
+                    promo_items = list(promo.items.select_related("producto"))
+                    valor_original_total = sum(
+                        pi.producto.precio * pi.cantidad for pi in promo_items
+                    )
+                    precio_combo = int(item["precio_unit"])  # El precio del pack
+                    
+                    for promo_item in promo_items:
                         producto = promo_item.producto
                         cantidad_total = promo_item.cantidad * item["cantidad"]
+                        
+                        # Calcular precio proporcional
+                        # Si el pack vale $15.000 y el producto representa 40% del valor original,
+                        # entonces su precio proporcional es $6.000
+                        if valor_original_total > 0:
+                            proporcion = (producto.precio * promo_item.cantidad) / valor_original_total
+                            precio_proporcional_total = int(precio_combo * proporcion)
+                            # Precio por unidad
+                            precio_unitario_proporcional = precio_proporcional_total // promo_item.cantidad
+                        else:
+                            precio_unitario_proporcional = 0
+                        
                         PedidoItem.objects.create(
                             pedido=pedido,
                             producto=producto,
                             cantidad=cantidad_total,
-                            precio=producto.precio,
+                            precio=precio_unitario_proporcional,
                         )
                         detalle_promo['productos_internos'].append({
                             'id': producto.pk,
                             'nombre': producto.nombre,
                             'cantidad': float(cantidad_total),
+                            'precio_unitario_pack': float(precio_unitario_proporcional),
                         })
             try:
                 # 1. Obtener la instancia de Negocio para la bitácora
@@ -811,7 +915,8 @@ def checkout_view(request):
                 pedido.webpay_status = "INICIADO"
                 pedido.save(update_fields=["webpay_token", "webpay_status"])
 
-                limpiar_carrito_en_session(request)
+                # NO limpiamos el carrito aquí - se limpia solo cuando el pago es exitoso
+                # Esto permite que si el pago falla, el usuario pueda volver a intentar
                 return redirect(f"{url_pago}?token_ws={token}")
             else:
                 messages.error(request, "Forma de pago no válida.")
@@ -1266,6 +1371,10 @@ def webpay_retorno_view(request):
                     monto_total=pedido.total_monto or pedido.total,
                 )
                 
+                # Generar número de documento automáticamente
+                venta.doc_num = venta.generar_numero_documento()
+                venta.save(update_fields=["doc_num"])
+                
                 # Crear los VentaItems desde los PedidoItems
                 for p_item in pedido.items.all():
                     VentaItem.objects.create(
@@ -1312,6 +1421,10 @@ def webpay_retorno_view(request):
             logger.warning(f"Error al enviar correo de confirmación del pedido {pedido.codigo}: {e}")
 
         messages.success(request, "Pago realizado con éxito.")
+        
+        # Limpiar el carrito SOLO después de pago exitoso
+        limpiar_carrito_en_session(request)
+        
         return redirect("tienda:checkout_exito", pedido_id=pedido.id)
 
     else:
