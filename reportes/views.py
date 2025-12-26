@@ -977,7 +977,7 @@ class ReporteNoRetiraView(LoginRequiredMixin, TemplateView):
 
 
 class ReporteMermasProveedorView(LoginRequiredMixin, TemplateView):
-    template_name = "reportes\mermas_proveedor.html"
+    template_name = "reportes/mermas_proveedor.html"
 
     # --------- Filtros base ---------
     def _get_filtros(self):

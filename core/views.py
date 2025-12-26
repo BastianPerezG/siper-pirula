@@ -108,21 +108,57 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                     estado_preparacion=Pedido.PREP_LISTO
                 ).count()
                 
-                # Stock crítico
-                from django.db.models import F
-                stock_critico = Producto.objects.filter(
-                    negocio=negocio,
-                    activo=True,
-                    stock__lte=F('stock_minimo')
+                # Stock crítico (calculado vía anotación porque 'stock' no es campo DB)
+                from django.db.models import F, Sum, Case, When, Value, IntegerField
+                from django.db.models.functions import Coalesce, Cast
+                from inventario.models import MovimientoInventario
+
+                # Lógica de cálculo de stock replicada del modelo
+                stock_annotation = Coalesce(
+                    Sum(
+                        Case(
+                            When(
+                                movimientos__tipo__in=[
+                                    MovimientoInventario.TIPO_ENTRADA,
+                                    MovimientoInventario.TIPO_AJUSTE
+                                ],
+                                then=F("movimientos__cantidad")
+                            ),
+                            When(
+                                movimientos__tipo__in=[
+                                    MovimientoInventario.TIPO_SALIDA,
+                                    MovimientoInventario.TIPO_MERMA,
+                                    MovimientoInventario.TIPO_RESERVA,
+                                    MovimientoInventario.TIPO_VENTA, 
+                                ],
+                                then=Cast(F('movimientos__cantidad'), output_field=IntegerField()) * -1
+                            ),
+                            default=0,
+                            output_field=IntegerField(),
+                        )
+                    ),
+                    0
                 )
+
+                # Anotamos y filtramos
+                prods_con_stock = Producto.objects.filter(
+                    negocio=negocio,
+                    activo=True
+                ).annotate(
+                    stock_real=stock_annotation
+                )
+
+                # 1. Stock Crítico: stock_real <= stock_min
+                stock_critico = prods_con_stock.filter(
+                    stock_real__lte=F('stock_min')
+                )
+                
                 context['stock_critico_count'] = stock_critico.count()
                 context['productos_stock_critico'] = stock_critico[:5]
                 
-                # Productos sin stock
-                context['sin_stock_count'] = Producto.objects.filter(
-                    negocio=negocio,
-                    activo=True,
-                    stock=0
+                # 2. Sin Stock: stock_real <= 0 (o exactamente 0)
+                context['sin_stock_count'] = prods_con_stock.filter(
+                    stock_real__lte=0
                 ).count()
                 
             except Exception as e:
@@ -130,6 +166,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.warning(f"Error cargando métricas del dashboard: {str(e)}")
+                # print(f"ERROR DASHBOARD: {e}") # Debug local
         
         return context
 

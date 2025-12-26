@@ -123,7 +123,7 @@
         <div class="bg-white rounded-xl shadow-md overflow-hidden">
             <div class="bg-pirula-medium text-white px-5 py-3 flex items-center justify-between">
                 <h2 class="font-semibold">⚠️ Alertas de Inventario</h2>
-                <a href="{% url 'inventario:producto_stock_critico' %}"
+                <a href="{% url 'inventario:producto_lista' %}"
                     class="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition">
                     Ver todos →
                 </a>
@@ -135,7 +135,7 @@
                     <li class="flex items-center justify-between p-2 bg-red-50 rounded-lg">
                         <span class="text-sm text-slate-700 truncate">{{ producto.nombre }}</span>
                         <span class="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">
-                            Stock: {{ producto.stock }}
+                            Stock: {{ producto.stock_actual }}
                         </span>
                     </li>
                     {% endfor %}

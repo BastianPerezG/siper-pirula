@@ -45,7 +45,7 @@
           class="w-full border border-pirula-beige rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-pirula-accent focus:border-pirula-accent">
           <option value="">Todas las categorías</option>
           {% for c in categorias %}
-          <option value="{{ c.id }}" {% if filtros.categoria==c.id|stringformat:"s" %}selected{% endif %}>
+          <option value="{{ c.id }}" {% if filtros.categoria == c.id|stringformat:"s" %}selected{% endif %}>
             {{ c.nombre }}
           </option>
           {% endfor %}

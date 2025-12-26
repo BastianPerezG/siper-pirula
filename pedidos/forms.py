@@ -63,12 +63,12 @@ class RegistroClienteForm(forms.ModelForm):
         max_length=12,
         required=False,
         validators=[validar_rut],
-        label="RUT (opcional)",
+        label="RUT",
     )
 
     class Meta:
         model = Cliente
-        fields = ["nombre", "rut", "correo", "telefono", "direccion"]
+        fields = ["nombre", "rut", "correo", "telefono"]
 
     def clean_username(self):
         username = self.cleaned_data["username"]
@@ -80,8 +80,33 @@ class RegistroClienteForm(forms.ModelForm):
         cleaned = super().clean()
         p1 = cleaned.get("password1")
         p2 = cleaned.get("password2")
+
         if p1 and p2 and p1 != p2:
             raise forms.ValidationError("Las contraseñas no coinciden.")
+        
+        # Validaciones de seguridad (Espejo de core/forms.py)
+        if p1:
+            # Largo mínimo
+            if len(p1) < 6:
+                raise forms.ValidationError("La contraseña debe tener al menos 6 caracteres.")
+
+            # Mayúscula
+            if not any(c.isupper() for c in p1):
+                raise forms.ValidationError("La contraseña debe contener al menos una letra mayúscula.")
+
+            # Número
+            if not any(c.isdigit() for c in p1):
+                raise forms.ValidationError("La contraseña debe contener al menos un número.")
+
+            # Símbolo
+            symbols = "!@#$%^&*()_+-={}[]|:;<>,.?/~`"
+            if not any(c in symbols for c in p1):
+                raise forms.ValidationError("La contraseña debe contener al menos un símbolo (!@#$...).")
+
+            # Espacios no permitidos
+            if " " in p1:
+                raise forms.ValidationError("La contraseña no debe contener espacios.")
+
         return cleaned
 
 
