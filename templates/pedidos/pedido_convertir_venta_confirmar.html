@@ -34,35 +34,73 @@
                 </thead>
                 <tbody>
                     {% for item in pedido.items.all %}
-                        <tr class="border-t border-slate-100">
-                            <td class="px-4 py-2 text-slate-800"> {{ item.producto.nombre }}</td>
-                            <td class="px-4 py-2 text-right">{{ item.cantidad }}</td>
-                            <td class="px-4 py-2 text-right">$ {{ item.precio|floatformat:0 }}</td>
-                            <td class="px-4 py-2 text-right">$ {{ item.subtotal|floatformat:0 }}</td>
-                        </tr>
+                    <tr class="border-t border-slate-100">
+                        <td class="px-4 py-2 text-slate-800"> {{ item.producto.nombre }}</td>
+                        <td class="px-4 py-2 text-right">{{ item.cantidad }}</td>
+                        <td class="px-4 py-2 text-right">$ {{ item.precio|floatformat:0 }}</td>
+                        <td class="px-4 py-2 text-right">$ {{ item.subtotal|floatformat:0 }}</td>
+                    </tr>
                     {% empty %}
-                        <tr>
-                            <td colspan="4" class="px-4 py-4 text-center text-slate-500">
-                                Este pedido no tiene productos.
-                            </td>
-                        </tr>
+                    <tr>
+                        <td colspan="4" class="px-4 py-4 text-center text-slate-500">
+                            Este pedido no tiene productos.
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 
-    <form method="post" class="flex items-center justify-between gap-4">
+    <form method="post" class="space-y-6" x-data="{ medioPago: '{{ form.medio_pago.value|default:'EFECTIVO' }}' }">
         {% csrf_token %}
-        <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
-           class="inline-flex items-center justify-center px-5 py-2.5 rounded-full border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">
-            Cancelar
-        </a>
 
-        <button type="submit"
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Medio de Pago -->
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Medio de Pago</label>
+                <div class="space-y-2">
+                    {% for radio in form.medio_pago %}
+                    <label
+                        class="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition"
+                        :class="{ 'border-slate-800 bg-slate-50': medioPago === '{{ radio.data.value }}' }">
+                        <input type="radio" name="{{ form.medio_pago.name }}" value="{{ radio.data.value }}"
+                            x-model="medioPago" class="h-4 w-4 text-slate-900 border-slate-300 focus:ring-slate-900">
+                        <span class="text-sm text-slate-700">{{ radio.choice_label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                {{ form.medio_pago.errors }}
+            </div>
+
+            <div class="space-y-6">
+                <!-- Tipo de Documento -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.doc_tipo.label }}</label>
+                    {{ form.doc_tipo }}
+                    {{ form.doc_tipo.errors }}
+                </div>
+
+                <!-- Monto Recibido (Solo Efectivo) -->
+                <div x-show="medioPago === 'EFECTIVO'" x-transition class="space-y-2">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.monto_recibido.label }}</label>
+                    {{ form.monto_recibido }}
+                    <p class="text-xs text-slate-500">Total a pagar: ${{ pedido.total|floatformat:0 }}</p>
+                    {{ form.monto_recibido.errors }}
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-4 pt-6 border-t border-slate-100 mt-6">
+            <a href="{% url 'pedidos:pedido_detalle' pedido.pk %}"
+                class="inline-flex items-center justify-center px-5 py-2.5 rounded-full border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Cancelar
+            </a>
+
+            <button type="submit"
                 class="inline-flex items-center justify-center px-6 py-2.5 rounded-full text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800">
-            Sí, convertir a venta POS
-        </button>
+                Sí, convertir a venta POS
+            </button>
     </form>
 </div>
 {% endblock %}
