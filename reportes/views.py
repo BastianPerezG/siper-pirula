@@ -1013,7 +1013,10 @@ class ReporteMermasProveedorView(LoginRequiredMixin, TemplateView):
 
     # --------- 2) Obtener datos crudos (compras + mermas) ---------
     def _get_qs(self, filtros):
-        negocio = self.request.user.perfilusuario.negocio
+        negocio = getattr(self.request.user.perfilusuario, 'negocio', None)
+        if not negocio:
+            return CompraItem.objects.none(), MovimientoInventario.objects.none(), MovimientoInventario.objects.none()
+
         desde = filtros["desde"]
         hasta = filtros["hasta"]
 
@@ -1056,7 +1059,8 @@ class ReporteMermasProveedorView(LoginRequiredMixin, TemplateView):
     def _build_data(self):
         filtros = self._get_filtros()
         compras_qs, mermas_proveedor_qs, quiebres_qs = self._get_qs(filtros)
-        negocio = self.request.user.perfilusuario.negocio
+        negocio = getattr(self.request.user.perfilusuario, 'negocio', None)
+
 
         # --- 3.1 Resumen por proveedor (mermas de proveedor) ---
 
@@ -1179,13 +1183,17 @@ class ReporteMermasProveedorView(LoginRequiredMixin, TemplateView):
             })
 
         # --- 3.4 Catálogos para filtros ---
-        proveedores = Proveedor.objects.filter(
-            negocio=negocio, activo=True
-        ).order_by("nombre")
+        proveedores = Proveedor.objects.none()
+        categorias = Categoria.objects.none()
+        
+        if negocio:
+            proveedores = Proveedor.objects.filter(
+                negocio=negocio, activo=True
+            ).order_by("nombre")
 
-        categorias = Categoria.objects.filter(
-            negocio=negocio, activo=True
-        ).order_by("nombre")
+            categorias = Categoria.objects.filter(
+                negocio=negocio, activo=True
+            ).order_by("nombre")
 
         return {
             "resumen_proveedores": resumen,

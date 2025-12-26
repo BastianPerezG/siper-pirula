@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error del Servidor - SIPER Pirula</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        pirula: {
+                            dark: '#2C1810',
+                            brown: '#5D4037',
+                            amber: '#FFB300',
+                            cream: '#F5F5DC',
+                        }
+                    },
+                    fontFamily: {
+                        header: ['Oswald', 'sans-serif'],
+                        body: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Inter:wght@300;400;600&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        h1,
+        h2,
+        h3,
+        .font-header {
+            font-family: 'Oswald', sans-serif;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-gray-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="text-center max-w-lg mx-auto">
+        <!-- Brand / Logo -->
+        <h2
+            class="text-4xl md:text-5xl font-header font-bold text-pirula-dark dark:text-pirula-amber mb-6 uppercase tracking-wider">
+            Siper Pirula
+        </h2>
+
+        <!-- Error Code -->
+        <div class="relative inline-block mb-4">
+            <h1 class="text-9xl font-black text-slate-200 dark:text-slate-800 select-none">
+                500
+            </h1>
+            <div class="absolute inset-0 flex items-center justify-center">
+                <span
+                    class="text-2xl md:text-3xl font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest bg-gray-100 dark:bg-slate-900 px-2">
+                    Error Interno
+                </span>
+            </div>
+        </div>
+
+        <!-- Message -->
+        <div class="space-y-4 mb-8">
+            <h3 class="text-2xl font-bold text-slate-800 dark:text-white">
+                Ups, se nos rompió una copa.
+            </h3>
+            <p class="text-slate-600 dark:text-slate-400 text-lg">
+                Algo salió mal en nuestro servidor. Nuestro equipo ya ha sido notificado y estamos barriendo los vidrios
+                para arreglarlo.
+            </p>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="/"
+                class="px-8 py-3 rounded-xl bg-pirula-dark dark:bg-pirula-amber text-white dark:text-pirula-dark font-bold hover:shadow-lg hover:scale-105 transition-all transform uppercase tracking-wide">
+                Ir al Inicio
+            </a>
+            <a href="javascript:location.reload()"
+                class="px-8 py-3 rounded-xl border-2 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-800 transition-all uppercase tracking-wide">
+                Reintentar
+            </a>
+        </div>
+
+    </div>
+
+    <!-- Decorative Footer -->
+    <div class="fixed bottom-4 text-center w-full text-xs text-slate-400 dark:text-slate-600">
+        &copy; {% now "Y" %} SIPER Pirula. Todos los derechos reservados.
+    </div>
+
+</body>
+
+</html>
